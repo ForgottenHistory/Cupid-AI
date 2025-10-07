@@ -157,54 +157,61 @@ const MainLayout = ({ children }) => {
   return (
     <div className="flex h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
       {/* Left Sidebar */}
-      <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+      <div className="w-96 bg-gradient-to-b from-white via-purple-50/20 to-pink-50/20 border-r border-purple-100/50 shadow-xl flex flex-col backdrop-blur-sm">
         {/* Logo/Brand */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-purple-100/50 backdrop-blur-md bg-white/40">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-            AI Dater
+            Cupid AI
           </h1>
         </div>
 
         {/* Matches List */}
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
-              Matches ({stats.liked})
-            </h2>
+          <div className="p-5">
+            <div className="mb-5 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-blue-500/10 backdrop-blur-md border border-purple-200/30">
+              <h2 className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 uppercase tracking-wider">
+                Matches ({stats.liked})
+              </h2>
+            </div>
 
             {matches.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="text-center py-12 px-4">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center shadow-lg">
+                  <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                 </div>
-                <p className="text-gray-600 font-medium text-sm">No matches yet</p>
-                <p className="text-gray-400 text-xs mt-1">Start swiping to find characters you like!</p>
+                <p className="text-gray-700 font-semibold text-sm mb-1">No matches yet</p>
+                <p className="text-gray-500 text-xs">Start swiping to find characters you like!</p>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {matches.map((match) => {
                   const unreadCount = getUnreadCount(match.id);
                   return (
                     <div
                       key={match.id}
-                      className="group relative flex items-center gap-3 p-3 rounded-xl hover:bg-gradient-to-r hover:from-pink-50 hover:to-purple-50 cursor-pointer transition-all duration-200"
+                      className="group relative flex items-center gap-3 p-3 rounded-2xl bg-white/60 backdrop-blur-sm border border-purple-100/50 hover:border-purple-300/50 hover:shadow-lg hover:shadow-purple-100/50 hover:scale-[1.02] cursor-pointer transition-all duration-300"
                       onClick={() => navigate(`/chat/${match.id}`)}
                     >
-                      {/* Avatar with gradient ring */}
+                      {/* Avatar with permanent gradient ring */}
                       <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <img
-                          src={match.imageUrl}
-                          alt={match.name}
-                          className="relative w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
-                        />
-                        {/* Status indicator */}
-                        <div className={`absolute bottom-0 right-0 w-4 h-4 ${getStatusIndicatorColor(match.id, characterStatuses[match.id]?.status)} border-2 border-white rounded-full`}></div>
-                        {/* Unread badge */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-md opacity-40 group-hover:opacity-60 transition-opacity"></div>
+                        <div className="relative p-0.5 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full">
+                          <img
+                            src={match.imageUrl}
+                            alt={match.name}
+                            className="w-16 h-16 rounded-full object-cover border-2 border-white"
+                            style={{ imageRendering: '-webkit-optimize-contrast' }}
+                          />
+                        </div>
+                        {/* Status indicator with glow */}
+                        <div className={`absolute bottom-0.5 right-0.5 w-4 h-4 ${getStatusIndicatorColor(match.id, characterStatuses[match.id]?.status)} border-2 border-white rounded-full shadow-lg`}>
+                          <div className={`absolute inset-0 ${getStatusIndicatorColor(match.id, characterStatuses[match.id]?.status)} rounded-full animate-ping opacity-75`}></div>
+                        </div>
+                        {/* Unread badge with pulse */}
                         {unreadCount > 0 && (
-                          <div className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-pink-500 to-purple-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg">
+                          <div className="absolute -top-0.5 -right-0.5 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-pink-500 to-purple-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg animate-pulse">
                             <span className="text-white text-xs font-bold">
                               {unreadCount > 9 ? '9+' : unreadCount}
                             </span>
@@ -214,15 +221,15 @@ const MainLayout = ({ children }) => {
 
                       {/* Content */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
-                          <h3 className="font-semibold text-gray-900 truncate group-hover:text-purple-600 transition-colors">
+                        <div className="flex items-center justify-between mb-0.5">
+                          <h3 className="font-bold text-gray-900 truncate">
                             {match.name}
                           </h3>
                         </div>
-                        <p className="text-sm text-gray-500 truncate">
+                        <p className="text-xs text-gray-500 truncate">
                           {unreadCount > 0 ? (
-                            <span className="font-medium text-purple-600 flex items-center gap-1">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                               </svg>
                               {unreadCount} new {unreadCount === 1 ? 'message' : 'messages'}
@@ -235,7 +242,7 @@ const MainLayout = ({ children }) => {
 
                       {/* Chevron indicator */}
                       <svg
-                        className="w-5 h-5 text-gray-300 group-hover:text-purple-400 transition-colors opacity-0 group-hover:opacity-100"
+                        className="w-5 h-5 text-gray-300 group-hover:text-purple-500 group-hover:translate-x-1 transition-all opacity-0 group-hover:opacity-100"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -251,35 +258,41 @@ const MainLayout = ({ children }) => {
         </div>
 
         {/* User Profile at Bottom */}
-        <div className="border-t border-gray-200 p-4">
-          <div className="flex items-center gap-3">
+        <div className="border-t border-purple-100/50 p-4 bg-white/40 backdrop-blur-md">
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-pink-50/50 to-purple-50/50 border border-purple-100/30">
             <div
               onClick={() => navigate('/profile')}
               className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer hover:opacity-80 transition"
             >
               {user?.profile_image ? (
-                <img
-                  src={getImageUrl(user.profile_image)}
-                  alt="Profile"
-                  className="w-10 h-10 rounded-full object-cover border-2 border-gray-200"
-                />
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-sm opacity-50"></div>
+                  <img
+                    src={getImageUrl(user.profile_image)}
+                    alt="Profile"
+                    className="relative w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
+                  />
+                </div>
               ) : (
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white font-semibold">
-                  {(user?.display_name || user?.username || 'U').charAt(0).toUpperCase()}
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-sm opacity-50"></div>
+                  <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-lg">
+                    {(user?.display_name || user?.username || 'U').charAt(0).toUpperCase()}
+                  </div>
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 truncate text-sm">
+                <h3 className="font-bold text-gray-900 truncate text-sm">
                   {user?.display_name || user?.username}
                 </h3>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600">
                   {stats.remaining} to swipe
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowLLMSettings(true)}
-              className="text-gray-400 hover:text-gray-600 transition"
+              className="p-2 text-gray-400 hover:text-purple-600 hover:bg-white/60 rounded-lg transition-all"
               title="LLM Settings"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +302,7 @@ const MainLayout = ({ children }) => {
             </button>
             <button
               onClick={handleLogout}
-              className="text-gray-400 hover:text-gray-600 transition"
+              className="p-2 text-gray-400 hover:text-red-500 hover:bg-white/60 rounded-lg transition-all"
               title="Logout"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
