@@ -39,10 +39,11 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - User profile with LLM settings
 - Token-based context trimming
 - Dual LLM System (Phase 1: Reactions, Phase 2: Schedules & Engagement)
-- Engagement window system (realistic conversation bursts)
+- Time-based engagement system (realistic durations with natural departures)
 - Character status system (online/away/busy/offline)
-- Status-based response delays
 - Real-time status display in chat
+- Cooldown system (blocks responses until status changes)
+- AI reply suggestions (serious, sarcastic, flirty tones)
 
 ### 🔧 Known Issues
 - Character names default to "Character" when syncing to backend (cosmetic)
@@ -111,10 +112,10 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 ### Phase 2: Schedule & Engagement System ✅ IMPLEMENTED
 
 #### Character Status System
-Four status levels that affect availability:
-- **Online**: Available, responds quickly (3-10sec first response)
-- **Away**: Doing something, slower responses (10-30sec first response)
-- **Busy**: Work/important task, very slow responses (30-60sec first response)
+Four status levels that affect engagement duration and availability:
+- **Online**: Available, stays engaged indefinitely during good conversations
+- **Away**: Doing something, stays engaged for 30-60 minutes then departs
+- **Busy**: Work/important task, stays engaged for 15-30 minutes then departs
 - **Offline**: Sleeping/unavailable, no responses until back online
 
 #### Weekly Schedule Structure
@@ -140,43 +141,54 @@ Stored as JSON in `characters` table `schedule_data` column:
 }
 ```
 
-#### Engagement Window System
-Realistic conversation flow instead of flat delays:
+#### Time-Based Engagement System
+Realistic conversation flow based on time durations:
 
-**1. Initial Response Delay**
-- Message sits unread based on character's current status
-- Eventually character "checks phone" and responds
-- Probability of checking increases over time
+**1. Initial Response**
+- When disengaged: 70% chance to engage and respond, 30% no response
+- Fast response delay (~1 second) for all responses
+- No more status-based long delays
 
-**2. Engagement Window** (2-5 messages)
-- Once character responds, they're "engaged" for a short burst
-- Fast back-and-forth responses (30sec-2min delays)
-- Feels like real active conversation
+**2. Engagement Duration**
+- Once engaged, character stays engaged for a duration based on their status:
+  - **Online**: Unlimited (stays in conversation)
+  - **Away**: 30-60 minutes
+  - **Busy**: 15-30 minutes
+- Timer starts when engagement begins
 
-**3. Disengagement**
-- After engagement window expires:
-  - 50% chance of closing message ("gotta run!", "back to work")
-  - 50% chance of just stopping (goes back to unread state)
-- Returns to scheduled status behavior
+**3. Natural Departure**
+- When duration expires, character sends natural departure message:
+  - Content LLM generates "gtg" message using schedule context
+  - Examples: "gotta get back to work", "friends are here, ttyl!"
+- Character enters cooldown state
+
+**4. Cooldown Period**
+- After departing, character won't respond until their status changes
+- Status change clears cooldown, character can engage again
 
 **Example Flow:**
 ```
 10:00 AM - User: "How's your day going?"
-          [Character is busy at work, message unread]
+          [Character is away, disengaged]
 
-10:45 AM - Char: "Hey! Pretty hectic, but good 😊"
-          [Engagement window: 3 messages remaining]
+10:00 AM - Char: "Hey! Pretty hectic, but good 😊"
+          [Engaged, 45min duration (away status)]
 
-10:46 AM - User: "What are you working on?"
-10:47 AM - Char: "Just finishing up a big presentation"
-          [2 messages remaining]
+10:01 AM - User: "What are you working on?"
+10:01 AM - Char: "Just finishing up a big presentation"
 
-10:48 AM - User: "Nice! How'd it go?"
-10:48 AM - Char: "Went well! But gotta get back to it, talk later?"
-          [Engagement ends, back to busy]
+10:02 AM - User: "Nice! How's it going?"
+10:02 AM - Char: "Going well! Almost done"
+
+... conversation continues naturally ...
+
+10:45 AM - User: "That's awesome!"
+10:45 AM - Char: "Thanks! Gotta get back to it, talk later?"
+          [Duration expired, natural departure]
+          [Now on cooldown until status changes from "away"]
 
 11:00 AM - User: "Sure thing!"
-          [No response until next check/window]
+          [No response - on cooldown]
 ```
 
 #### Database Schema
@@ -187,9 +199,9 @@ Realistic conversation flow instead of flat delays:
 **character_states table** (per user-character pair):
 - `current_status` TEXT - Current calculated status (online/away/busy/offline)
 - `engagement_state` TEXT - engaged/disengaged
-- `engagement_messages_remaining` INTEGER - Messages left in current window
-- `last_check_time` TIMESTAMP - Last time character "checked phone"
-- `message_queue` JSON - Messages waiting for character to come online
+- `engagement_started_at` TIMESTAMP - When current engagement began (for duration tracking)
+- `departed_status` TEXT - Status when character departed (for cooldown until status changes)
+- `last_check_time` TIMESTAMP - Last state update time
 
 #### Implementation Steps
 1. **Schedule Generation** (Library UI)
@@ -222,22 +234,26 @@ Realistic conversation flow instead of flat delays:
 #### Implementation Notes (Phase 2)
 **Completed Features:**
 - ✅ Database schema: Added `schedule_data` and `schedule_generated_at` columns to characters table
-- ✅ Database schema: Created `character_states` table for engagement tracking
-- ✅ Backend service: Created `engagementService.js` for state management
+- ✅ Database schema: Created `character_states` table with `engagement_started_at` and `departed_status` columns
+- ✅ Backend service: Created `engagementService.js` for state management and time-based engagement tracking
 - ✅ Schedule generation: LLM generates plaintext schedules, parsed into JSON
 - ✅ Status calculation: Real-time status from schedule + current time
-- ✅ Engagement windows: 70% chance to engage, 2-5 message bursts with 5-15s delays
-- ✅ Status-based delays: online (30-120s), away (5-20min), busy (15-60min), offline (no response)
+- ✅ Time-based engagement: Online (unlimited), Away (30-60min), Busy (15-30min)
+- ✅ Natural departures: Content LLM generates contextual "gtg" messages when duration expires
+- ✅ Cooldown system: Characters blocked from responding until status changes after departure
+- ✅ Fast response delays: All responses ~0.5-2 seconds (no more status-based delays)
 - ✅ Frontend UI: Schedule tab in character profile with generation button
 - ✅ Frontend UI: Status display in chat header with colored badges
-- ✅ Automatic engagement state tracking and message burst consumption
+- ✅ Frontend UI: AI reply suggestion buttons (serious, sarcastic, flirty)
 
 **Technical Details:**
 - Plaintext schedule format preferred over JSON (more reliable, fewer tokens)
-- 70% engagement probability on first message when disengaged
-- Engagement bursts are random (2-5 messages) with fast responses (5-15s)
-- Offline characters return no response, message waits for status change
+- 70% engagement probability on first message when disengaged, 30% no response
+- Engagement duration tracked programmatically, not by Decision LLM
+- Departure messages generated by Content LLM with `isDeparting` flag
+- Cooldown cleared automatically when character's status changes
 - Status colors: green (online), yellow (away), red (busy), gray (offline)
+- AI suggestions use conversation context to generate tone-specific user replies
 
 ### Phase 3: Drama Engine 🔮 FUTURE
 - Random events that affect character mood/availability
