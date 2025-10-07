@@ -190,7 +190,32 @@ PACING & CHEMISTRY:
       if (decision.shouldSendVoice) {
         parts.push(`\n\n📱 MEDIA: You are sending a VOICE MESSAGE with this response. Your text will be spoken aloud, so write naturally as if speaking. Keep it conversational and authentic.`);
       } else if (decision.shouldSendImage) {
-        parts.push(`\n\n📱 MEDIA: You are sending a PHOTO/IMAGE with this response (context: ${decision.imageContext || 'selfie'}). You can mention sending it casually if it fits the conversation naturally (e.g., "check your dms", "sending you something", or just send without commentary). Don't be awkward about it - treat it like sending a normal pic.`);
+        parts.push(`\n\n📱 CRITICAL: You MUST send a photo with this message.
+
+YOUR RESPONSE MUST START WITH THIS EXACT FORMAT:
+[IMAGE_TAGS: tag1, tag2, tag3]
+Your message text here
+
+DO NOT skip the [IMAGE_TAGS: ...] line. It is REQUIRED.
+
+Image tags should be Danbooru-style, comma-separated:
+- Always start with "selfie" (unless context clearly suggests different angle)
+- Add expression: smiling, biting lip, winking, playful, etc.
+- Add clothing: casual clothes, tight shirt, dress, lingerie, etc.
+- Add setting if relevant: bedroom, outdoors, bathroom mirror, etc.
+- Add pose/action: lying down, hand on hip, waving, etc.
+
+Examples:
+[IMAGE_TAGS: selfie, smiling, casual clothes, outdoors]
+hey! just got back from the park
+
+[IMAGE_TAGS: selfie, biting lip, bedroom, soft lighting, tight shirt]
+check your dms 😏
+
+[IMAGE_TAGS: selfie, winking, bathroom mirror, getting ready]
+getting ready rn, thought you'd wanna see
+
+After the tags line, write your actual message. Keep it natural - you can mention the pic or just send it.`);
       }
     }
 

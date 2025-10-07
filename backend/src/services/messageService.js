@@ -38,25 +38,34 @@ class MessageService {
    */
   getConversationHistory(conversationId) {
     const messages = db.prepare(`
-      SELECT role, content FROM messages
+      SELECT role, content, message_type, image_tags FROM messages
       WHERE conversation_id = ?
       ORDER BY created_at ASC
     `).all(conversationId);
 
-    return messages.map(msg => ({
-      role: msg.role,
-      content: msg.content
-    }));
+    return messages.map(msg => {
+      let content = msg.content;
+
+      // If message has image, prepend tags to content for AI context
+      if (msg.message_type === 'image' && msg.image_tags) {
+        content = `[Sent image: ${msg.image_tags}]\n${content}`;
+      }
+
+      return {
+        role: msg.role,
+        content: content
+      };
+    });
   }
 
   /**
    * Save a message
    */
-  saveMessage(conversationId, role, content, reaction = null, messageType = 'text', audioUrl = null, imageUrl = null) {
+  saveMessage(conversationId, role, content, reaction = null, messageType = 'text', audioUrl = null, imageUrl = null, imageTags = null) {
     const result = db.prepare(`
-      INSERT INTO messages (conversation_id, role, content, reaction, message_type, audio_url, image_url)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(conversationId, role, content, reaction, messageType, audioUrl, imageUrl);
+      INSERT INTO messages (conversation_id, role, content, reaction, message_type, audio_url, image_url, image_tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(conversationId, role, content, reaction, messageType, audioUrl, imageUrl, imageTags);
 
     return this.getMessage(result.lastInsertRowid);
   }

@@ -238,10 +238,10 @@ class MessageProcessor {
 
         // Generate image if decision says so (and feature is enabled)
         const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
-        if (imageMessagesEnabled && decision.shouldSendImage && hasImage && imageTags && decision.imageContext) {
+        if (imageMessagesEnabled && decision.shouldSendImage && hasImage && imageTags && aiResponse.imageTags) {
           console.log(`🎨 Generating image for character ${characterId}`);
           console.log(`Character tags: ${imageTags}`);
-          console.log(`Context tags: ${decision.imageContext}`);
+          console.log(`Context tags (from Content LLM): ${aiResponse.imageTags}`);
 
           try {
             // Fetch user's SD settings
@@ -254,7 +254,7 @@ class MessageProcessor {
 
             const imageResult = await sdService.generateImage({
               characterTags: imageTags,
-              contextTags: decision.imageContext,
+              contextTags: aiResponse.imageTags,
               userSettings: userSettings
             });
 
@@ -298,7 +298,8 @@ class MessageProcessor {
           decision.reaction,
           messageType,
           audioUrl,
-          imageUrl
+          imageUrl,
+          aiResponse.imageTags || null
         );
 
         // Handle departure

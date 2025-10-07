@@ -70,16 +70,29 @@ class AIService {
         }
       );
 
-      const content = response.data.choices[0].message.content;
+      const rawContent = response.data.choices[0].message.content;
+
+      // Parse image tags if present
+      let content = rawContent;
+      let imageTags = null;
+
+      const imageTagsMatch = rawContent.match(/^\[IMAGE_TAGS:\s*([^\]]+)\]/i);
+      if (imageTagsMatch) {
+        imageTags = imageTagsMatch[1].trim();
+        // Remove the tags from the content
+        content = rawContent.substring(imageTagsMatch[0].length).trim();
+      }
 
       console.log('✅ OpenRouter Response:', {
         model: response.data.model,
         contentLength: content?.length || 0,
+        imageTags: imageTags || 'none',
         usage: response.data.usage
       });
 
       return {
         content: content,
+        imageTags: imageTags,
         model: response.data.model,
         usage: response.data.usage,
       };

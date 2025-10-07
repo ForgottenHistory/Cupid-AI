@@ -197,6 +197,12 @@ function runMigrations() {
       console.log('✅ image_url column added to messages table');
     }
 
+    // Migration: Add image_tags column to messages table
+    if (!messagesColumnNames.includes('image_tags')) {
+      db.exec(`ALTER TABLE messages ADD COLUMN image_tags TEXT;`);
+      console.log('✅ image_tags column added to messages table');
+    }
+
     // Migration: Add Stable Diffusion settings columns to users table
     if (!userColumnNames.includes('sd_steps')) {
       db.exec(`
