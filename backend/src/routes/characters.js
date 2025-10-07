@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import aiService from '../services/aiService.js';
+import superLikeService from '../services/superLikeService.js';
 import db from '../db/database.js';
 
 const router = express.Router();
@@ -444,6 +445,62 @@ router.post('/generate-personality', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Generate personality error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate personality' });
+  }
+});
+
+/**
+ * POST /api/characters/:characterId/like
+ * Like a character and check if it's a super like
+ */
+router.post('/:characterId/like', authenticateToken, async (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { characterData } = req.body;
+    const userId = req.user.id;
+
+    if (!characterData) {
+      return res.status(400).json({ error: 'Character data is required' });
+    }
+
+    // Check character's current status
+    let currentStatus = 'online';
+    if (characterData.schedule) {
+      const statusInfo = calculateCurrentStatus(characterData.schedule);
+      currentStatus = statusInfo.status;
+    }
+
+    // Get personality data if available
+    const personality = characterData.personalityTraits || null;
+
+    // Check if this should be a super like (based on extraversion)
+    const isSuperLike = superLikeService.shouldSuperLike(userId, currentStatus, personality);
+
+    // Create or update character in backend
+    db.prepare(`
+      INSERT OR REPLACE INTO characters (id, user_id, name, card_data, schedule_data, personality_data)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      characterId,
+      userId,
+      characterData.name || 'Character',
+      JSON.stringify(characterData),
+      characterData.schedule ? JSON.stringify(characterData.schedule) : null,
+      characterData.personalityTraits ? JSON.stringify(characterData.personalityTraits) : null
+    );
+
+    // If super like, mark it
+    if (isSuperLike) {
+      superLikeService.markAsSuperLike(userId, characterId);
+    }
+
+    res.json({
+      success: true,
+      isSuperLike: isSuperLike,
+      characterStatus: currentStatus
+    });
+  } catch (error) {
+    console.error('Like character error:', error);
+    res.status(500).json({ error: error.message || 'Failed to like character' });
   }
 });
 

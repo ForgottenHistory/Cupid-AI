@@ -145,6 +145,21 @@ function runMigrations() {
       `);
       console.log('✅ proactive_messages_today and last_proactive_date columns added to users table');
     }
+
+    // Migration: Add super like tracking to users table
+    if (!userColumnNames.includes('super_likes_today')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN super_likes_today INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN last_super_like_date TEXT;
+      `);
+      console.log('✅ super_likes_today and last_super_like_date columns added to users table');
+    }
+
+    // Migration: Add is_super_like column to characters table
+    if (!charactersColumnNames.includes('is_super_like')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN is_super_like BOOLEAN DEFAULT 0;`);
+      console.log('✅ is_super_like column added to characters table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

@@ -93,10 +93,30 @@ class CharacterService {
   }
 
   /**
-   * Like a character
+   * Like a character (mark as match) and check for super like
    */
   async likeCharacter(characterId) {
-    return characterStorage.likeCharacter(characterId);
+    // Update local storage first
+    const character = await characterStorage.likeCharacter(characterId);
+
+    // Call backend to check for super like
+    try {
+      const response = await api.post(`/characters/${characterId}/like`, {
+        characterData: character.cardData.data
+      });
+
+      return {
+        character,
+        isSuperLike: response.data.isSuperLike || false
+      };
+    } catch (error) {
+      console.error('Failed to check super like:', error);
+      // Return character anyway, just without super like info
+      return {
+        character,
+        isSuperLike: false
+      };
+    }
   }
 
   /**

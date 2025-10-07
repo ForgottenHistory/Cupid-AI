@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import CharacterProfile from '../components/CharacterProfile';
+import SuperLikeModal from '../components/SuperLikeModal';
+import { getCurrentStatusFromSchedule } from '../utils/characterHelpers';
 
 function SwipeCard({ character, onSwipe, isTop, programmaticSwipe, onClick }) {
   const [dragStart, setDragStart] = useState(null);
@@ -169,10 +171,41 @@ const Home = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [matchedCharacter, setMatchedCharacter] = useState(null);
+  const [superLikedCharacter, setSuperLikedCharacter] = useState(null);
 
   useEffect(() => {
     loadCharacters();
   }, [user?.id]);
+
+  // Debug function to test super like modal
+  useEffect(() => {
+    // Create test character data
+    const createTestCharacter = () => ({
+      id: 'debug-test-id',
+      name: 'Test Character',
+      imageUrl: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23667eea" width="200" height="200"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-size="64" fill="white"%3E⭐%3C/text%3E%3C/svg%3E',
+      cardData: {
+        data: {
+          name: 'Test Character',
+          datingProfile: {
+            age: 25
+          }
+        }
+      }
+    });
+
+    window.debugSuperLike = () => {
+      const testChar = currentCards.length > 0
+        ? currentCards[currentCards.length - 1]
+        : createTestCharacter();
+
+      setSuperLikedCharacter(testChar);
+    };
+
+    return () => {
+      delete window.debugSuperLike;
+    };
+  }, [currentCards]);
 
   const shuffleArray = (array) => {
     const shuffled = [...array];
@@ -208,10 +241,18 @@ const Home = () => {
     // Save like to database if swiped right
     if (direction === 'right') {
       try {
-        await characterService.likeCharacter(swipedCard.id);
+        const result = await characterService.likeCharacter(swipedCard.id);
+        const isSuperLike = result?.isSuperLike || false;
 
-        // 50/50 chance for AI to send first message on match
-        if (Math.random() < 0.5) {
+        // Check character's current status
+        const currentStatus = getCurrentStatusFromSchedule(swipedCard.cardData.data.schedule);
+
+        // Super like: ALWAYS generate first message (if online)
+        // Regular match: 50/50 chance for first message (if online)
+        const shouldGenerateFirstMessage = currentStatus?.status === 'online' &&
+          (isSuperLike || Math.random() < 0.5);
+
+        if (shouldGenerateFirstMessage) {
           try {
             await chatService.generateFirstMessage(swipedCard.id, swipedCard.cardData.data);
           } catch (err) {
@@ -220,8 +261,13 @@ const Home = () => {
           }
         }
 
-        // Show match animation
-        setMatchedCharacter(swipedCard);
+        // Show appropriate animation
+        if (isSuperLike) {
+          setSuperLikedCharacter(swipedCard);
+        } else {
+          setMatchedCharacter(swipedCard);
+        }
+
         // Notify other components to refresh
         window.dispatchEvent(new Event('characterUpdated'));
       } catch (error) {
@@ -479,6 +525,14 @@ const Home = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Super Like Modal */}
+      {superLikedCharacter && (
+        <SuperLikeModal
+          character={superLikedCharacter}
+          onClose={() => setSuperLikedCharacter(null)}
+        />
       )}
     </div>
   );
