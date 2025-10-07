@@ -195,13 +195,13 @@ const MainLayout = ({ children }) => {
                       onClick={() => navigate(`/chat/${match.id}`)}
                     >
                       {/* Avatar with permanent gradient ring */}
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-md opacity-40 group-hover:opacity-60 transition-opacity"></div>
-                        <div className="relative p-0.5 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full">
+                      <div className="relative flex-shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-xl blur-md opacity-40 group-hover:opacity-60 transition-opacity"></div>
+                        <div className="relative p-0.5 bg-gradient-to-br from-pink-400 to-purple-500 rounded-xl">
                           <img
                             src={match.imageUrl}
                             alt={match.name}
-                            className="w-16 h-16 rounded-full object-cover border-2 border-white"
+                            className="w-16 h-20 rounded-lg object-cover border-2 border-white"
                             style={{ imageRendering: '-webkit-optimize-contrast' }}
                           />
                         </div>

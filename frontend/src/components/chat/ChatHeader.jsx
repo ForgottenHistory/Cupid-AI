@@ -85,13 +85,13 @@ const ChatHeader = ({ character, characterStatus, onBack, onUnmatch }) => {
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
           <div className="flex items-end gap-4">
             {/* Avatar with gradient ring and glow */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-lg opacity-60"></div>
-              <div className="relative p-1 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full">
+            <div className="relative flex-shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl blur-lg opacity-60"></div>
+              <div className="relative p-1 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl">
                 <img
                   src={character.imageUrl}
                   alt={character.name}
-                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-2xl"
+                  className="w-24 h-32 rounded-xl object-cover border-4 border-white shadow-2xl"
                   style={{ imageRendering: '-webkit-optimize-contrast' }}
                 />
               </div>
