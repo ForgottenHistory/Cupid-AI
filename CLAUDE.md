@@ -24,7 +24,8 @@
 
 ### Backend Structure
 - **Routes**: `auth.js`, `users.js`, `characters.js`, `chat.js`
-- **Services**: `aiService.js` - OpenRouter integration, system prompts, token counting/trimming
+- **Services**: `aiService.js` - OpenRouter integration, system prompts, token counting/trimming, decision engine
+- **Utils**: `logger.js` - File logging with console intercept (auto-clears on restart)
 - **Database**: `database.js` - better-sqlite3 with auto-migrations
 - **Auth**: JWT tokens, `authenticateToken` middleware
 
@@ -45,6 +46,10 @@
 - **Multi-message system**: Newlines split into separate bubbles with 800ms delays
 - **Typing indicator**: Text-based "{name} is typing..." with random 500-2000ms delay
 - **Message animations**: Slide-up on new messages only (tracked via `newMessageIds` Set)
+- **Dual LLM system**: Decision LLM makes behavioral decisions (reactions), Content LLM generates responses
+- **Reaction system**: Emoji reactions appear rarely (1 in 5 messages) on emotionally significant user messages
+- **Message editing/deletion**: Users can edit or delete messages, delete-from removes message + all after it
+- **Regenerate**: Users can regenerate the last AI response
 
 ### Unread Notifications
 - Backend increments `unread_count` on AI responses
@@ -69,9 +74,9 @@
 ## Database Schema Notes
 
 ### Key Tables
-- `users` - LLM settings (model, temperature, max_tokens, context_window, etc.)
+- `users` - LLM settings (model, temperature, max_tokens, context_window, etc.) + Decision LLM settings
 - `conversations` - Links user + character, tracks `unread_count`, `last_message`
-- `messages` - role ('user'|'assistant'), content, timestamps
+- `messages` - role ('user'|'assistant'), content, timestamps, reaction (emoji or null)
 - `characters` - Synced from IndexedDB, stores full card_data JSON
 
 ### Migrations
@@ -79,14 +84,34 @@ Auto-run on startup via `database.js`:
 - Adds LLM settings columns if missing
 - Adds `unread_count` column if missing
 - Adds `llm_context_window` column (default 4000 tokens)
+- Adds Decision LLM settings columns (model, temperature, max_tokens, context_window with lower defaults)
+- Adds `reaction` column to messages table
 
-## AI System Prompt Rules
+## AI System
 
+### Dual LLM Architecture
+- **Decision Engine** (small LLM): Analyzes conversation context and makes behavioral decisions
+  - Determines if character should react with emoji (rare, 1 in 5 messages or less)
+  - Returns: `{ reaction: "emoji"|null, shouldRespond: boolean }`
+  - Uses separate user-configurable settings (lower temperature, fewer tokens)
+  - Located in `aiService.js` `makeDecision()`
+- **Content Generator** (large LLM): Creates actual character responses
+  - Uses full character prompt with dating app style enforcement
+  - Token-based context window management
+  - Located in `aiService.js` `createChatCompletion()`
+
+### Content LLM System Prompt Rules
 Located in `aiService.js` `buildSystemPrompt()`:
 - Explicitly forbids roleplay formatting (*actions*, "dialogue")
 - Enforces dating app text message style
 - Uses character description + scenario + system_prompt fields
 - Dating profile injected into character data if available
+
+### Message Flow
+1. User sends message → saved to DB
+2. Decision LLM analyzes context → decides reaction
+3. Content LLM generates response (if `shouldRespond: true`)
+4. Response saved with reaction → displayed with reaction badge on user's message
 
 ## Development Commands
 
@@ -108,6 +133,20 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
 
 ## Recent Changes
 
+- **Dual LLM system**: Decision engine + content generator architecture
+  - Small LLM makes behavioral decisions (reactions, mood changes)
+  - Large LLM generates character responses
+  - Separate configurable settings for each in Profile (tabs: Content LLM / Decision LLM)
+- **Reaction system**: Emoji reactions overlay on user messages
+  - Rare (1 in 5 messages or less), only on emotionally significant messages
+  - Positioned absolutely on user message bubbles (-bottom-2, -right-2)
+  - Stored in messages table, displayed via lookahead (check next message)
+- **File logging**: All console output logged to `backend/logs/server.log`
+  - Auto-clears on server restart
+  - Intercepts console.log/error/warn at startup
+  - Clean output (removed SQL spam, excessive response details)
+- **Message editing/deletion**: Edit message content, delete message + all after it
+- **Regenerate responses**: Generate new AI response for current conversation state
 - **Context window system**: Token counting with gpt-tokenizer, smart message trimming
 - **Multi-message display**: AI responses split by newlines with progressive 800ms delays
 - **Typing indicator**: Changed from animated dots to text-based with random delay
