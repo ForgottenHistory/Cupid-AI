@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import socketService from '../services/socketService';
+import chatService from '../services/chatService';
 import { splitMessageIntoParts } from '../utils/messageUtils';
 
 /**
@@ -89,6 +90,11 @@ export const useChatWebSocket = ({
 
       // Refresh sidebar
       window.dispatchEvent(new Event('characterUpdated'));
+
+      // Mark messages as read since user is actively viewing this chat
+      chatService.markAsRead(characterId).catch(err => {
+        console.error('Failed to mark messages as read:', err);
+      });
     };
 
     const handleCharacterTyping = (data) => {

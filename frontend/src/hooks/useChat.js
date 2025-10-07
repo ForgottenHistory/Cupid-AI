@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import characterService from '../services/characterService';
 import chatService from '../services/chatService';
+import { splitMessageIntoParts } from '../utils/messageUtils';
 
 /**
  * Hook for managing core chat state and data loading
@@ -60,7 +61,33 @@ export const useChat = (characterId, user) => {
       // Load conversation and messages
       const { conversation: conv, messages: msgs } = await chatService.getConversation(characterId);
       setConversation(conv);
-      setMessages(msgs);
+
+      // Split multi-line assistant messages into parts (like WebSocket handler does)
+      const processedMessages = [];
+      msgs.forEach(msg => {
+        if (msg.role === 'assistant') {
+          const parts = splitMessageIntoParts(msg.content);
+          if (parts.length > 1) {
+            // Split into multiple messages
+            parts.forEach((part, index) => {
+              processedMessages.push({
+                ...msg,
+                id: `${msg.id}-part-${index}`,
+                content: part,
+                isLastPart: index === parts.length - 1
+              });
+            });
+          } else {
+            // Single message
+            processedMessages.push(msg);
+          }
+        } else {
+          // User messages are never split
+          processedMessages.push(msg);
+        }
+      });
+
+      setMessages(processedMessages);
 
       // Mark messages as read
       if (msgs.length > 0) {

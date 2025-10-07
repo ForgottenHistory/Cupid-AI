@@ -43,29 +43,35 @@ class MessageProcessor {
       // If engagement state couldn't be created, fall back to simple delay
       if (!engagementState) {
         console.warn('⚠️  Could not create engagement state, using simple delay');
-        const simpleDelay = currentStatus === 'offline' ? null :
-                           currentStatus === 'busy' ? 30000 :
-                           currentStatus === 'away' ? 10000 : 5000;
 
-        if (simpleDelay === null) {
+        if (currentStatus === 'offline') {
           console.log('💤 Character is offline - no response');
           io.to(`user:${userId}`).emit('character_offline', { characterId });
           return;
         }
 
-        // Wait for delay without emitting typing
+        // Fast ~1s response
+        const simpleDelay = Math.floor(Math.random() * 1500) + 500; // 0.5-2s
         await sleep(simpleDelay);
       } else {
         // Normal engagement flow
+
+        // Check if character is on cooldown (can't respond until status changes)
+        if (engagementService.isOnCooldown(engagementState, currentStatus)) {
+          console.log(`⏸️  Character ${characterId} is on cooldown (waiting for status change)`);
+          io.to(`user:${userId}`).emit('character_offline', { characterId });
+          return;
+        }
+
+        // If status changed from departed status, clear cooldown
+        if (engagementState.departed_status && engagementState.departed_status !== currentStatus) {
+          engagementService.clearCooldown(userId, characterId);
+        }
+
         engagementService.updateCurrentStatus(userId, characterId, currentStatus);
 
-        // Calculate response delay
-        const responseDelays = schedule?.responseDelays;
-        let delay = engagementService.calculateResponseDelay(
-          currentStatus,
-          engagementState.engagement_state,
-          responseDelays
-        );
+        // Calculate response delay (fast ~1s response)
+        let delay = engagementService.calculateResponseDelay(currentStatus);
 
         // If offline, character won't respond
         if (delay === null) {
@@ -75,26 +81,34 @@ class MessageProcessor {
         }
 
         // If disengaged, start engagement (70% chance to engage immediately)
-        if (engagementState.engagement_state === 'disengaged' && Math.random() < 0.7) {
-          engagementService.startEngagement(userId, characterId);
-          const newState = engagementService.getEngagementState(userId, characterId);
-          if (newState) {
-            delay = engagementService.calculateResponseDelay(
-              currentStatus,
-              newState.engagement_state,
-              responseDelays
-            );
+        if (engagementState.engagement_state === 'disengaged') {
+          if (Math.random() < 0.7) {
+            engagementService.startEngagement(userId, characterId);
+            console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (engaged)`);
+          } else {
+            console.log(`⏱️  Character chose not to engage (30% chance)`);
+            return; // Don't respond
           }
+        } else {
+          console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
         }
 
-        console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
-
-        // Wait for the full delay before starting to generate
+        // Wait for the delay before starting to generate
         await sleep(delay);
       }
 
       // Now emit typing indicator right before we start generating
       io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
+
+      // Check if engagement duration has expired (only if engaged)
+      let isDeparting = false;
+      if (engagementState && engagementState.engagement_state === 'engaged') {
+        const durationCheck = engagementService.checkEngagementDuration(engagementState, currentStatus);
+        if (durationCheck.expired) {
+          isDeparting = true;
+          console.log(`👋 Engagement duration expired (${(durationCheck.duration / 60000).toFixed(1)} min) - character will depart`);
+        }
+      }
 
       // Call Decision LLM (pass current engagement state)
       const currentlyEngaged = engagementState?.engagement_state === 'engaged';
@@ -145,6 +159,7 @@ class MessageProcessor {
           currentStatus: currentStatusInfo,
           userBio: userBio,
           schedule: schedule,
+          isDeparting: isDeparting
         });
       }
 
@@ -157,16 +172,9 @@ class MessageProcessor {
           decision.reaction
         );
 
-        // Handle engagement based on decision
-        if (engagementState) {
-          if (currentlyEngaged && !decision.continueEngagement) {
-            // Character wants to disengage
-            engagementService.endEngagement(userId, characterId);
-          } else if (!currentlyEngaged && decision.continueEngagement) {
-            // Should not happen (decision should return false when disengaged), but handle it
-            console.warn('⚠️  Decision engine tried to continue engagement while disengaged');
-          }
-          // If continueEngagement is true and already engaged, stay engaged (no action needed)
+        // Handle departure
+        if (isDeparting && engagementState) {
+          engagementService.markDeparted(userId, characterId, currentStatus);
         }
 
         // Update conversation timestamp and increment unread count

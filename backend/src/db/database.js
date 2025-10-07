@@ -118,6 +118,18 @@ function runMigrations() {
 
     // Create index for character_states
     db.exec(`CREATE INDEX IF NOT EXISTS idx_character_states_lookup ON character_states(user_id, character_id);`);
+
+    // Migration: Add engagement tracking columns to character_states table
+    const characterStatesColumns = db.pragma('table_info(character_states)');
+    const characterStatesColumnNames = characterStatesColumns.map(col => col.name);
+
+    if (!characterStatesColumnNames.includes('engagement_started_at')) {
+      db.exec(`
+        ALTER TABLE character_states ADD COLUMN engagement_started_at TIMESTAMP;
+        ALTER TABLE character_states ADD COLUMN departed_status TEXT;
+      `);
+      console.log('✅ engagement_started_at and departed_status columns added to character_states table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

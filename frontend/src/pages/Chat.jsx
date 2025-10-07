@@ -57,6 +57,7 @@ const Chat = () => {
     editingText,
     setEditingText,
     showTypingIndicatorInternal,
+    setShowTypingIndicatorInternal,
     handleSend,
     handleRegenerateLast,
     handleDeleteFrom,
@@ -78,7 +79,7 @@ const Chat = () => {
   });
 
   // WebSocket real-time messaging
-  const { showTypingIndicator, unmatchData, setUnmatchData } = useChatWebSocket({
+  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData } = useChatWebSocket({
     characterId,
     user,
     isMountedRef,
@@ -95,6 +96,8 @@ const Chat = () => {
   useEffect(() => {
     setSending(false);
     setDisplayingMessages(false);
+    setShowTypingIndicator(false);
+    setShowTypingIndicatorInternal(false);
     clearDisplayTimeouts();
   }, [characterId]);
 
@@ -217,6 +220,8 @@ const Chat = () => {
         displayingMessages={displayingMessages}
         hasMessages={messages.length > 0}
         characterName={character?.name}
+        characterId={characterId}
+        character={character}
         inputRef={inputRef}
         onSend={handleSend}
         onRegenerate={handleRegenerateLast}

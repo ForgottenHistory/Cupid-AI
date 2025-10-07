@@ -310,4 +310,76 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
   }
 });
 
+/**
+ * POST /api/chat/conversations/:characterId/suggest-reply
+ * Generate a suggested reply for the user based on conversation context
+ */
+router.post('/conversations/:characterId/suggest-reply', authenticateToken, async (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { style, characterData } = req.body; // style: 'serious', 'sarcastic', 'flirty'
+    const userId = req.user.id;
+
+    if (!style || !['serious', 'sarcastic', 'flirty'].includes(style)) {
+      return res.status(400).json({ error: 'Invalid style. Must be: serious, sarcastic, or flirty' });
+    }
+
+    if (!characterData) {
+      return res.status(400).json({ error: 'Character data is required' });
+    }
+
+    // Get conversation
+    const conversation = conversationService.getConversation(userId, characterId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Get last 5 messages for context
+    const messages = messageService.getMessages(conversation.id);
+    const recentMessages = messages.slice(-5);
+
+    if (recentMessages.length === 0) {
+      return res.status(400).json({ error: 'No conversation history to base suggestion on' });
+    }
+
+    // Build context string
+    const contextStr = recentMessages
+      .map(m => `${m.role === 'user' ? 'You' : characterData.name}: ${m.content}`)
+      .join('\n');
+
+    // Style descriptions
+    const styleDescriptions = {
+      serious: 'thoughtful, genuine, and sincere',
+      sarcastic: 'witty, sarcastic, and playful with a bit of teasing',
+      flirty: 'flirty, charming, and playful with romantic undertones'
+    };
+
+    const prompt = `You are helping someone write a reply in a dating app conversation. Based on the recent messages below, suggest a short, natural response from the USER's perspective.
+
+Recent conversation:
+${contextStr}
+
+Generate a ${styleDescriptions[style]} reply from the user's perspective. Keep it:
+- Short (1-2 sentences, like a real text message)
+- Natural and conversational
+- Appropriate for a dating app
+- In the ${style} tone
+
+Output ONLY the suggested reply text, nothing else.`;
+
+    const aiMessages = [{ role: 'user', content: prompt }];
+
+    const response = await aiService.createChatCompletion({
+      messages: aiMessages,
+      characterData: { name: 'Assistant' },
+      userId: userId,
+    });
+
+    res.json({ suggestion: response.content.trim() });
+  } catch (error) {
+    console.error('Suggest reply error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate suggestion' });
+  }
+});
+
 export default router;

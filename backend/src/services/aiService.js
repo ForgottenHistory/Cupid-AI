@@ -237,7 +237,7 @@ class AIService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null) {
+  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false) {
     const parts = [];
 
     if (characterData.name) {
@@ -266,6 +266,15 @@ class AIService {
       } else if (currentStatus.status === 'online') {
         parts.push(` - You're free and available to chat.`);
       }
+    }
+
+    // Add departing context
+    if (isDeparting) {
+      parts.push(`\n\n⚠️ IMPORTANT: You need to wrap up the conversation now. Something came up or you need to get back to what you were doing. Send a brief, natural departing message that:`);
+      parts.push(`\n- Acknowledges their last message`);
+      parts.push(`\n- Mentions you have to go (use your current status/activity as context for why)`);
+      parts.push(`\n- Keeps it casual and natural ("gtg", "gotta run", "talk later", etc.)`);
+      parts.push(`\n- DON'T make it dramatic or apologetic - just a casual "ttyl" type message`);
     }
 
     // Add recent and upcoming activities
@@ -318,13 +327,13 @@ Stay true to your character but keep it real and chill.`);
   /**
    * Send a chat completion request to OpenRouter
    */
-  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null }) {
+  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
     try {
-      const systemPrompt = this.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
+      const systemPrompt = this.buildSystemPrompt(characterData, currentStatus, userBio, schedule, isDeparting);
       const userSettings = this.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
@@ -397,7 +406,7 @@ Stay true to your character but keep it real and chill.`);
 
   /**
    * Decision Engine: Analyze conversation and decide on actions
-   * Returns: { reaction: string|null, shouldRespond: boolean, continueEngagement: boolean }
+   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean }
    */
   async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false }) {
     if (!this.apiKey) {
@@ -423,25 +432,19 @@ Decide on the character's behavioral response. Output your decision in this EXAC
 
 Reaction: [emoji or "none"]
 Should Respond: [yes/no]
-Continue Engagement: [yes/no]
 Should Unmatch: [yes/no]
 
 Guidelines:
 - "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
 - If you do react, choose ONE emoji that represents a strong emotional reaction (❤️, 😂, 🔥, 😍, 😭, etc.)
 - "Should Respond": Always "yes" for now (we will expand this later)
-${isEngaged ? `- "Continue Engagement": Decide if the character wants to keep chatting actively ("yes") or needs to disengage and return to their schedule ("no"). Consider:
-  * Is the conversation naturally winding down?
-  * Does the character need to get back to what they were doing?
-  * Is this a good stopping point?
-  * Most conversations should last 2-5 quick exchanges before disengaging` : '- "Continue Engagement": Always "no" when disengaged'}
 - "Should Unmatch": EXTREMELY RARE - Only "yes" if the user is being:
   * Extremely annoying
   * Persistently ignoring boundaries after warnings
   * Not fulfilling character's needs in any way
   This should almost NEVER be "yes" - reserve it for serious violations only. Normal awkwardness, bad jokes, or being boring should NOT trigger unmatch.
 
-Output ONLY the four lines in the exact format shown above, nothing else.`;
+Output ONLY the three lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Decision Engine Request:', {
         model: decisionSettings.model,
@@ -485,7 +488,6 @@ Output ONLY the four lines in the exact format shown above, nothing else.`;
         const decision = {
           reaction: null,
           shouldRespond: true,
-          continueEngagement: false,
           shouldUnmatch: false
         };
 
@@ -499,9 +501,6 @@ Output ONLY the four lines in the exact format shown above, nothing else.`;
           } else if (line.startsWith('Should Respond:')) {
             const value = line.substring('Should Respond:'.length).trim().toLowerCase();
             decision.shouldRespond = value === 'yes';
-          } else if (line.startsWith('Continue Engagement:')) {
-            const value = line.substring('Continue Engagement:'.length).trim().toLowerCase();
-            decision.continueEngagement = value === 'yes';
           } else if (line.startsWith('Should Unmatch:')) {
             const value = line.substring('Should Unmatch:'.length).trim().toLowerCase();
             decision.shouldUnmatch = value === 'yes';
@@ -511,11 +510,10 @@ Output ONLY the four lines in the exact format shown above, nothing else.`;
         return decision;
       } catch (parseError) {
         console.error('Failed to parse decision response:', parseError, 'Content:', content);
-        // Fallback: no reaction, but respond, don't continue engagement, don't unmatch
+        // Fallback: no reaction, but respond, don't unmatch
         return {
           reaction: null,
           shouldRespond: true,
-          continueEngagement: false,
           shouldUnmatch: false
         };
       }
@@ -525,11 +523,10 @@ Output ONLY the four lines in the exact format shown above, nothing else.`;
         status: error.response?.status,
         data: error.response?.data
       });
-      // On error, fail gracefully: no reaction, but respond, don't continue engagement, don't unmatch
+      // On error, fail gracefully: no reaction, but respond, don't unmatch
       return {
         reaction: null,
         shouldRespond: true,
-        continueEngagement: false,
         shouldUnmatch: false
       };
     }

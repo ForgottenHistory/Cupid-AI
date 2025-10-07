@@ -89,6 +89,17 @@ class ChatService {
     const response = await api.get(`/characters/${characterId}/status`);
     return response.data;
   }
+
+  /**
+   * Generate suggested reply for user
+   */
+  async suggestReply(characterId, style, characterData) {
+    const response = await api.post(`/chat/conversations/${characterId}/suggest-reply`, {
+      style,
+      characterData,
+    });
+    return response.data;
+  }
 }
 
 export default new ChatService();

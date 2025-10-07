@@ -1,5 +1,8 @@
+import { useState } from 'react';
+import chatService from '../../services/chatService';
+
 /**
- * Chat input component with send and regenerate buttons
+ * Chat input component with send, regenerate, and AI suggestion buttons
  */
 const ChatInput = ({
   input,
@@ -8,12 +11,82 @@ const ChatInput = ({
   displayingMessages,
   hasMessages,
   characterName,
+  characterId,
+  character,
   inputRef,
   onSend,
   onRegenerate,
 }) => {
+  const [loadingSuggestion, setLoadingSuggestion] = useState(null);
+
+  const handleSuggestion = async (style) => {
+    if (loadingSuggestion || !hasMessages) return;
+
+    try {
+      setLoadingSuggestion(style);
+      const response = await chatService.suggestReply(characterId, style, character.cardData?.data);
+      setInput(response.suggestion);
+      inputRef.current?.focus();
+    } catch (error) {
+      console.error('Failed to generate suggestion:', error);
+    } finally {
+      setLoadingSuggestion(null);
+    }
+  };
+
   return (
     <div className="border-t border-gray-200/50 bg-white/80 backdrop-blur-sm p-4 flex-shrink-0">
+      {/* AI Suggestion Buttons */}
+      {hasMessages && (
+        <div className="flex gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => handleSuggestion('serious')}
+            disabled={loadingSuggestion !== null || sending}
+            className="flex-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm border border-blue-200"
+          >
+            {loadingSuggestion === 'serious' ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-3 h-3 border-2 border-blue-700 border-t-transparent rounded-full animate-spin"></div>
+                <span>Generating...</span>
+              </div>
+            ) : (
+              '💼 Serious'
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSuggestion('sarcastic')}
+            disabled={loadingSuggestion !== null || sending}
+            className="flex-1 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm border border-purple-200"
+          >
+            {loadingSuggestion === 'sarcastic' ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-3 h-3 border-2 border-purple-700 border-t-transparent rounded-full animate-spin"></div>
+                <span>Generating...</span>
+              </div>
+            ) : (
+              '😏 Sarcastic'
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSuggestion('flirty')}
+            disabled={loadingSuggestion !== null || sending}
+            className="flex-1 px-4 py-2 bg-pink-50 text-pink-700 rounded-lg hover:bg-pink-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm border border-pink-200"
+          >
+            {loadingSuggestion === 'flirty' ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-3 h-3 border-2 border-pink-700 border-t-transparent rounded-full animate-spin"></div>
+                <span>Generating...</span>
+              </div>
+            ) : (
+              '💕 Flirty'
+            )}
+          </button>
+        </div>
+      )}
+
       <form onSubmit={onSend} className="flex gap-3">
         <input
           ref={inputRef}

@@ -285,6 +285,7 @@ export const useMessageActions = ({
     editingText,
     setEditingText,
     showTypingIndicatorInternal,
+    setShowTypingIndicatorInternal,
     handleSend,
     handleRegenerateLast,
     handleDeleteFrom,

@@ -85,36 +85,19 @@ class EngagementService {
   }
 
   /**
-   * Calculate response delay based on current status and engagement
-   * Returns delay in milliseconds
+   * Calculate response delay
+   * Returns delay in milliseconds (or null if offline)
    */
-  calculateResponseDelay(currentStatus, engagementState, responseDelays) {
-    // If engaged, use fast response time
-    if (engagementState === 'engaged') {
-      const min = 5000; // 5 seconds
-      const max = 15000; // 15 seconds
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    // If offline, no response (return very large delay as signal)
+  calculateResponseDelay(currentStatus) {
+    // If offline, no response
     if (currentStatus === 'offline') {
-      return null; // Signal that character won't respond
+      return null;
     }
 
-    // Use status-based initial delay
-    const delays = responseDelays || {
-      online: [30, 120],      // 30sec - 2min
-      away: [300, 1200],      // 5-20min
-      busy: [900, 3600],      // 15-60min
-      offline: null
-    };
-
-    const delayRange = delays[currentStatus] || delays.online;
-    if (!delayRange) return null;
-
-    const [minSeconds, maxSeconds] = delayRange;
-    const delaySeconds = Math.floor(Math.random() * (maxSeconds - minSeconds + 1)) + minSeconds;
-    return delaySeconds * 1000; // Convert to milliseconds
+    // Fast responses (~1 second with some variance)
+    const min = 500;  // 0.5 seconds
+    const max = 2000; // 2 seconds
+    return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
   /**
@@ -124,6 +107,7 @@ class EngagementService {
     this.updateEngagementState(userId, characterId, {
       engagement_state: 'engaged',
       engagement_messages_remaining: 0, // Not used anymore, but keep for schema compatibility
+      engagement_started_at: new Date().toISOString(),
       last_check_time: new Date().toISOString()
     });
 
@@ -149,6 +133,84 @@ class EngagementService {
     this.updateEngagementState(userId, characterId, {
       current_status: status
     });
+  }
+
+  /**
+   * Check if engagement duration has expired based on status
+   * Returns { expired: boolean, duration: number (in ms) }
+   */
+  checkEngagementDuration(engagementState, currentStatus) {
+    if (!engagementState || engagementState.engagement_state !== 'engaged') {
+      return { expired: false, duration: 0 };
+    }
+
+    if (!engagementState.engagement_started_at) {
+      return { expired: false, duration: 0 };
+    }
+
+    const startTime = new Date(engagementState.engagement_started_at);
+    const now = new Date();
+    const durationMs = now - startTime;
+
+    // Duration limits by status (in minutes)
+    const durations = {
+      online: null, // Unlimited
+      away: [30, 60], // 30-60 min
+      busy: [15, 30]  // 15-30 min
+    };
+
+    const limit = durations[currentStatus];
+
+    // Online has no limit
+    if (!limit) {
+      return { expired: false, duration: durationMs };
+    }
+
+    // For away/busy, pick a random duration in the range (only calculate once)
+    // We'll use a fixed max for simplicity - if exceeded, expired
+    const maxDurationMs = limit[1] * 60 * 1000;
+
+    return {
+      expired: durationMs >= maxDurationMs,
+      duration: durationMs
+    };
+  }
+
+  /**
+   * Check if character is on cooldown (can't respond until status changes)
+   * Returns true if on cooldown
+   */
+  isOnCooldown(engagementState, currentStatus) {
+    if (!engagementState || !engagementState.departed_status) {
+      return false;
+    }
+
+    // If status has changed from when they departed, cooldown is over
+    return engagementState.departed_status === currentStatus;
+  }
+
+  /**
+   * Mark character as departed (start cooldown)
+   */
+  markDeparted(userId, characterId, currentStatus) {
+    this.updateEngagementState(userId, characterId, {
+      engagement_state: 'disengaged',
+      departed_status: currentStatus,
+      engagement_started_at: null
+    });
+
+    console.log(`👋 Character ${characterId} departed (cooldown until status changes)`);
+  }
+
+  /**
+   * Clear cooldown (called when status changes)
+   */
+  clearCooldown(userId, characterId) {
+    this.updateEngagementState(userId, characterId, {
+      departed_status: null
+    });
+
+    console.log(`✅ Character ${characterId} cooldown cleared`);
   }
 }
 
