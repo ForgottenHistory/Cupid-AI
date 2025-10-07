@@ -160,6 +160,15 @@ function runMigrations() {
       db.exec(`ALTER TABLE characters ADD COLUMN is_super_like BOOLEAN DEFAULT 0;`);
       console.log('✅ is_super_like column added to characters table');
     }
+
+    // Migration: Add swipe limit tracking to users table
+    if (!userColumnNames.includes('swipes_today')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN swipes_today INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN last_swipe_date TEXT;
+      `);
+      console.log('✅ swipes_today and last_swipe_date columns added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

@@ -5,7 +5,9 @@ import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import CharacterProfile from '../components/CharacterProfile';
 import SuperLikeModal from '../components/SuperLikeModal';
+import SwipeLimitModal from '../components/SwipeLimitModal';
 import { getCurrentStatusFromSchedule } from '../utils/characterHelpers';
+import api from '../services/api';
 
 function SwipeCard({ character, onSwipe, isTop, programmaticSwipe, onClick }) {
   const [dragStart, setDragStart] = useState(null);
@@ -172,6 +174,7 @@ const Home = () => {
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [matchedCharacter, setMatchedCharacter] = useState(null);
   const [superLikedCharacter, setSuperLikedCharacter] = useState(null);
+  const [showSwipeLimitModal, setShowSwipeLimitModal] = useState(false);
 
   useEffect(() => {
     loadCharacters();
@@ -235,6 +238,21 @@ const Home = () => {
 
   const handleSwipe = async (direction) => {
     if (currentCards.length === 0) return;
+
+    // Check swipe limit before allowing swipe
+    try {
+      const response = await api.post('/characters/swipe');
+      if (!response.data.success) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+    } catch (error) {
+      if (error.response?.status === 429) {
+        setShowSwipeLimitModal(true);
+        return;
+      }
+      console.error('Failed to record swipe:', error);
+    }
 
     const swipedCard = currentCards[currentCards.length - 1];
 
@@ -532,6 +550,13 @@ const Home = () => {
         <SuperLikeModal
           character={superLikedCharacter}
           onClose={() => setSuperLikedCharacter(null)}
+        />
+      )}
+
+      {/* Swipe Limit Modal */}
+      {showSwipeLimitModal && (
+        <SwipeLimitModal
+          onClose={() => setShowSwipeLimitModal(false)}
         />
       )}
     </div>

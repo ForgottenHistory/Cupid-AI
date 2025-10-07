@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import aiService from '../services/aiService.js';
 import superLikeService from '../services/superLikeService.js';
+import swipeLimitService from '../services/swipeLimitService.js';
 import db from '../db/database.js';
 
 const router = express.Router();
@@ -445,6 +446,50 @@ router.post('/generate-personality', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Generate personality error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate personality' });
+  }
+});
+
+/**
+ * GET /api/characters/swipe-limit
+ * Check if user can swipe today
+ */
+router.get('/swipe-limit', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const canSwipe = swipeLimitService.canSwipe(userId);
+    const remaining = swipeLimitService.getRemainingSwipes(userId);
+
+    res.json({
+      canSwipe,
+      remaining,
+      limit: 5
+    });
+  } catch (error) {
+    console.error('Check swipe limit error:', error);
+    res.status(500).json({ error: error.message || 'Failed to check swipe limit' });
+  }
+});
+
+/**
+ * POST /api/characters/swipe
+ * Record a swipe (increment counter)
+ */
+router.post('/swipe', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Check if can swipe
+    if (!swipeLimitService.canSwipe(userId)) {
+      return res.status(429).json({ error: 'Daily swipe limit reached' });
+    }
+
+    // Increment counter
+    swipeLimitService.incrementSwipeCount(userId);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Record swipe error:', error);
+    res.status(500).json({ error: error.message || 'Failed to record swipe' });
   }
 });
 
