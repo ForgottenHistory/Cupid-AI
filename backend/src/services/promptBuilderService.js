@@ -60,8 +60,23 @@ class PromptBuilderService {
   buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null) {
     const parts = [];
 
+    // Add current date and time
+    const now = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayOfWeek = dayNames[now.getDay()];
+    const month = monthNames[now.getMonth()];
+    const day = now.getDate();
+    const year = now.getFullYear();
+    const hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+
+    parts.push(`Current date and time: ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}`);
+
     if (characterData.name) {
-      parts.push(`You are ${characterData.name}.`);
+      parts.push(`\nYou are ${characterData.name}.`);
     }
 
     if (characterData.description) {
