@@ -358,6 +358,15 @@ Stored in `character_states` table (per user-character pair):
 - **RAG integration**: Character books with semantic search
 - **Voice cloning**: Unique voice for each character
 
+### Engagement & Character Rotation
+- **Weekly rotation system**: Help surface neglected characters
+  - At start of each week, system randomly selects 5 characters to be "active"
+  - Only active characters can proactively message or super like user that week
+  - Forces engagement with different characters instead of always talking to favorites
+  - Could show in sidebar who's "active this week" with special badge
+  - Prevents roster bloat where some characters never get used
+  - Alternative: attention-based weighting (neglected characters get 3x proactive message priority)
+
 ## Notes
 - Built as personal project (single-user focus)
 - No production overhead needed (tests, TypeScript, etc.)
