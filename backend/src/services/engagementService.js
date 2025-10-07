@@ -13,21 +13,27 @@ class EngagementService {
 
       if (!state) {
         // Create new state (default: disengaged)
-        db.prepare(`
-          INSERT INTO character_states (
-            user_id,
-            character_id,
-            current_status,
-            engagement_state,
-            engagement_messages_remaining,
-            last_check_time
-          ) VALUES (?, ?, 'online', 'disengaged', 0, CURRENT_TIMESTAMP)
-        `).run(userId, characterId);
+        try {
+          db.prepare(`
+            INSERT INTO character_states (
+              user_id,
+              character_id,
+              current_status,
+              engagement_state,
+              engagement_messages_remaining,
+              last_check_time
+            ) VALUES (?, ?, 'online', 'disengaged', 0, CURRENT_TIMESTAMP)
+          `).run(userId, characterId);
 
-        state = db.prepare(`
-          SELECT * FROM character_states
-          WHERE user_id = ? AND character_id = ?
-        `).get(userId, characterId);
+          state = db.prepare(`
+            SELECT * FROM character_states
+            WHERE user_id = ? AND character_id = ?
+          `).get(userId, characterId);
+        } catch (insertError) {
+          console.error('Failed to create engagement state:', insertError);
+          // Return null if we can't create the state (e.g., foreign key constraint)
+          return null;
+        }
       }
 
       return state;
@@ -97,9 +103,9 @@ class EngagementService {
 
     // Use status-based initial delay
     const delays = responseDelays || {
-      online: [30, 120],
-      away: [300, 1200],
-      busy: [900, 3600],
+      online: [30, 120],      // 30sec - 2min
+      away: [300, 1200],      // 5-20min
+      busy: [900, 3600],      // 15-60min
       offline: null
     };
 

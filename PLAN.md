@@ -112,9 +112,9 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 
 #### Character Status System
 Four status levels that affect availability:
-- **Online**: Available, responds quickly (30sec-2min first response)
-- **Away**: Doing something, slower responses (5-20min first response)
-- **Busy**: Work/important task, very slow responses (15-60min first response)
+- **Online**: Available, responds quickly (3-10sec first response)
+- **Away**: Doing something, slower responses (10-30sec first response)
+- **Busy**: Work/important task, very slow responses (30-60sec first response)
 - **Offline**: Sleeping/unavailable, no responses until back online
 
 #### Weekly Schedule Structure

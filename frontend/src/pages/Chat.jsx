@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import chatService from '../services/chatService';
 import characterService from '../services/characterService';
+import socketService from '../services/socketService';
 
 const Chat = () => {
   const { characterId } = useParams();
@@ -59,6 +60,103 @@ const Chat = () => {
       return () => clearTimeout(timeout);
     }
   }, [messages]);
+
+  // WebSocket setup and listeners
+  useEffect(() => {
+    if (!user) return;
+
+    // Connect to WebSocket
+    socketService.connect(user.id);
+
+    // Listen for new messages
+    const handleNewMessage = (data) => {
+      if (data.characterId !== characterId) return; // Only handle messages for current character
+
+      console.log('📨 Received new message via WebSocket:', data);
+
+      setShowTypingIndicator(false);
+      const lastMessage = data.message;
+
+      if (lastMessage && lastMessage.role === 'assistant') {
+        // Split AI message by newlines for progressive display
+        const messageParts = lastMessage.content.split('\n').filter(part => part.trim());
+
+        if (messageParts.length > 1) {
+          // Multiple parts - display progressively
+          setDisplayingMessages(true);
+
+          // Display each part with a delay
+          messageParts.forEach((part, index) => {
+            const timeout = setTimeout(() => {
+              if (isMountedRef.current && data.characterId === characterId) {
+                const partMessageId = `${lastMessage.id}-part-${index}`;
+                markMessageAsNew(partMessageId);
+                setMessages(prev => [...prev, {
+                  ...lastMessage,
+                  id: partMessageId,
+                  content: part,
+                  isLastPart: index === messageParts.length - 1
+                }]);
+
+                // On last part, finish up
+                if (index === messageParts.length - 1) {
+                  setDisplayingMessages(false);
+                  setSending(false);
+                  inputRef.current?.focus();
+                }
+              }
+            }, index * 800);
+
+            displayTimeoutsRef.current.push(timeout);
+          });
+        } else {
+          // Single message - display immediately
+          markMessageAsNew(lastMessage.id);
+          setMessages(prev => [...prev, lastMessage]);
+          setSending(false);
+          inputRef.current?.focus();
+        }
+      }
+
+      // Refresh sidebar
+      window.dispatchEvent(new Event('characterUpdated'));
+    };
+
+    const handleCharacterTyping = (data) => {
+      if (data.characterId !== characterId) return;
+      console.log('⌨️  Character is typing...');
+      setShowTypingIndicator(true);
+    };
+
+    const handleCharacterOffline = (data) => {
+      if (data.characterId !== characterId) return;
+      console.log('💤 Character is offline');
+      setShowTypingIndicator(false);
+      setSending(false);
+      setError('Character is currently offline');
+    };
+
+    const handleAIResponseError = (data) => {
+      if (data.characterId !== characterId) return;
+      console.error('❌ AI response error:', data.error);
+      setShowTypingIndicator(false);
+      setSending(false);
+      setError(data.error || 'Failed to generate response');
+    };
+
+    socketService.on('new_message', handleNewMessage);
+    socketService.on('character_typing', handleCharacterTyping);
+    socketService.on('character_offline', handleCharacterOffline);
+    socketService.on('ai_response_error', handleAIResponseError);
+
+    // Cleanup
+    return () => {
+      socketService.off('new_message', handleNewMessage);
+      socketService.off('character_typing', handleCharacterTyping);
+      socketService.off('character_offline', handleCharacterOffline);
+      socketService.off('ai_response_error', handleAIResponseError);
+    };
+  }, [user, characterId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -165,109 +263,33 @@ const Chat = () => {
     markMessageAsNew(tempUserMsg.id);
     setMessages(prev => [...prev, tempUserMsg]);
 
-    // Random delay (500ms - 2000ms) before showing typing indicator
-    const typingDelay = Math.random() * 1500 + 500;
-    const typingTimeout = setTimeout(() => {
-      if (isMountedRef.current && currentCharacterId === characterId) {
-        setShowTypingIndicator(true);
-      }
-    }, typingDelay);
-
-    let messageDisplayDelay = 0;
-
     try {
+      // Send message to backend (returns immediately)
       const response = await chatService.sendMessage(
         currentCharacterId,
         userMessage,
         character.cardData.data
       );
 
-      // Only update if component is still mounted AND viewing the same character
-      if (isMountedRef.current && currentCharacterId === characterId) {
-        const oldMessages = messages;
-        const newMessages = response.messages;
-
-        // Find the new AI message (last message in the response)
-        const lastMessage = newMessages[newMessages.length - 1];
-
-        if (lastMessage && lastMessage.role === 'assistant') {
-          // Split AI message by newlines for progressive display
-          const messageParts = lastMessage.content.split('\n').filter(part => part.trim());
-
-          if (messageParts.length > 1) {
-            // Multiple parts - display progressively
-            setDisplayingMessages(true);
-            messageDisplayDelay = messageParts.length * 800;
-            setShowTypingIndicator(false); // Hide typing indicator immediately
-
-            // Show messages without the AI response first
-            const messagesWithoutLast = newMessages.slice(0, -1);
-            setMessages(messagesWithoutLast);
-
-            // Display each part with a delay
-            messageParts.forEach((part, index) => {
-              const timeout = setTimeout(() => {
-                if (isMountedRef.current && currentCharacterId === characterId) {
-                  const partMessageId = `${lastMessage.id}-part-${index}`;
-                  markMessageAsNew(partMessageId);
-                  setMessages(prev => [...prev, {
-                    ...lastMessage,
-                    id: partMessageId,
-                    content: part,
-                    isLastPart: index === messageParts.length - 1
-                  }]);
-
-                  // On last part, finish up
-                  if (index === messageParts.length - 1) {
-                    setDisplayingMessages(false);
-                  }
-                }
-              }, index * 800); // 800ms delay between each message
-
-              displayTimeoutsRef.current.push(timeout);
-            });
-          } else {
-            // Single message - display immediately
-            setShowTypingIndicator(false);
-            markMessageAsNew(lastMessage.id);
-            setMessages(newMessages);
-          }
-        } else {
-          // No AI message or not assistant - display normally
-          setMessages(newMessages);
-        }
-
-        setConversation(response.conversation);
-
-        // Mark as read since user is viewing the chat
-        await chatService.markAsRead(currentCharacterId);
+      // Update with saved user message
+      if (isMountedRef.current && currentCharacterId === characterId && response.message) {
+        setMessages(prev => {
+          // Replace temp message with real saved message
+          return prev.map(m => m.id === tempUserMsg.id ? response.message : m);
+        });
       }
 
-      // Always notify sidebar to refresh (even if user navigated away)
-      window.dispatchEvent(new Event('characterUpdated'));
+      // WebSocket will handle the AI response asynchronously
+      // Typing indicator and response will come via WebSocket events
+
     } catch (err) {
       console.error('Send message error:', err);
       // Only show error if still viewing the same character
       if (currentCharacterId === characterId) {
         setError(err.response?.data?.error || 'Failed to send message');
+        setSending(false);
         // Remove optimistic message on error
-        setMessages(prev => prev.filter(m => m.id !== tempUserMsg.id));
-      }
-    } finally {
-      clearTimeout(typingTimeout);
-      // Only clear sending state if still viewing the same character
-      if (currentCharacterId === characterId) {
-        // Wait for all message parts to display before clearing sending state
-        setTimeout(() => {
-          if (isMountedRef.current && currentCharacterId === characterId) {
-            setSending(false);
-            setShowTypingIndicator(false);
-            // Auto-focus input after generation completes
-            setTimeout(() => {
-              inputRef.current?.focus();
-            }, 100);
-          }
-        }, messageDisplayDelay);
+        setMessages(prev => prev.filter(m => m.id === tempUserMsg.id));
       }
     }
   };

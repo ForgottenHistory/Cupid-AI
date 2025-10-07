@@ -2,6 +2,8 @@
 import './utils/logger.js';
 
 import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -23,7 +25,33 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true
+  }
+});
+
 const PORT = process.env.PORT || 3000;
+
+// Make io available to routes
+app.set('io', io);
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log(`🔌 Client connected: ${socket.id}`);
+
+  // Join room for user-specific events
+  socket.on('join', (userId) => {
+    socket.join(`user:${userId}`);
+    console.log(`👤 User ${userId} joined socket room`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`🔌 Client disconnected: ${socket.id}`);
+  });
+});
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -68,11 +96,12 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
 ║                                        ║
 ║   🚀 AI-Dater Backend Server          ║
+║   🔌 WebSocket Support Enabled        ║
 ║                                        ║
 ║   📡 Server: http://localhost:${PORT}    ║
 ║   🏥 Health: http://localhost:${PORT}/api/health
@@ -82,4 +111,5 @@ app.listen(PORT, () => {
 });
 
 export default app;
+export { io };
  

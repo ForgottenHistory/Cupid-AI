@@ -117,7 +117,7 @@ router.get('/conversations/:characterId', authenticateToken, (req, res) => {
 
 /**
  * POST /api/chat/conversations/:characterId/messages
- * Send a message and get AI response
+ * Send a message - returns immediately, AI response comes via WebSocket
  */
 router.post('/conversations/:characterId/messages', authenticateToken, async (req, res) => {
   try {
@@ -151,23 +151,51 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
     }
 
     // Save user message
-    db.prepare(`
+    const userMessageResult = db.prepare(`
       INSERT INTO messages (conversation_id, role, content)
       VALUES (?, ?, ?)
     `).run(conversation.id, 'user', message);
 
-    // Get conversation history for context
+    const savedUserMessage = db.prepare(`
+      SELECT * FROM messages WHERE id = ?
+    `).get(userMessageResult.lastInsertRowid);
+
+    // Return immediately with saved user message
+    res.json({
+      success: true,
+      message: savedUserMessage,
+      conversation
+    });
+
+    // Process AI response asynchronously
+    const io = req.app.get('io');
+    processAIResponseAsync(io, userId, characterId, conversation.id, characterData).catch(error => {
+      console.error('Async AI response error:', error);
+    });
+  } catch (error) {
+    console.error('Send message error:', error);
+    res.status(500).json({ error: error.message || 'Failed to send message' });
+  }
+});
+
+/**
+ * Async function to process AI response with delays
+ */
+async function processAIResponseAsync(io, userId, characterId, conversationId, characterData) {
+  try {
+    // Get conversation history
     const messageHistory = db.prepare(`
       SELECT role, content FROM messages
       WHERE conversation_id = ?
       ORDER BY created_at ASC
-    `).all(conversation.id);
+    `).all(conversationId);
 
-    // Build messages array for AI
     const aiMessages = messageHistory.map(msg => ({
       role: msg.role,
       content: msg.content
     }));
+
+    const userMessage = messageHistory[messageHistory.length - 1]?.content || '';
 
     // === ENGAGEMENT WINDOW SYSTEM ===
 
@@ -178,62 +206,92 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
 
     console.log(`📍 Character status: ${currentStatus}${currentStatusInfo.activity ? ` (${currentStatusInfo.activity})` : ''}`);
 
-    // Step 2: Get or create engagement state
+    // Step 2: Ensure character exists in backend (create if needed)
+    let backendCharacter = db.prepare(`
+      SELECT * FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!backendCharacter) {
+      db.prepare(`
+        INSERT OR IGNORE INTO characters (id, user_id, name, card_data)
+        VALUES (?, ?, ?, ?)
+      `).run(characterId, userId, characterData.name || 'Character', JSON.stringify(characterData));
+      console.log(`✨ Created character ${characterId} in backend`);
+    }
+
+    // Step 3: Get or create engagement state
     const engagementState = engagementService.getEngagementState(userId, characterId);
 
-    // Update current status in engagement tracking
-    engagementService.updateCurrentStatus(userId, characterId, currentStatus);
+    // If engagement state couldn't be created, fall back to simple delay
+    if (!engagementState) {
+      console.warn('⚠️  Could not create engagement state, using simple delay');
+      const simpleDelay = currentStatus === 'offline' ? null :
+                         currentStatus === 'busy' ? 30000 :
+                         currentStatus === 'away' ? 10000 : 5000;
 
-    // Step 3: Calculate response delay
-    const responseDelays = schedule?.responseDelays;
-    let delay = engagementService.calculateResponseDelay(
-      currentStatus,
-      engagementState.engagement_state,
-      engagementState.engagement_messages_remaining,
-      responseDelays
-    );
+      if (simpleDelay === null) {
+        console.log('💤 Character is offline - no response');
+        // Emit offline status to frontend
+        io.to(`user:${userId}`).emit('character_offline', { characterId });
+        return;
+      }
 
-    // If offline, character won't respond
-    if (delay === null) {
-      console.log('💤 Character is offline - no response');
-      return res.json({
-        conversation,
-        messages: messageHistory,
-        aiResponse: null,
-        decision: { reaction: null, shouldRespond: false },
-        status: 'offline'
-      });
-    }
+      await sleep(simpleDelay);
+    } else {
+      // Normal engagement flow
+      engagementService.updateCurrentStatus(userId, characterId, currentStatus);
 
-    // Step 4: If disengaged, start engagement (70% chance to engage immediately)
-    if (engagementState.engagement_state === 'disengaged' && Math.random() < 0.7) {
-      engagementService.startEngagement(userId, characterId);
-      // Recalculate delay with new engagement state
-      const newState = engagementService.getEngagementState(userId, characterId);
-      delay = engagementService.calculateResponseDelay(
+      // Calculate response delay
+      const responseDelays = schedule?.responseDelays;
+      let delay = engagementService.calculateResponseDelay(
         currentStatus,
-        newState.engagement_state,
-        newState.engagement_messages_remaining,
+        engagementState.engagement_state,
+        engagementState.engagement_messages_remaining,
         responseDelays
       );
+
+      // If offline, character won't respond
+      if (delay === null) {
+        console.log('💤 Character is offline - no response');
+        io.to(`user:${userId}`).emit('character_offline', { characterId });
+        return;
+      }
+
+      // If disengaged, start engagement (70% chance to engage immediately)
+      if (engagementState.engagement_state === 'disengaged' && Math.random() < 0.7) {
+        engagementService.startEngagement(userId, characterId);
+        const newState = engagementService.getEngagementState(userId, characterId);
+        if (newState) {
+          delay = engagementService.calculateResponseDelay(
+            currentStatus,
+            newState.engagement_state,
+            newState.engagement_messages_remaining,
+            responseDelays
+          );
+        }
+      }
+
+      console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
+
+      // Emit "typing" status to frontend after a brief moment
+      await sleep(Math.min(2000, delay * 0.1)); // Wait 2s or 10% of delay, whichever is less
+      io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
+
+      // Apply remaining delay
+      await sleep(delay - Math.min(2000, delay * 0.1));
     }
 
-    console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
-
-    // Step 5: Apply delay
-    await sleep(delay);
-
-    // Step 6: Call Decision LLM to determine reaction
+    // Call Decision LLM
     const decision = await aiService.makeDecision({
       messages: aiMessages,
       characterData: characterData,
-      userMessage: message,
+      userMessage: userMessage,
       userId: userId
     });
 
     console.log('🎯 Decision made:', decision);
 
-    // Step 7: Get AI response (if shouldRespond is true)
+    // Get AI response (if shouldRespond is true)
     let aiResponse = null;
     if (decision.shouldRespond) {
       aiResponse = await aiService.createChatCompletion({
@@ -245,46 +303,51 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
 
     // Save AI response with reaction
     if (aiResponse) {
-      db.prepare(`
+      const result = db.prepare(`
         INSERT INTO messages (conversation_id, role, content, reaction)
         VALUES (?, ?, ?, ?)
-      `).run(conversation.id, 'assistant', aiResponse.content, decision.reaction);
+      `).run(conversationId, 'assistant', aiResponse.content, decision.reaction);
 
-      // Step 8: Consume one engagement message
-      engagementService.consumeEngagementMessage(userId, characterId);
+      const savedMessage = db.prepare(`
+        SELECT * FROM messages WHERE id = ?
+      `).get(result.lastInsertRowid);
+
+      // Consume one engagement message (only if engagement state exists)
+      if (engagementState) {
+        engagementService.consumeEngagementMessage(userId, characterId);
+      }
+
+      // Update conversation timestamp and increment unread count
+      db.prepare(`
+        UPDATE conversations
+        SET updated_at = CURRENT_TIMESTAMP,
+            unread_count = unread_count + 1
+        WHERE id = ?
+      `).run(conversationId);
+
+      // Emit new message to frontend via WebSocket
+      io.to(`user:${userId}`).emit('new_message', {
+        characterId,
+        conversationId,
+        message: savedMessage,
+        aiResponse: {
+          content: aiResponse.content,
+          model: aiResponse.model,
+          reaction: decision.reaction
+        }
+      });
+
+      console.log(`✅ Sent AI response to user ${userId}`);
     }
-
-    // Update conversation timestamp and increment unread count
-    db.prepare(`
-      UPDATE conversations
-      SET updated_at = CURRENT_TIMESTAMP,
-          unread_count = unread_count + 1
-      WHERE id = ?
-    `).run(conversation.id);
-
-    // Get updated messages
-    const messages = db.prepare(`
-      SELECT * FROM messages
-      WHERE conversation_id = ?
-      ORDER BY created_at ASC
-    `).all(conversation.id);
-
-    res.json({
-      conversation,
-      messages,
-      aiResponse: aiResponse ? {
-        content: aiResponse.content,
-        model: aiResponse.model,
-        reaction: decision.reaction
-      } : null,
-      decision: decision,
-      status: currentStatus
-    });
   } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: error.message || 'Failed to send message' });
+    console.error('Process AI response async error:', error);
+    // Emit error to frontend
+    io.to(`user:${userId}`).emit('ai_response_error', {
+      characterId,
+      error: error.message || 'Failed to generate response'
+    });
   }
-});
+}
 
 /**
  * POST /api/chat/conversations/:characterId/first-message

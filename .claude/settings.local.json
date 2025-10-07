@@ -15,7 +15,8 @@
       "Bash(npx vite:*)",
       "Bash(cmd /c taskkill:*)",
       "Bash(git init:*)",
-      "Bash(cmd //c \"tasklist | findstr node\")"
+      "Bash(cmd //c \"tasklist | findstr node\")",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
