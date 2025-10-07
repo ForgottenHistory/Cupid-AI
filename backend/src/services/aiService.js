@@ -298,9 +298,9 @@ Stay true to your character but keep it real and chill.`);
 
   /**
    * Decision Engine: Analyze conversation and decide on actions
-   * Returns: { reaction: string|null, shouldRespond: boolean }
+   * Returns: { reaction: string|null, shouldRespond: boolean, continueEngagement: boolean }
    */
-  async makeDecision({ messages, characterData, userMessage, userId }) {
+  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -313,6 +313,7 @@ Stay true to your character but keep it real and chill.`);
 
 Character: ${characterData.name}
 Description: ${characterData.description || 'N/A'}
+${isEngaged ? '\nCurrent state: Character is actively engaged in conversation (responding quickly)' : '\nCurrent state: Character is disengaged (slower responses based on availability)'}
 
 Recent conversation context:
 ${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
@@ -322,14 +323,19 @@ User just sent: "${userMessage}"
 Decide on the character's behavioral response. You must output ONLY valid JSON in this exact format:
 {
   "reaction": "emoji or null",
-  "shouldRespond": true
+  "shouldRespond": true,
+  "continueEngagement": ${isEngaged ? 'true or false' : 'false'}
 }
 
 Guidelines:
 - "reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get null. Don't react to every message!
 - If you do react, choose ONE emoji that represents a strong emotional reaction (❤️, 😂, 🔥, 😍, 😭, etc.)
 - "shouldRespond": Always true for now (we will expand this later)
-- Consider the character's personality when choosing reactions
+${isEngaged ? `- "continueEngagement": Decide if the character wants to keep chatting actively (true) or needs to disengage and return to their schedule (false). Consider:
+  * Is the conversation naturally winding down?
+  * Does the character need to get back to what they were doing?
+  * Is this a good stopping point?
+  * Most conversations should last 2-5 quick exchanges before disengaging` : '- "continueEngagement": Always false when disengaged'}
 
 Output ONLY the JSON, nothing else.`;
 
@@ -381,14 +387,16 @@ Output ONLY the JSON, nothing else.`;
         const decision = JSON.parse(jsonContent);
         return {
           reaction: decision.reaction || null,
-          shouldRespond: decision.shouldRespond !== false // Default to true
+          shouldRespond: decision.shouldRespond !== false, // Default to true
+          continueEngagement: decision.continueEngagement === true // Default to false
         };
       } catch (parseError) {
         console.error('Failed to parse decision JSON:', parseError, 'Content:', content);
-        // Fallback: no reaction, but respond
+        // Fallback: no reaction, but respond, don't continue engagement
         return {
           reaction: null,
-          shouldRespond: true
+          shouldRespond: true,
+          continueEngagement: false
         };
       }
     } catch (error) {
@@ -397,10 +405,11 @@ Output ONLY the JSON, nothing else.`;
         status: error.response?.status,
         data: error.response?.data
       });
-      // On error, fail gracefully: no reaction, but respond
+      // On error, fail gracefully: no reaction, but respond, don't continue engagement
       return {
         reaction: null,
-        shouldRespond: true
+        shouldRespond: true,
+        continueEngagement: false
       };
     }
   }

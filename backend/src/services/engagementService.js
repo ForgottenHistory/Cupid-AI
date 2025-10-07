@@ -88,9 +88,9 @@ class EngagementService {
    * Calculate response delay based on current status and engagement
    * Returns delay in milliseconds
    */
-  calculateResponseDelay(currentStatus, engagementState, engagementMessagesRemaining, responseDelays) {
+  calculateResponseDelay(currentStatus, engagementState, responseDelays) {
     // If engaged, use fast response time
-    if (engagementState === 'engaged' && engagementMessagesRemaining > 0) {
+    if (engagementState === 'engaged') {
       const min = 5000; // 5 seconds
       const max = 15000; // 15 seconds
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -119,46 +119,27 @@ class EngagementService {
 
   /**
    * Start engagement (character decides to engage in conversation)
-   * Sets a random burst of 2-5 fast messages
    */
   startEngagement(userId, characterId) {
-    const burstSize = Math.floor(Math.random() * 4) + 2; // 2-5 messages
-
     this.updateEngagementState(userId, characterId, {
       engagement_state: 'engaged',
-      engagement_messages_remaining: burstSize,
+      engagement_messages_remaining: 0, // Not used anymore, but keep for schema compatibility
       last_check_time: new Date().toISOString()
     });
 
-    console.log(`🔥 Character ${characterId} engaged! Burst of ${burstSize} fast messages`);
-    return burstSize;
+    console.log(`🔥 Character ${characterId} engaged!`);
   }
 
   /**
-   * Consume one engagement message (called after sending response)
+   * End engagement (character decides to disengage)
    */
-  consumeEngagementMessage(userId, characterId) {
-    const state = this.getEngagementState(userId, characterId);
-    if (!state) return;
+  endEngagement(userId, characterId) {
+    this.updateEngagementState(userId, characterId, {
+      engagement_state: 'disengaged',
+      engagement_messages_remaining: 0
+    });
 
-    if (state.engagement_state === 'engaged' && state.engagement_messages_remaining > 0) {
-      const remaining = state.engagement_messages_remaining - 1;
-
-      if (remaining <= 0) {
-        // Engagement ended, return to disengaged
-        this.updateEngagementState(userId, characterId, {
-          engagement_state: 'disengaged',
-          engagement_messages_remaining: 0
-        });
-        console.log(`💤 Character ${characterId} disengaged`);
-      } else {
-        // Still engaged
-        this.updateEngagementState(userId, characterId, {
-          engagement_messages_remaining: remaining
-        });
-        console.log(`⚡ Character ${characterId} - ${remaining} fast messages remaining`);
-      }
-    }
+    console.log(`💤 Character ${characterId} disengaged`);
   }
 
   /**

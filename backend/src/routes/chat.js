@@ -246,7 +246,6 @@ async function processAIResponseAsync(io, userId, characterId, conversationId, c
       let delay = engagementService.calculateResponseDelay(
         currentStatus,
         engagementState.engagement_state,
-        engagementState.engagement_messages_remaining,
         responseDelays
       );
 
@@ -265,7 +264,6 @@ async function processAIResponseAsync(io, userId, characterId, conversationId, c
           delay = engagementService.calculateResponseDelay(
             currentStatus,
             newState.engagement_state,
-            newState.engagement_messages_remaining,
             responseDelays
           );
         }
@@ -281,12 +279,14 @@ async function processAIResponseAsync(io, userId, characterId, conversationId, c
       await sleep(delay - Math.min(2000, delay * 0.1));
     }
 
-    // Call Decision LLM
+    // Call Decision LLM (pass current engagement state)
+    const currentlyEngaged = engagementState?.engagement_state === 'engaged';
     const decision = await aiService.makeDecision({
       messages: aiMessages,
       characterData: characterData,
       userMessage: userMessage,
-      userId: userId
+      userId: userId,
+      isEngaged: currentlyEngaged
     });
 
     console.log('🎯 Decision made:', decision);
@@ -312,9 +312,16 @@ async function processAIResponseAsync(io, userId, characterId, conversationId, c
         SELECT * FROM messages WHERE id = ?
       `).get(result.lastInsertRowid);
 
-      // Consume one engagement message (only if engagement state exists)
+      // Handle engagement based on decision
       if (engagementState) {
-        engagementService.consumeEngagementMessage(userId, characterId);
+        if (currentlyEngaged && !decision.continueEngagement) {
+          // Character wants to disengage
+          engagementService.endEngagement(userId, characterId);
+        } else if (!currentlyEngaged && decision.continueEngagement) {
+          // Should not happen (decision should return false when disengaged), but handle it
+          console.warn('⚠️  Decision engine tried to continue engagement while disengaged');
+        }
+        // If continueEngagement is true and already engaged, stay engaged (no action needed)
       }
 
       // Update conversation timestamp and increment unread count

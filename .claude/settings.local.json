@@ -16,7 +16,8 @@
       "Bash(cmd /c taskkill:*)",
       "Bash(git init:*)",
       "Bash(cmd //c \"tasklist | findstr node\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
