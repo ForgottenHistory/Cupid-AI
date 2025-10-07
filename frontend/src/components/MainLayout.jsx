@@ -14,6 +14,8 @@ const MainLayout = ({ children }) => {
   const [stats, setStats] = useState({ total: 0, liked: 0, remaining: 0 });
   const [conversations, setConversations] = useState([]);
   const [showLLMSettings, setShowLLMSettings] = useState(false);
+  const [characterStatuses, setCharacterStatuses] = useState({});
+  const [characterEngagements, setCharacterEngagements] = useState({});
 
   useEffect(() => {
     loadMatches();
@@ -27,11 +29,19 @@ const MainLayout = ({ children }) => {
       loadMatches();
       loadStats();
       loadConversations();
+      loadCharacterStatuses();
     };
 
     window.addEventListener('characterUpdated', handleCharacterUpdate);
     return () => window.removeEventListener('characterUpdated', handleCharacterUpdate);
   }, [user?.id]);
+
+  useEffect(() => {
+    // Load character statuses when matches change
+    if (matches.length > 0) {
+      loadCharacterStatuses();
+    }
+  }, [matches.length]);
 
   const loadMatches = async () => {
     if (!user?.id) return;
@@ -50,6 +60,37 @@ const MainLayout = ({ children }) => {
       setConversations(convs);
     } catch (error) {
       console.error('Failed to load conversations:', error);
+    }
+  };
+
+  const loadCharacterStatuses = async () => {
+    if (!user?.id || matches.length === 0) return;
+    try {
+      const dataPromises = matches.map(async (match) => {
+        try {
+          // Get schedule from character card data (stored in IndexedDB)
+          const schedule = match.cardData?.data?.schedule;
+          const [status, engagement] = await Promise.all([
+            characterService.getCharacterStatus(match.id, schedule),
+            characterService.getCharacterEngagement(match.id)
+          ]);
+          return { characterId: match.id, status, engagement };
+        } catch (err) {
+          console.error(`Failed to load status for ${match.id}:`, err);
+          return { characterId: match.id, status: null, engagement: null };
+        }
+      });
+      const results = await Promise.all(dataPromises);
+      const statusMap = {};
+      const engagementMap = {};
+      results.forEach(({ characterId, status, engagement }) => {
+        statusMap[characterId] = status;
+        engagementMap[characterId] = engagement;
+      });
+      setCharacterStatuses(statusMap);
+      setCharacterEngagements(engagementMap);
+    } catch (error) {
+      console.error('Failed to load character statuses:', error);
     }
   };
 
@@ -75,12 +116,42 @@ const MainLayout = ({ children }) => {
     return conversation?.unread_count || 0;
   };
 
-  const getLastMessage = (characterId) => {
-    const conversation = conversations.find(c => c.character_id === characterId);
-    if (!conversation?.last_message) return 'Start chatting...';
+  const getStatusIndicatorColor = (characterId, status) => {
+    // If engaged and not offline, show green
+    const isEngaged = characterEngagements[characterId]?.isEngaged;
+    if (isEngaged && status?.toLowerCase() !== 'offline') {
+      return 'bg-green-400';
+    }
+
+    if (!status) return 'bg-gray-400';
+    switch (status.toLowerCase()) {
+      case 'online':
+        return 'bg-green-400';
+      case 'away':
+        return 'bg-yellow-400';
+      case 'busy':
+        return 'bg-red-400';
+      case 'offline':
+        return 'bg-gray-400';
+      default:
+        return 'bg-gray-400';
+    }
+  };
+
+  const getStatusText = (characterId) => {
+    const statusData = characterStatuses[characterId];
+    if (!statusData) return 'Loading...';
+
+    const { status, activity } = statusData;
+
+    // Format status text
+    let text = status.charAt(0).toUpperCase() + status.slice(1);
+    if (activity) {
+      text += ` • ${activity}`;
+    }
+
     // Truncate to ~40 characters
-    const message = conversation.last_message;
-    return message.length > 40 ? message.substring(0, 40) + '...' : message;
+    return text.length > 40 ? text.substring(0, 40) + '...' : text;
   };
 
   return (
@@ -129,8 +200,8 @@ const MainLayout = ({ children }) => {
                           alt={match.name}
                           className="relative w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
                         />
-                        {/* Online indicator */}
-                        <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-400 border-2 border-white rounded-full"></div>
+                        {/* Status indicator */}
+                        <div className={`absolute bottom-0 right-0 w-4 h-4 ${getStatusIndicatorColor(match.id, characterStatuses[match.id]?.status)} border-2 border-white rounded-full`}></div>
                         {/* Unread badge */}
                         {unreadCount > 0 && (
                           <div className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 bg-gradient-to-r from-pink-500 to-purple-600 border-2 border-white rounded-full flex items-center justify-center shadow-lg">
@@ -148,16 +219,16 @@ const MainLayout = ({ children }) => {
                             {match.name}
                           </h3>
                         </div>
-                        <p className="text-sm text-gray-500 truncate flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                          </svg>
+                        <p className="text-sm text-gray-500 truncate">
                           {unreadCount > 0 ? (
-                            <span className="font-medium text-purple-600">
+                            <span className="font-medium text-purple-600 flex items-center gap-1">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
                               {unreadCount} new {unreadCount === 1 ? 'message' : 'messages'}
                             </span>
                           ) : (
-                            <span className="truncate">{getLastMessage(match.id)}</span>
+                            <span className="truncate">{getStatusText(match.id)}</span>
                           )}
                         </p>
                       </div>

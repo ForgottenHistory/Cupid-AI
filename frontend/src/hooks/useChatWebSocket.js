@@ -1,0 +1,133 @@
+import { useState, useEffect, useRef } from 'react';
+import socketService from '../services/socketService';
+import { splitMessageIntoParts } from '../utils/messageUtils';
+
+/**
+ * Hook for managing WebSocket connection and real-time message handling
+ * @param {string} characterId - Current character ID
+ * @param {Object} user - Current user object
+ * @param {Object} isMountedRef - Ref to track component mount status
+ * @param {Function} setMessages - Function to update messages state
+ * @param {Function} setSending - Function to update sending state
+ * @param {Function} setError - Function to update error state
+ * @param {Function} markMessageAsNew - Function to mark message as new for animation
+ * @param {Function} setDisplayingMessages - Function to set displaying messages state
+ * @param {Function} addDisplayTimeout - Function to add timeout to cleanup array
+ * @param {Object} inputRef - Ref to input element for focus
+ * @returns {Object} WebSocket state
+ */
+export const useChatWebSocket = ({
+  characterId,
+  user,
+  isMountedRef,
+  setMessages,
+  setSending,
+  setError,
+  markMessageAsNew,
+  setDisplayingMessages,
+  addDisplayTimeout,
+  inputRef,
+}) => {
+  const [showTypingIndicator, setShowTypingIndicator] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Connect to WebSocket
+    socketService.connect(user.id);
+
+    // Listen for new messages
+    const handleNewMessage = (data) => {
+      if (data.characterId !== characterId) return;
+
+      console.log('📨 Received new message via WebSocket:', data);
+
+      setShowTypingIndicator(false);
+      const lastMessage = data.message;
+
+      if (lastMessage && lastMessage.role === 'assistant') {
+        // Split AI message by newlines for progressive display
+        const messageParts = splitMessageIntoParts(lastMessage.content);
+
+        if (messageParts.length > 1) {
+          // Multiple parts - display progressively
+          setDisplayingMessages(true);
+
+          // Display each part with a delay
+          messageParts.forEach((part, index) => {
+            const timeout = setTimeout(() => {
+              if (isMountedRef.current && data.characterId === characterId) {
+                const partMessageId = `${lastMessage.id}-part-${index}`;
+                markMessageAsNew(partMessageId);
+                setMessages(prev => [...prev, {
+                  ...lastMessage,
+                  id: partMessageId,
+                  content: part,
+                  isLastPart: index === messageParts.length - 1
+                }]);
+
+                // On last part, finish up
+                if (index === messageParts.length - 1) {
+                  setDisplayingMessages(false);
+                  setSending(false);
+                  inputRef.current?.focus();
+                }
+              }
+            }, index * 800);
+
+            addDisplayTimeout(timeout);
+          });
+        } else {
+          // Single message - display immediately
+          markMessageAsNew(lastMessage.id);
+          setMessages(prev => [...prev, lastMessage]);
+          setSending(false);
+          inputRef.current?.focus();
+        }
+      }
+
+      // Refresh sidebar
+      window.dispatchEvent(new Event('characterUpdated'));
+    };
+
+    const handleCharacterTyping = (data) => {
+      if (data.characterId !== characterId) return;
+      console.log('⌨️  Character is typing...');
+      setShowTypingIndicator(true);
+    };
+
+    const handleCharacterOffline = (data) => {
+      if (data.characterId !== characterId) return;
+      console.log('💤 Character is offline');
+      setShowTypingIndicator(false);
+      setSending(false);
+      setError('Character is currently offline');
+    };
+
+    const handleAIResponseError = (data) => {
+      if (data.characterId !== characterId) return;
+      console.error('❌ AI response error:', data.error);
+      setShowTypingIndicator(false);
+      setSending(false);
+      setError(data.error || 'Failed to generate response');
+    };
+
+    socketService.on('new_message', handleNewMessage);
+    socketService.on('character_typing', handleCharacterTyping);
+    socketService.on('character_offline', handleCharacterOffline);
+    socketService.on('ai_response_error', handleAIResponseError);
+
+    // Cleanup
+    return () => {
+      socketService.off('new_message', handleNewMessage);
+      socketService.off('character_typing', handleCharacterTyping);
+      socketService.off('character_offline', handleCharacterOffline);
+      socketService.off('ai_response_error', handleAIResponseError);
+    };
+  }, [user, characterId]);
+
+  return {
+    showTypingIndicator,
+    setShowTypingIndicator,
+  };
+};

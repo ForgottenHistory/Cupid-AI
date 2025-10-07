@@ -81,6 +81,14 @@ class ChatService {
     });
     return response.data;
   }
+
+  /**
+   * Get character status from schedule
+   */
+  async getCharacterStatus(characterId) {
+    const response = await api.get(`/characters/${characterId}/status`);
+    return response.data;
+  }
 }
 
 export default new ChatService();

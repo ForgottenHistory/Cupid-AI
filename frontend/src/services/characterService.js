@@ -183,6 +183,14 @@ class CharacterService {
   }
 
   /**
+   * Get character's engagement state
+   */
+  async getCharacterEngagement(characterId) {
+    const response = await api.get(`/characters/${characterId}/engagement`);
+    return response.data;
+  }
+
+  /**
    * Update character card data in storage
    */
   async updateCharacterData(characterId, updates) {

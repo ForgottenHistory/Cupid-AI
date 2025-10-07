@@ -236,6 +236,7 @@ async function processAIResponseAsync(io, userId, characterId, conversationId, c
         return;
       }
 
+      // Wait for delay without emitting typing
       await sleep(simpleDelay);
     } else {
       // Normal engagement flow
@@ -271,13 +272,12 @@ async function processAIResponseAsync(io, userId, characterId, conversationId, c
 
       console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
 
-      // Emit "typing" status to frontend after a brief moment
-      await sleep(Math.min(2000, delay * 0.1)); // Wait 2s or 10% of delay, whichever is less
-      io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
-
-      // Apply remaining delay
-      await sleep(delay - Math.min(2000, delay * 0.1));
+      // Wait for the full delay before starting to generate
+      await sleep(delay);
     }
+
+    // Now emit typing indicator right before we start generating
+    io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
 
     // Call Decision LLM (pass current engagement state)
     const currentlyEngaged = engagementState?.engagement_state === 'engaged';
