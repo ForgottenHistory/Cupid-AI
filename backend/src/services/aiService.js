@@ -180,9 +180,64 @@ class AIService {
   }
 
   /**
+   * Get surrounding activities from schedule (3 before, 3 after current)
+   */
+  getSurroundingActivities(schedule) {
+    if (!schedule?.schedule) return null;
+
+    const now = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const currentDay = dayNames[now.getDay()];
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // Build a flat list of all blocks across the week with day labels
+    const allBlocks = [];
+    for (let i = 0; i < 7; i++) {
+      const dayIndex = (now.getDay() + i) % 7;
+      const day = dayNames[dayIndex];
+      const dayBlocks = schedule.schedule[day] || [];
+
+      dayBlocks.forEach(block => {
+        allBlocks.push({
+          day: day.charAt(0).toUpperCase() + day.slice(1),
+          ...block
+        });
+      });
+    }
+
+    // Find current block index
+    let currentBlockIndex = -1;
+    for (let i = 0; i < allBlocks.length; i++) {
+      const block = allBlocks[i];
+      if (block.day.toLowerCase() === currentDay &&
+          currentTime >= block.start &&
+          currentTime < block.end) {
+        currentBlockIndex = i;
+        break;
+      }
+    }
+
+    if (currentBlockIndex === -1) return null;
+
+    // Get 3 blocks before and 3 blocks after
+    const recentActivities = [];
+    const upcomingActivities = [];
+
+    for (let i = Math.max(0, currentBlockIndex - 3); i < currentBlockIndex; i++) {
+      recentActivities.push(allBlocks[i]);
+    }
+
+    for (let i = currentBlockIndex + 1; i <= Math.min(allBlocks.length - 1, currentBlockIndex + 3); i++) {
+      upcomingActivities.push(allBlocks[i]);
+    }
+
+    return { recentActivities, upcomingActivities };
+  }
+
+  /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData) {
+  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null) {
     const parts = [];
 
     if (characterData.name) {
@@ -193,8 +248,52 @@ class AIService {
       parts.push(`\nDescription: ${characterData.description}`);
     }
 
-    if (characterData.scenario) {
-      parts.push(`\nScenario: ${characterData.scenario}`);
+    if (characterData.datingProfile) {
+      parts.push(`\nDating Profile: ${characterData.datingProfile}`);
+    }
+
+    if (currentStatus) {
+      const statusText = currentStatus.activity
+        ? `${currentStatus.status} (${currentStatus.activity})`
+        : currentStatus.status;
+      parts.push(`\nCurrent Status: ${statusText}`);
+
+      // Add context about what the status means
+      if (currentStatus.status === 'busy' && currentStatus.activity) {
+        parts.push(` - You're currently busy with this, so your texts might be brief or distracted.`);
+      } else if (currentStatus.status === 'away' && currentStatus.activity) {
+        parts.push(` - You're doing this right now, but can still text casually.`);
+      } else if (currentStatus.status === 'online') {
+        parts.push(` - You're free and available to chat.`);
+      }
+    }
+
+    // Add recent and upcoming activities
+    if (schedule) {
+      const activities = this.getSurroundingActivities(schedule);
+      if (activities) {
+        const { recentActivities, upcomingActivities } = activities;
+
+        if (recentActivities.length > 0) {
+          parts.push(`\n\nRecent activities:`);
+          recentActivities.forEach(block => {
+            const activity = block.activity ? ` - ${block.activity}` : '';
+            parts.push(`\n- ${block.start}-${block.end}: ${block.status}${activity}`);
+          });
+        }
+
+        if (upcomingActivities.length > 0) {
+          parts.push(`\n\nUpcoming activities:`);
+          upcomingActivities.forEach(block => {
+            const activity = block.activity ? ` - ${block.activity}` : '';
+            parts.push(`\n- ${block.start}-${block.end}: ${block.status}${activity}`);
+          });
+        }
+      }
+    }
+
+    if (userBio) {
+      parts.push(`\n\nPerson you're talking to: ${userBio}`);
     }
 
     if (characterData.system_prompt) {
@@ -219,13 +318,13 @@ Stay true to your character but keep it real and chill.`);
   /**
    * Send a chat completion request to OpenRouter
    */
-  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null }) {
+  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
     try {
-      const systemPrompt = this.buildSystemPrompt(characterData);
+      const systemPrompt = this.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
       const userSettings = this.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
@@ -417,12 +516,12 @@ Output ONLY the JSON, nothing else.`;
   /**
    * Stream chat completion (for future implementation)
    */
-  async createChatCompletionStream({ messages, characterData, model = null }) {
+  async createChatCompletionStream({ messages, characterData, model = null, currentStatus = null, userBio = null, schedule = null }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
-    const systemPrompt = this.buildSystemPrompt(characterData);
+    const systemPrompt = this.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
 
     const response = await axios.post(
       `${this.baseUrl}/chat/completions`,
