@@ -129,18 +129,33 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
       content: msg.content
     }));
 
-    // Get AI response
-    const aiResponse = await aiService.createChatCompletion({
+    // Step 1: Call Decision LLM to determine reaction
+    const decision = await aiService.makeDecision({
       messages: aiMessages,
       characterData: characterData,
-      userId: userId,
+      userMessage: message,
+      userId: userId
     });
 
-    // Save AI response
-    db.prepare(`
-      INSERT INTO messages (conversation_id, role, content)
-      VALUES (?, ?, ?)
-    `).run(conversation.id, 'assistant', aiResponse.content);
+    console.log('🎯 Decision made:', decision);
+
+    // Step 2: Get AI response (if shouldRespond is true)
+    let aiResponse = null;
+    if (decision.shouldRespond) {
+      aiResponse = await aiService.createChatCompletion({
+        messages: aiMessages,
+        characterData: characterData,
+        userId: userId,
+      });
+    }
+
+    // Save AI response with reaction
+    if (aiResponse) {
+      db.prepare(`
+        INSERT INTO messages (conversation_id, role, content, reaction)
+        VALUES (?, ?, ?, ?)
+      `).run(conversation.id, 'assistant', aiResponse.content, decision.reaction);
+    }
 
     // Update conversation timestamp and increment unread count
     db.prepare(`
@@ -160,10 +175,12 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
     res.json({
       conversation,
       messages,
-      aiResponse: {
+      aiResponse: aiResponse ? {
         content: aiResponse.content,
         model: aiResponse.model,
-      }
+        reaction: decision.reaction
+      } : null,
+      decision: decision
     });
   } catch (error) {
     console.error('Send message error:', error);

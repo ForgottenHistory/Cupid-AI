@@ -612,7 +612,7 @@ const Chat = () => {
               </div>
             ) : (
               <div
-                className={`max-w-[70%] rounded-2xl px-5 py-3 shadow-sm ${
+                className={`relative max-w-[70%] rounded-2xl px-5 py-3 shadow-sm ${
                   message.role === 'user'
                     ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-pink-200'
                     : 'bg-white text-gray-900 shadow-gray-200 border border-gray-100'
@@ -631,6 +631,13 @@ const Chat = () => {
                       minute: '2-digit'
                     })}
                   </p>
+                )}
+
+                {/* Reaction badge (show on user messages if next message is assistant with reaction) */}
+                {message.role === 'user' && messages[index + 1]?.role === 'assistant' && messages[index + 1]?.reaction && (
+                  <div className="absolute -bottom-2 -right-2 text-lg bg-white rounded-full px-1.5 py-0.5 shadow-lg border border-gray-200">
+                    {messages[index + 1].reaction}
+                  </div>
                 )}
               </div>
             )}

@@ -272,4 +272,129 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
   }
 });
 
+/**
+ * GET /api/users/decision-llm-settings
+ * Get user's Decision LLM settings
+ */
+router.get('/decision-llm-settings', authenticateToken, (req, res) => {
+  try {
+    const settings = db.prepare(`
+      SELECT decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
+             decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
+      FROM users WHERE id = ?
+    `).get(req.user.id);
+
+    if (!settings) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      model: settings.decision_llm_model,
+      temperature: settings.decision_llm_temperature,
+      maxTokens: settings.decision_llm_max_tokens,
+      topP: settings.decision_llm_top_p,
+      frequencyPenalty: settings.decision_llm_frequency_penalty,
+      presencePenalty: settings.decision_llm_presence_penalty,
+      contextWindow: settings.decision_llm_context_window
+    });
+  } catch (error) {
+    console.error('Get Decision LLM settings error:', error);
+    res.status(500).json({ error: 'Failed to get Decision LLM settings' });
+  }
+});
+
+/**
+ * PUT /api/users/decision-llm-settings
+ * Update user's Decision LLM settings
+ */
+router.put('/decision-llm-settings', authenticateToken, (req, res) => {
+  try {
+    const { model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow } = req.body;
+    const userId = req.user.id;
+
+    // Validate parameters
+    if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
+      return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
+    }
+    if (maxTokens !== undefined && (maxTokens < 1 || maxTokens > 4000)) {
+      return res.status(400).json({ error: 'Max tokens must be between 1 and 4000' });
+    }
+    if (topP !== undefined && (topP < 0 || topP > 1)) {
+      return res.status(400).json({ error: 'Top P must be between 0 and 1' });
+    }
+    if (frequencyPenalty !== undefined && (frequencyPenalty < -2 || frequencyPenalty > 2)) {
+      return res.status(400).json({ error: 'Frequency penalty must be between -2 and 2' });
+    }
+    if (presencePenalty !== undefined && (presencePenalty < -2 || presencePenalty > 2)) {
+      return res.status(400).json({ error: 'Presence penalty must be between -2 and 2' });
+    }
+    if (contextWindow !== undefined && (contextWindow < 1000 || contextWindow > 200000)) {
+      return res.status(400).json({ error: 'Context window must be between 1000 and 200000' });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (model !== undefined) {
+      updates.push('decision_llm_model = ?');
+      values.push(model);
+    }
+    if (temperature !== undefined) {
+      updates.push('decision_llm_temperature = ?');
+      values.push(temperature);
+    }
+    if (maxTokens !== undefined) {
+      updates.push('decision_llm_max_tokens = ?');
+      values.push(maxTokens);
+    }
+    if (topP !== undefined) {
+      updates.push('decision_llm_top_p = ?');
+      values.push(topP);
+    }
+    if (frequencyPenalty !== undefined) {
+      updates.push('decision_llm_frequency_penalty = ?');
+      values.push(frequencyPenalty);
+    }
+    if (presencePenalty !== undefined) {
+      updates.push('decision_llm_presence_penalty = ?');
+      values.push(presencePenalty);
+    }
+    if (contextWindow !== undefined) {
+      updates.push('decision_llm_context_window = ?');
+      values.push(contextWindow);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    if (updates.length === 1) { // Only updated_at
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+    db.prepare(query).run(...values);
+
+    // Get updated settings
+    const settings = db.prepare(`
+      SELECT decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
+             decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
+      FROM users WHERE id = ?
+    `).get(userId);
+
+    res.json({
+      model: settings.decision_llm_model,
+      temperature: settings.decision_llm_temperature,
+      maxTokens: settings.decision_llm_max_tokens,
+      topP: settings.decision_llm_top_p,
+      frequencyPenalty: settings.decision_llm_frequency_penalty,
+      presencePenalty: settings.decision_llm_presence_penalty,
+      contextWindow: settings.decision_llm_context_window
+    });
+  } catch (error) {
+    console.error('Update Decision LLM settings error:', error);
+    res.status(500).json({ error: 'Failed to update Decision LLM settings' });
+  }
+});
+
 export default router;

@@ -72,6 +72,64 @@ class AIService {
   }
 
   /**
+   * Get user's Decision LLM settings from database
+   */
+  getDecisionLLMSettings(userId) {
+    if (!userId) {
+      return {
+        model: this.defaultModel,
+        temperature: 0.7,
+        max_tokens: 500,
+        top_p: 1.0,
+        frequency_penalty: 0.0,
+        presence_penalty: 0.0,
+        context_window: 2000
+      };
+    }
+
+    try {
+      const settings = db.prepare(`
+        SELECT decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
+               decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
+        FROM users WHERE id = ?
+      `).get(userId);
+
+      if (!settings) {
+        return {
+          model: this.defaultModel,
+          temperature: 0.7,
+          max_tokens: 500,
+          top_p: 1.0,
+          frequency_penalty: 0.0,
+          presence_penalty: 0.0,
+          context_window: 2000
+        };
+      }
+
+      return {
+        model: settings.decision_llm_model || this.defaultModel,
+        temperature: settings.decision_llm_temperature ?? 0.7,
+        max_tokens: settings.decision_llm_max_tokens ?? 500,
+        top_p: settings.decision_llm_top_p ?? 1.0,
+        frequency_penalty: settings.decision_llm_frequency_penalty ?? 0.0,
+        presence_penalty: settings.decision_llm_presence_penalty ?? 0.0,
+        context_window: settings.decision_llm_context_window ?? 2000
+      };
+    } catch (error) {
+      console.error('Error fetching user Decision LLM settings:', error);
+      return {
+        model: this.defaultModel,
+        temperature: 0.7,
+        max_tokens: 500,
+        top_p: 1.0,
+        frequency_penalty: 0.0,
+        presence_penalty: 0.0,
+        context_window: 2000
+      };
+    }
+  }
+
+  /**
    * Count tokens in text
    */
   countTokens(text) {
@@ -217,10 +275,7 @@ Stay true to your character but keep it real and chill.`);
       console.log('✅ OpenRouter Response:', {
         model: response.data.model,
         contentLength: content?.length || 0,
-        contentPreview: content?.substring(0, 100),
-        contentCharCodes: content ? [...content].map(c => c.charCodeAt(0)).slice(0, 10) : [],
-        usage: response.data.usage,
-        fullResponse: JSON.stringify(response.data.choices[0])
+        usage: response.data.usage
       });
 
       return {
@@ -237,6 +292,115 @@ Stay true to your character but keep it real and chill.`);
         model: model || this.defaultModel
       });
       throw new Error(error.response?.data?.error?.message || error.message || 'AI service error');
+    }
+  }
+
+  /**
+   * Decision Engine: Analyze conversation and decide on actions
+   * Returns: { reaction: string|null, shouldRespond: boolean }
+   */
+  async makeDecision({ messages, characterData, userMessage, userId }) {
+    if (!this.apiKey) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
+    try {
+      const decisionSettings = this.getDecisionLLMSettings(userId);
+
+      // Build decision prompt
+      const decisionPrompt = `You are a decision-making AI that analyzes dating app conversations and decides how the character should respond.
+
+Character: ${characterData.name}
+Description: ${characterData.description || 'N/A'}
+
+Recent conversation context:
+${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
+
+User just sent: "${userMessage}"
+
+Decide on the character's behavioral response. You must output ONLY valid JSON in this exact format:
+{
+  "reaction": "emoji or null",
+  "shouldRespond": true
+}
+
+Guidelines:
+- "reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get null. Don't react to every message!
+- If you do react, choose ONE emoji that represents a strong emotional reaction (❤️, 😂, 🔥, 😍, 😭, etc.)
+- "shouldRespond": Always true for now (we will expand this later)
+- Consider the character's personality when choosing reactions
+
+Output ONLY the JSON, nothing else.`;
+
+      console.log('🎯 Decision Engine Request:', {
+        model: decisionSettings.model,
+        temperature: decisionSettings.temperature,
+        max_tokens: decisionSettings.max_tokens
+      });
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: decisionSettings.model,
+          messages: [
+            { role: 'user', content: decisionPrompt }
+          ],
+          temperature: decisionSettings.temperature,
+          max_tokens: decisionSettings.max_tokens,
+          top_p: decisionSettings.top_p,
+          frequency_penalty: decisionSettings.frequency_penalty,
+          presence_penalty: decisionSettings.presence_penalty,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://localhost:3000',
+            'X-Title': 'AI-Dater Decision Engine',
+          }
+        }
+      );
+
+      const content = response.data.choices[0].message.content.trim();
+
+      console.log('✅ Decision Engine Response:', {
+        model: response.data.model,
+        usage: response.data.usage
+      });
+
+      // Parse JSON response (strip markdown code fences if present)
+      try {
+        let jsonContent = content.trim();
+
+        // Remove markdown code fences if present
+        if (jsonContent.startsWith('```')) {
+          jsonContent = jsonContent.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+        }
+
+        const decision = JSON.parse(jsonContent);
+        return {
+          reaction: decision.reaction || null,
+          shouldRespond: decision.shouldRespond !== false // Default to true
+        };
+      } catch (parseError) {
+        console.error('Failed to parse decision JSON:', parseError, 'Content:', content);
+        // Fallback: no reaction, but respond
+        return {
+          reaction: null,
+          shouldRespond: true
+        };
+      }
+    } catch (error) {
+      console.error('❌ Decision Engine error:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      // On error, fail gracefully: no reaction, but respond
+      return {
+        reaction: null,
+        shouldRespond: true
+      };
     }
   }
 

@@ -3,6 +3,7 @@ import api from '../services/api';
 import axios from 'axios';
 
 const LLMSettings = ({ onClose }) => {
+  const [activeTab, setActiveTab] = useState('content'); // 'content' or 'decision'
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -12,7 +13,7 @@ const LLMSettings = ({ onClose }) => {
   const [filterFree, setFilterFree] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [settings, setSettings] = useState({
+  const [contentSettings, setContentSettings] = useState({
     model: 'deepseek/deepseek-chat-v3',
     temperature: 0.8,
     maxTokens: 800,
@@ -22,6 +23,19 @@ const LLMSettings = ({ onClose }) => {
     contextWindow: 4000,
   });
 
+  const [decisionSettings, setDecisionSettings] = useState({
+    model: 'deepseek/deepseek-chat-v3',
+    temperature: 0.7,
+    maxTokens: 500,
+    topP: 1.0,
+    frequencyPenalty: 0.0,
+    presencePenalty: 0.0,
+    contextWindow: 2000,
+  });
+
+  const settings = activeTab === 'content' ? contentSettings : decisionSettings;
+  const setSettings = activeTab === 'content' ? setContentSettings : setDecisionSettings;
+
   useEffect(() => {
     loadSettings();
     loadModels();
@@ -30,8 +44,12 @@ const LLMSettings = ({ onClose }) => {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/users/llm-settings');
-      setSettings(response.data);
+      const [contentResponse, decisionResponse] = await Promise.all([
+        api.get('/users/llm-settings'),
+        api.get('/users/decision-llm-settings')
+      ]);
+      setContentSettings(contentResponse.data);
+      setDecisionSettings(decisionResponse.data);
     } catch (err) {
       console.error('Failed to load LLM settings:', err);
       setError('Failed to load settings');
@@ -77,7 +95,8 @@ const LLMSettings = ({ onClose }) => {
     setSuccess('');
 
     try {
-      await api.put('/users/llm-settings', settings);
+      const endpoint = activeTab === 'content' ? '/users/llm-settings' : '/users/decision-llm-settings';
+      await api.put(endpoint, settings);
       setSuccess('Settings saved successfully!');
       setTimeout(() => {
         setSuccess('');
@@ -91,15 +110,27 @@ const LLMSettings = ({ onClose }) => {
   };
 
   const resetToDefaults = () => {
-    setSettings({
-      model: 'deepseek/deepseek-chat-v3',
-      temperature: 0.8,
-      maxTokens: 800,
-      topP: 1.0,
-      frequencyPenalty: 0.0,
-      presencePenalty: 0.0,
-      contextWindow: 4000,
-    });
+    if (activeTab === 'content') {
+      setContentSettings({
+        model: 'deepseek/deepseek-chat-v3',
+        temperature: 0.8,
+        maxTokens: 800,
+        topP: 1.0,
+        frequencyPenalty: 0.0,
+        presencePenalty: 0.0,
+        contextWindow: 4000,
+      });
+    } else {
+      setDecisionSettings({
+        model: 'deepseek/deepseek-chat-v3',
+        temperature: 0.7,
+        maxTokens: 500,
+        topP: 1.0,
+        frequencyPenalty: 0.0,
+        presencePenalty: 0.0,
+        contextWindow: 2000,
+      });
+    }
   };
 
   return (
@@ -123,8 +154,32 @@ const LLMSettings = ({ onClose }) => {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b bg-gray-50">
+          <button
+            onClick={() => setActiveTab('content')}
+            className={`flex-1 px-6 py-3 font-semibold transition ${
+              activeTab === 'content'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            Content LLM
+          </button>
+          <button
+            onClick={() => setActiveTab('decision')}
+            className={`flex-1 px-6 py-3 font-semibold transition ${
+              activeTab === 'decision'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            Decision LLM
+          </button>
+        </div>
+
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-10rem)]">
+        <div className="overflow-y-auto max-h-[calc(90vh-14rem)]">
           {loading ? (
             <div className="p-8 text-center">
               <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
@@ -132,6 +187,21 @@ const LLMSettings = ({ onClose }) => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {/* Tab Description */}
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-900">
+                  {activeTab === 'content' ? (
+                    <>
+                      <strong>Content LLM:</strong> Used to generate character responses and dialogue. This is the main AI that writes what your characters say.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Decision LLM:</strong> Used to make behavioral decisions (reactions, mood changes, events). A smaller, faster model is recommended for quick decision-making.
+                    </>
+                  )}
+                </p>
+              </div>
+
               {/* Messages */}
               {error && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">

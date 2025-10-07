@@ -31,6 +31,8 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - Multi-message display (split by newlines)
 - Typing indicator with random delays
 - Message animations (slide-up)
+- Message deletion, editing
+- AI message regeneration
 - Unread message tracking
 - Unmatch functionality
 - User profile with LLM settings
@@ -43,25 +45,29 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 ## Planned Enhancements
 
 ### High Priority
-- [ ] Search/filter in matches page
-- [ ] Responsive design refinement (mobile optimization)
-- [ ] Better error handling and empty states
-- [ ] Loading state improvements
+- [ ] **Dual LLM System (Decision Engine + Content Generator)**
+  - Small LLM makes behavioral decisions, large LLM generates content
+  - Second set of LLM settings in Profile (Decision Engine tab)
+  - Character state tracking system (moods, events, relationship dynamics)
+  - **Phase 1**: Reaction system (character can REACT to messages with emoji/action)
+  - **Phase 2**: Drama engine (random events, mood changes, proactive messages)
+  - **Phase 3**: Advanced orchestration (topic routing, escalation gates)
 
 ### Medium Priority
 - [ ] Advanced filtering (by tags, personality traits)
 - [ ] Character import/export functionality
 - [ ] Conversation search (search within messages)
-- [ ] Message editing/deletion
 - [ ] Character favorites/pinning in sidebar
+- [ ] Search/filter in matches page
+- [ ] Responsive design refinement (mobile optimization)
+- [ ] Better error handling and empty states
+- [ ] Loading state improvements
 
 ### Low Priority
 - [ ] Dark/light theme toggle
 - [ ] Voice chat integration (TTS/STT)
 - [ ] Image generation for characters
-- [ ] Character sharing/recommendations
 - [ ] Chat export (download conversation history)
-- [ ] Custom character sorting options
 
 ## Character v2 Card Format Reference
 ```javascript
@@ -87,6 +93,31 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 }
 ```
 
+## Dual LLM System - Technical Details
+
+### Character State Variables
+Stored in new `character_states` table (per user-character pair):
+- **current_mood**: happy, stressed, flirty, vulnerable, distant, excited, tired
+- **energy_level**: 0-100 (affects response enthusiasm)
+- **trust_level**: 0-100 (gates vulnerable content)
+- **attraction_level**: 0-100 (affects flirtiness)
+- **tension_meter**: 0-100 (drama engine builds/releases tension)
+- **current_event**: null, "bad_day", "exciting_news", "feeling_lonely", "conflict_active"
+- **secrets_revealed**: JSON array of unlocked backstory elements
+- **topics_discussed**: JSON array of conversation topics covered
+
+### Decision Engine Actions
+- **REACT**: Character reacts to user message with emoji/short action (❤️, 😂, 🤔, etc.)
+- **MOOD_SHIFT**: Change character's current mood based on conversation
+- **PROACTIVE_MESSAGE**: Decide to send unsolicited message after time gap
+
+### Implementation Flow
+1. User sends message
+2. Decision LLM analyzes context + character state → outputs action(s)
+3. Content LLM generates actual response text with state-informed system prompt
+4. Backend updates character state based on decision output
+5. Frontend displays message + any reactions/effects
+
 ## Future Ideas (Brainstorm)
 
 ### AI Enhancements
@@ -95,21 +126,9 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - **Personality drift**: Character evolves based on conversation history
 - **Multiple personas**: One character with different moods/personas
 
-### Social Features
-- **Character marketplace**: Share and discover community characters
-- **Friend system**: See what characters friends are chatting with
-- **Group chats**: Multiple characters in one conversation
-
 ### Technical Improvements
 - **RAG integration**: Character books with semantic search
-- **Streaming responses**: Real-time message streaming
 - **Voice cloning**: Unique voice for each character
-- **Mobile apps**: Native iOS/Android versions
-
-### Gamification
-- **Achievements**: Unlock badges for milestones
-- **Character levels**: Characters "level up" through conversation
-- **Daily challenges**: Conversation prompts/topics
 
 ## Notes
 - Built as personal project (single-user focus)

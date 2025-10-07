@@ -7,9 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Initialize SQLite database
-const db = new Database(join(__dirname, '..', '..', 'database.db'), {
-  verbose: console.log
-});
+const db = new Database(join(__dirname, '..', '..', 'database.db'));
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
@@ -62,6 +60,29 @@ function runMigrations() {
       db.exec(`ALTER TABLE users ADD COLUMN llm_context_window INTEGER DEFAULT 4000;`);
       console.log('✅ llm_context_window column added to users table');
     }
+
+    // Migration: Add Decision LLM settings columns to users table
+    if (!userColumnNames.includes('decision_llm_model')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN decision_llm_model TEXT DEFAULT 'deepseek/deepseek-chat-v3';
+        ALTER TABLE users ADD COLUMN decision_llm_temperature REAL DEFAULT 0.7;
+        ALTER TABLE users ADD COLUMN decision_llm_max_tokens INTEGER DEFAULT 500;
+        ALTER TABLE users ADD COLUMN decision_llm_top_p REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN decision_llm_frequency_penalty REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN decision_llm_presence_penalty REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN decision_llm_context_window INTEGER DEFAULT 2000;
+      `);
+      console.log('✅ Decision LLM settings columns added to users table');
+    }
+
+    // Migration: Add reaction column to messages table
+    const messagesColumns = db.pragma('table_info(messages)');
+    const messagesColumnNames = messagesColumns.map(col => col.name);
+
+    if (!messagesColumnNames.includes('reaction')) {
+      db.exec(`ALTER TABLE messages ADD COLUMN reaction TEXT;`);
+      console.log('✅ reaction column added to messages table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }
@@ -71,3 +92,4 @@ function runMigrations() {
 initializeDatabase();
 
 export default db;
+
