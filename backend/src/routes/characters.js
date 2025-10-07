@@ -420,4 +420,31 @@ router.get('/:characterId/engagement', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/characters/generate-personality
+ * Generate Big Five personality traits for a character
+ */
+router.post('/generate-personality', authenticateToken, async (req, res) => {
+  try {
+    const { description, name, personality } = req.body;
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+
+    const characterData = {
+      name: name || 'Character',
+      description: description,
+      personality: personality || ''
+    };
+
+    const traits = await aiService.generatePersonality(characterData);
+
+    res.json({ personality: traits });
+  } catch (error) {
+    console.error('Generate personality error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate personality' });
+  }
+});
+
 export default router;

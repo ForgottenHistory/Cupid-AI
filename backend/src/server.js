@@ -16,6 +16,9 @@ import userRoutes from './routes/users.js';
 import chatRoutes from './routes/chat.js';
 import charactersRoutes from './routes/characters.js';
 
+// Import services
+import proactiveMessageService from './services/proactiveMessageService.js';
+
 // Import database to initialize it
 import './db/database.js';
 
@@ -108,6 +111,14 @@ httpServer.listen(PORT, () => {
 ║                                        ║
 ╚════════════════════════════════════════╝
   `);
+
+  // Start proactive message checker (runs every 5 minutes)
+  console.log('📬 Proactive message service started (checks every 5 minutes)');
+  setInterval(() => {
+    proactiveMessageService.checkAndSend(io).catch(error => {
+      console.error('Proactive message service error:', error);
+    });
+  }, 5 * 60 * 1000); // 5 minutes
 });
 
 export default app;

@@ -18,6 +18,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     : [
         { id: 'profile', label: 'Dating Profile' },
         { id: 'schedule', label: 'Schedule' },
+        { id: 'personality', label: 'Personality' },
         { id: 'overview', label: 'Overview' },
       ];
 
@@ -139,6 +140,49 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     } catch (err) {
       console.error('Generate schedule error:', err);
       setError(err.response?.data?.error || 'Failed to generate schedule');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGeneratePersonality = async () => {
+    if (!data.description) {
+      setError('Need a description to generate personality');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const personality = await characterService.generatePersonality(
+        data.description,
+        character.name,
+        data.personality
+      );
+
+      // Update character in IndexedDB
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          personalityTraits: personality
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+
+      alert('Personality traits generated successfully!');
+    } catch (err) {
+      console.error('Generate personality error:', err);
+      setError(err.response?.data?.error || 'Failed to generate personality');
     } finally {
       setLoading(false);
     }
@@ -452,6 +496,122 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                     </svg>
                     <p className="text-gray-500 italic mb-3">No schedule yet. Generate one to make this character feel more alive!</p>
                     <p className="text-sm text-gray-400">The schedule will determine when the character is online, away, busy, or offline.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'personality' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Big Five Personality Traits</h3>
+                  <button
+                    onClick={handleGeneratePersonality}
+                    disabled={loading || !data.description}
+                    className="px-3 py-1 text-sm bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {loading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Generate Personality
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {data.personalityTraits ? (
+                  <div className="space-y-4">
+                    {/* Openness */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-semibold text-gray-800">Openness</h4>
+                        <span className="text-sm font-medium text-gray-600">{data.personalityTraits.openness}/100</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all"
+                          style={{ width: `${data.personalityTraits.openness}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Curiosity, creativity, openness to new experiences</p>
+                    </div>
+
+                    {/* Conscientiousness */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-semibold text-gray-800">Conscientiousness</h4>
+                        <span className="text-sm font-medium text-gray-600">{data.personalityTraits.conscientiousness}/100</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all"
+                          style={{ width: `${data.personalityTraits.conscientiousness}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Organization, dependability, discipline</p>
+                    </div>
+
+                    {/* Extraversion */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-semibold text-gray-800">Extraversion</h4>
+                        <span className="text-sm font-medium text-gray-600">{data.personalityTraits.extraversion}/100</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-yellow-400 to-orange-500 h-3 rounded-full transition-all"
+                          style={{ width: `${data.personalityTraits.extraversion}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Sociability, assertiveness, energy around others</p>
+                    </div>
+
+                    {/* Agreeableness */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-semibold text-gray-800">Agreeableness</h4>
+                        <span className="text-sm font-medium text-gray-600">{data.personalityTraits.agreeableness}/100</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-pink-400 to-rose-500 h-3 rounded-full transition-all"
+                          style={{ width: `${data.personalityTraits.agreeableness}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Compassion, cooperation, trust in others</p>
+                    </div>
+
+                    {/* Neuroticism */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <h4 className="font-semibold text-gray-800">Neuroticism</h4>
+                        <span className="text-sm font-medium text-gray-600">{data.personalityTraits.neuroticism}/100</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-purple-400 to-purple-600 h-3 rounded-full transition-all"
+                          style={{ width: `${data.personalityTraits.neuroticism}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Emotional sensitivity vs. stability</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <svg className="w-16 h-16 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p className="text-gray-500 italic mb-3">No personality traits yet. Generate them using the Big Five model!</p>
+                    <p className="text-sm text-gray-400">The Big Five (OCEAN) model provides scientific personality assessment.</p>
                   </div>
                 )}
               </div>

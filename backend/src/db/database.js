@@ -130,6 +130,21 @@ function runMigrations() {
       `);
       console.log('✅ engagement_started_at and departed_status columns added to character_states table');
     }
+
+    // Migration: Add personality_data column to characters table
+    if (!charactersColumnNames.includes('personality_data')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN personality_data TEXT;`);
+      console.log('✅ personality_data column added to characters table');
+    }
+
+    // Migration: Add proactive message tracking to users table
+    if (!userColumnNames.includes('proactive_messages_today')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN proactive_messages_today INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN last_proactive_date TEXT;
+      `);
+      console.log('✅ proactive_messages_today and last_proactive_date columns added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

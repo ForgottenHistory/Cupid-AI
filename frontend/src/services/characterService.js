@@ -175,6 +175,14 @@ class CharacterService {
   }
 
   /**
+   * Generate Big Five personality traits from description using AI
+   */
+  async generatePersonality(description, name, personality) {
+    const response = await api.post('/characters/generate-personality', { description, name, personality });
+    return response.data.personality;
+  }
+
+  /**
    * Get character's current status based on their schedule
    */
   async getCharacterStatus(characterId, schedule) {

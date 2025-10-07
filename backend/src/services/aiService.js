@@ -237,7 +237,7 @@ class AIService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false) {
+  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null) {
     const parts = [];
 
     if (characterData.name) {
@@ -275,6 +275,28 @@ class AIService {
       parts.push(`\n- Mentions you have to go (use your current status/activity as context for why)`);
       parts.push(`\n- Keeps it casual and natural ("gtg", "gotta run", "talk later", etc.)`);
       parts.push(`\n- DON'T make it dramatic or apologetic - just a casual "ttyl" type message`);
+    }
+
+    // Add proactive messaging context
+    if (isProactive && proactiveType) {
+      parts.push(`\n\n💬 PROACTIVE MESSAGE CONTEXT: You are reaching out to them first after some time has passed.`);
+
+      if (proactiveType === 'resume') {
+        parts.push(`\n- Type: RESUME - Continue the previous conversation/topic naturally`);
+        parts.push(`\n- Reference what you were talking about before`);
+        parts.push(`\n- Keep it casual, like you've been thinking about it`);
+      } else if (proactiveType === 'fresh') {
+        parts.push(`\n- Type: FRESH START - Begin a new conversation`);
+        parts.push(`\n- Don't reference the previous topic (it ended naturally)`);
+        parts.push(`\n- Share something new, ask how they're doing, or bring up something you're doing`);
+      } else if (proactiveType === 'callback') {
+        parts.push(`\n- Type: CALLBACK - Reference something interesting from earlier`);
+        parts.push(`\n- Bring up a topic or detail from the previous conversation`);
+        parts.push(`\n- Make it feel like you've been thinking about it`);
+      }
+
+      parts.push(`\n- Keep it short and natural (1-2 sentences)`);
+      parts.push(`\n- Don't apologize for not responding (they're the ones who should be responding to you!)`);
     }
 
     // Add recent and upcoming activities
@@ -327,13 +349,13 @@ Stay true to your character but keep it real and chill.`);
   /**
    * Send a chat completion request to OpenRouter
    */
-  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false }) {
+  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
     try {
-      const systemPrompt = this.buildSystemPrompt(characterData, currentStatus, userBio, schedule, isDeparting);
+      const systemPrompt = this.buildSystemPrompt(characterData, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType);
       const userSettings = this.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
@@ -533,6 +555,114 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
   }
 
   /**
+   * Proactive Decision Engine: Decide if character should send proactive message
+   * Returns: { shouldSend: boolean, messageType: "resume"|"fresh"|"callback" }
+   */
+  async makeProactiveDecision({ messages, characterData, gapHours, userId }) {
+    if (!this.apiKey) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
+    try {
+      const decisionSettings = this.getDecisionLLMSettings(userId);
+
+      // Build context
+      const lastMessages = messages.slice(-5);
+      const conversationEnded = lastMessages.length > 0 ?
+        (lastMessages[lastMessages.length - 1].content.length < 20 ||
+         lastMessages[lastMessages.length - 1].content.match(/ok|yeah|lol|haha|😂|👍/i)) : false;
+
+      const decisionPrompt = `You are deciding if this character should proactively send a message on a dating app.
+
+Character: ${characterData.name}
+Description: ${characterData.description || 'N/A'}
+
+Time since last message: ${gapHours.toFixed(1)} hours
+
+Recent conversation:
+${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
+
+Analyze:
+1. Did the conversation naturally end or trail off?
+2. Is there an open question or unresolved topic?
+3. Would it feel natural for the character to reach out now?
+4. Consider time of day and how long it's been
+
+Output your decision in this EXACT format:
+
+Should Send: [yes/no]
+Message Type: [resume/fresh/callback]
+
+Guidelines:
+- "Should Send": yes if character would naturally reach out, no if conversation ended cleanly
+- "Message Type":
+  * "resume" - Continue the previous topic (if conversation was mid-flow)
+  * "fresh" - Start a new conversation (if enough time has passed or topic ended)
+  * "callback" - Reference something from earlier (if there was an interesting point to revisit)
+
+Output ONLY the two lines in the exact format shown above, nothing else.`;
+
+      console.log('🎯 Proactive Decision Engine Request:', {
+        model: decisionSettings.model,
+        gapHours: gapHours.toFixed(1)
+      });
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: decisionSettings.model,
+          messages: [
+            { role: 'user', content: decisionPrompt }
+          ],
+          temperature: decisionSettings.temperature,
+          max_tokens: decisionSettings.max_tokens,
+          top_p: decisionSettings.top_p,
+          frequency_penalty: decisionSettings.frequency_penalty,
+          presence_penalty: decisionSettings.presence_penalty,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://localhost:3000',
+            'X-Title': 'AI-Dater Proactive Decision Engine',
+          }
+        }
+      );
+
+      const content = response.data.choices[0].message.content.trim();
+
+      // Parse response
+      const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const decision = {
+        shouldSend: false,
+        messageType: 'fresh'
+      };
+
+      for (const line of lines) {
+        if (line.startsWith('Should Send:')) {
+          const value = line.substring('Should Send:'.length).trim().toLowerCase();
+          decision.shouldSend = value === 'yes';
+        } else if (line.startsWith('Message Type:')) {
+          const value = line.substring('Message Type:'.length).trim().toLowerCase();
+          if (['resume', 'fresh', 'callback'].includes(value)) {
+            decision.messageType = value;
+          }
+        }
+      }
+
+      return decision;
+    } catch (error) {
+      console.error('❌ Proactive Decision Engine error:', error.message);
+      // On error, don't send
+      return {
+        shouldSend: false,
+        messageType: 'fresh'
+      };
+    }
+  }
+
+  /**
    * Stream chat completion (for future implementation)
    */
   async createChatCompletionStream({ messages, characterData, model = null, currentStatus = null, userBio = null, schedule = null }) {
@@ -566,6 +696,110 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
     );
 
     return response.data;
+  }
+
+  /**
+   * Generate Big Five personality traits for a character
+   * Returns: { openness: 0-100, conscientiousness: 0-100, extraversion: 0-100, agreeableness: 0-100, neuroticism: 0-100 }
+   */
+  async generatePersonality(characterData) {
+    if (!this.apiKey) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
+    try {
+      const prompt = `Analyze this character using the Big Five (OCEAN) personality model. Rate each trait on a 0-100 scale.
+
+Character: ${characterData.name}
+Description: ${characterData.description || 'N/A'}
+Personality: ${characterData.personality || 'N/A'}
+
+Rate these Big Five traits (0-100):
+- Openness: Curiosity, creativity, open to new experiences (0 = conventional/cautious, 100 = inventive/curious)
+- Conscientiousness: Organization, dependability, discipline (0 = spontaneous/careless, 100 = efficient/organized)
+- Extraversion: Sociability, assertiveness, energy around others (0 = reserved/introverted, 100 = outgoing/energetic)
+- Agreeableness: Compassion, cooperation, trust in others (0 = competitive/detached, 100 = friendly/compassionate)
+- Neuroticism: Emotional stability vs. tendency toward anxiety (0 = calm/stable, 100 = anxious/sensitive)
+
+Output ONLY in this exact format:
+Openness: [0-100]
+Conscientiousness: [0-100]
+Extraversion: [0-100]
+Agreeableness: [0-100]
+Neuroticism: [0-100]`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'deepseek/deepseek-chat-v3', // Use small model for this
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 200,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://localhost:3000',
+            'X-Title': 'AI-Dater Personality Generator',
+          }
+        }
+      );
+
+      const content = response.data.choices[0].message.content.trim();
+
+      // Parse response
+      const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const personality = {
+        openness: 50,
+        conscientiousness: 50,
+        extraversion: 50,
+        agreeableness: 50,
+        neuroticism: 50
+      };
+
+      for (const line of lines) {
+        if (line.startsWith('Openness:')) {
+          const value = parseInt(line.substring('Openness:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.openness = value;
+          }
+        } else if (line.startsWith('Conscientiousness:')) {
+          const value = parseInt(line.substring('Conscientiousness:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.conscientiousness = value;
+          }
+        } else if (line.startsWith('Extraversion:')) {
+          const value = parseInt(line.substring('Extraversion:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.extraversion = value;
+          }
+        } else if (line.startsWith('Agreeableness:')) {
+          const value = parseInt(line.substring('Agreeableness:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.agreeableness = value;
+          }
+        } else if (line.startsWith('Neuroticism:')) {
+          const value = parseInt(line.substring('Neuroticism:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.neuroticism = value;
+          }
+        }
+      }
+
+      console.log('✅ Big Five personality generated:', personality);
+      return personality;
+    } catch (error) {
+      console.error('❌ Personality generation error:', error.message);
+      // Return defaults on error
+      return {
+        openness: 50,
+        conscientiousness: 50,
+        extraversion: 50,
+        agreeableness: 50,
+        neuroticism: 50
+      };
+    }
   }
 }
 
