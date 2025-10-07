@@ -30,6 +30,7 @@ IMPORTANT RULES:
 6. Keep it natural and descriptive
 7. Try to keep the same style of writing
 8. Include bodily details
+9. ALL NSFW details should be kept
 
 Just return the cleaned text, nothing else:\n\n${description}`
       }
@@ -116,6 +117,180 @@ Important:
   } catch (error) {
     console.error('Generate dating profile error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate dating profile' });
+  }
+});
+
+/**
+ * Parse plaintext schedule into JSON format
+ */
+function parseScheduleFromPlaintext(text) {
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const schedule = {};
+
+  // Split by day headers
+  const dayRegex = /(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)/gi;
+  const sections = text.split(dayRegex).filter(s => s.trim());
+
+  for (let i = 0; i < sections.length; i += 2) {
+    const dayName = sections[i].toLowerCase();
+    const dayContent = sections[i + 1];
+
+    if (!days.includes(dayName) || !dayContent) continue;
+
+    const blocks = [];
+    const lines = dayContent.trim().split('\n');
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      // Parse format: "HH:MM-HH:MM STATUS Activity (optional)"
+      const match = trimmedLine.match(/(\d{2}:\d{2})-(\d{2}:\d{2})\s+(ONLINE|AWAY|BUSY|OFFLINE)(?:\s+(.+))?/i);
+      if (match) {
+        const [, start, end, status, activity] = match;
+        const block = {
+          start,
+          end,
+          status: status.toLowerCase()
+        };
+        if (activity) {
+          block.activity = activity.trim();
+        }
+        blocks.push(block);
+      }
+    }
+
+    if (blocks.length > 0) {
+      schedule[dayName] = blocks;
+    }
+  }
+
+  return {
+    schedule,
+    responseDelays: {
+      online: [30, 120],
+      away: [300, 1200],
+      busy: [900, 3600],
+      offline: null
+    }
+  };
+}
+
+/**
+ * POST /api/characters/generate-schedule
+ * Use AI to generate a realistic weekly schedule from character description
+ */
+router.post('/generate-schedule', authenticateToken, async (req, res) => {
+  try {
+    const { description, name } = req.body;
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+
+    const characterName = name || 'this character';
+
+    const messages = [
+      {
+        role: 'user',
+        content: `Based on the character description below, create a realistic weekly schedule for ${characterName}.
+
+Status meanings:
+- ONLINE: Free and available to chat
+- AWAY: Busy with activities but might check phone
+- BUSY: At work or important tasks
+- OFFLINE: Sleeping or unavailable
+
+Character Description:
+${description}
+
+Create a schedule in this simple format (one line per time block):
+
+MONDAY
+00:00-08:00 OFFLINE Sleep
+08:00-09:00 AWAY Morning routine
+09:00-17:00 BUSY Work
+17:00-19:00 ONLINE
+19:00-21:00 AWAY Gym
+21:00-24:00 ONLINE
+
+TUESDAY
+...
+
+Continue for all 7 days. Make it realistic for this character's lifestyle and personality. Activities are optional for ONLINE periods.`
+      }
+    ];
+
+    const response = await aiService.createChatCompletion({
+      messages,
+      characterData: { name: 'Assistant' },
+      userId: req.user.id,
+      model: null,
+      maxTokens: 1500,
+    });
+
+    // Parse plaintext response into JSON
+    const content = response.content.trim();
+    const scheduleData = parseScheduleFromPlaintext(content);
+
+    res.json({ schedule: scheduleData });
+  } catch (error) {
+    console.error('Generate schedule error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate schedule' });
+  }
+});
+
+/**
+ * Calculate current status from schedule
+ */
+function calculateCurrentStatus(schedule) {
+  if (!schedule?.schedule) {
+    return { status: 'online', activity: null, nextChange: null };
+  }
+
+  const now = new Date();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDay = dayNames[now.getDay()];
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const todaySchedule = schedule.schedule[currentDay];
+  if (!todaySchedule || todaySchedule.length === 0) {
+    return { status: 'offline', activity: null, nextChange: null };
+  }
+
+  // Find the block that contains current time
+  for (const block of todaySchedule) {
+    if (currentTime >= block.start && currentTime < block.end) {
+      return {
+        status: block.status,
+        activity: block.activity || null,
+        nextChange: block.end
+      };
+    }
+  }
+
+  // If no block found, assume offline
+  return { status: 'offline', activity: null, nextChange: null };
+}
+
+/**
+ * POST /api/characters/:characterId/status
+ * Calculate current status from character's schedule
+ */
+router.post('/:characterId/status', authenticateToken, async (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { schedule } = req.body;
+
+    if (!schedule) {
+      return res.json({ status: 'online', activity: null, nextChange: null });
+    }
+
+    const statusInfo = calculateCurrentStatus(schedule);
+    res.json(statusInfo);
+  } catch (error) {
+    console.error('Calculate status error:', error);
+    res.status(500).json({ error: error.message || 'Failed to calculate status' });
   }
 });
 

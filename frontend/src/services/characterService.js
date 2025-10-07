@@ -167,6 +167,22 @@ class CharacterService {
   }
 
   /**
+   * Generate weekly schedule from description using AI
+   */
+  async generateSchedule(description, name) {
+    const response = await api.post('/characters/generate-schedule', { description, name });
+    return response.data.schedule;
+  }
+
+  /**
+   * Get character's current status based on their schedule
+   */
+  async getCharacterStatus(characterId, schedule) {
+    const response = await api.post(`/characters/${characterId}/status`, { schedule });
+    return response.data;
+  }
+
+  /**
    * Update character card data in storage
    */
   async updateCharacterData(characterId, updates) {

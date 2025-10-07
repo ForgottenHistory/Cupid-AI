@@ -219,7 +219,7 @@ Stay true to your character but keep it real and chill.`);
   /**
    * Send a chat completion request to OpenRouter
    */
-  async createChatCompletion({ messages, characterData, model = null, userId = null }) {
+  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -228,19 +228,20 @@ Stay true to your character but keep it real and chill.`);
       const systemPrompt = this.buildSystemPrompt(characterData);
       const userSettings = this.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
+      const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
 
       // Trim messages to fit within context window
       const trimmedMessages = this.trimMessagesToContextWindow(
         messages,
         systemPrompt,
         userSettings.context_window,
-        userSettings.max_tokens
+        effectiveMaxTokens
       );
 
       console.log('🤖 OpenRouter Request:', {
         model: selectedModel,
         temperature: userSettings.temperature,
-        max_tokens: userSettings.max_tokens,
+        max_tokens: effectiveMaxTokens,
         context_window: userSettings.context_window,
         messageCount: trimmedMessages.length + 1, // +1 for system prompt
         originalMessageCount: messages.length
@@ -255,7 +256,7 @@ Stay true to your character but keep it real and chill.`);
             ...trimmedMessages
           ],
           temperature: userSettings.temperature,
-          max_tokens: userSettings.max_tokens,
+          max_tokens: effectiveMaxTokens,
           top_p: userSettings.top_p,
           frequency_penalty: userSettings.frequency_penalty,
           presence_penalty: userSettings.presence_penalty,

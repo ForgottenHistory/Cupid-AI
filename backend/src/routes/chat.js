@@ -2,8 +2,48 @@ import express from 'express';
 import { authenticateToken } from '../middleware/auth.js';
 import db from '../db/database.js';
 import aiService from '../services/aiService.js';
+import engagementService from '../services/engagementService.js';
 
 const router = express.Router();
+
+/**
+ * Helper: Get character's current status from schedule
+ */
+function getCurrentStatusFromSchedule(schedule) {
+  if (!schedule?.schedule) {
+    return { status: 'online', activity: null };
+  }
+
+  const now = new Date();
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const currentDay = dayNames[now.getDay()];
+  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+  const todaySchedule = schedule.schedule[currentDay];
+  if (!todaySchedule || todaySchedule.length === 0) {
+    return { status: 'offline', activity: null };
+  }
+
+  // Find the block that contains current time
+  for (const block of todaySchedule) {
+    if (currentTime >= block.start && currentTime < block.end) {
+      return {
+        status: block.status,
+        activity: block.activity || null
+      };
+    }
+  }
+
+  // If no block found, assume offline
+  return { status: 'offline', activity: null };
+}
+
+/**
+ * Helper: Wait for specified milliseconds
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 /**
  * GET /api/chat/conversations
@@ -129,7 +169,61 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
       content: msg.content
     }));
 
-    // Step 1: Call Decision LLM to determine reaction
+    // === ENGAGEMENT WINDOW SYSTEM ===
+
+    // Step 1: Get character's current status from schedule
+    const schedule = characterData.schedule;
+    const currentStatusInfo = getCurrentStatusFromSchedule(schedule);
+    const currentStatus = currentStatusInfo.status;
+
+    console.log(`📍 Character status: ${currentStatus}${currentStatusInfo.activity ? ` (${currentStatusInfo.activity})` : ''}`);
+
+    // Step 2: Get or create engagement state
+    const engagementState = engagementService.getEngagementState(userId, characterId);
+
+    // Update current status in engagement tracking
+    engagementService.updateCurrentStatus(userId, characterId, currentStatus);
+
+    // Step 3: Calculate response delay
+    const responseDelays = schedule?.responseDelays;
+    let delay = engagementService.calculateResponseDelay(
+      currentStatus,
+      engagementState.engagement_state,
+      engagementState.engagement_messages_remaining,
+      responseDelays
+    );
+
+    // If offline, character won't respond
+    if (delay === null) {
+      console.log('💤 Character is offline - no response');
+      return res.json({
+        conversation,
+        messages: messageHistory,
+        aiResponse: null,
+        decision: { reaction: null, shouldRespond: false },
+        status: 'offline'
+      });
+    }
+
+    // Step 4: If disengaged, start engagement (70% chance to engage immediately)
+    if (engagementState.engagement_state === 'disengaged' && Math.random() < 0.7) {
+      engagementService.startEngagement(userId, characterId);
+      // Recalculate delay with new engagement state
+      const newState = engagementService.getEngagementState(userId, characterId);
+      delay = engagementService.calculateResponseDelay(
+        currentStatus,
+        newState.engagement_state,
+        newState.engagement_messages_remaining,
+        responseDelays
+      );
+    }
+
+    console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
+
+    // Step 5: Apply delay
+    await sleep(delay);
+
+    // Step 6: Call Decision LLM to determine reaction
     const decision = await aiService.makeDecision({
       messages: aiMessages,
       characterData: characterData,
@@ -139,7 +233,7 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
 
     console.log('🎯 Decision made:', decision);
 
-    // Step 2: Get AI response (if shouldRespond is true)
+    // Step 7: Get AI response (if shouldRespond is true)
     let aiResponse = null;
     if (decision.shouldRespond) {
       aiResponse = await aiService.createChatCompletion({
@@ -155,6 +249,9 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
         INSERT INTO messages (conversation_id, role, content, reaction)
         VALUES (?, ?, ?, ?)
       `).run(conversation.id, 'assistant', aiResponse.content, decision.reaction);
+
+      // Step 8: Consume one engagement message
+      engagementService.consumeEngagementMessage(userId, characterId);
     }
 
     // Update conversation timestamp and increment unread count
@@ -180,7 +277,8 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
         model: aiResponse.model,
         reaction: decision.reaction
       } : null,
-      decision: decision
+      decision: decision,
+      status: currentStatus
     });
   } catch (error) {
     console.error('Send message error:', error);

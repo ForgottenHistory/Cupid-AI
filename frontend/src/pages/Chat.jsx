@@ -24,6 +24,7 @@ const Chat = () => {
   const [newMessageIds, setNewMessageIds] = useState(new Set());
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingText, setEditingText] = useState('');
+  const [characterStatus, setCharacterStatus] = useState({ status: 'online', activity: null });
   const isMountedRef = useRef(true);
   const displayTimeoutsRef = useRef([]);
 
@@ -84,6 +85,18 @@ const Chat = () => {
       }
 
       setCharacter(char);
+
+      // Fetch character status if schedule exists
+      if (char.cardData?.data?.schedule) {
+        try {
+          const status = await characterService.getCharacterStatus(characterId, char.cardData.data.schedule);
+          setCharacterStatus(status);
+        } catch (err) {
+          console.error('Failed to fetch status:', err);
+          // Default to online if status fetch fails
+          setCharacterStatus({ status: 'online', activity: null });
+        }
+      }
 
       // Load conversation and messages
       const { conversation: conv, messages: msgs } = await chatService.getConversation(characterId);
@@ -544,8 +557,16 @@ const Chat = () => {
                 <div className="flex-1 pb-1">
                   <h2 className="text-2xl font-bold drop-shadow-lg">{character.name}</h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <div className="w-2.5 h-2.5 bg-green-400 rounded-full shadow-lg"></div>
-                    <span className="text-sm font-medium drop-shadow">Online</span>
+                    <div className={`w-2.5 h-2.5 rounded-full shadow-lg ${
+                      characterStatus.status === 'online' ? 'bg-green-400' :
+                      characterStatus.status === 'away' ? 'bg-yellow-400' :
+                      characterStatus.status === 'busy' ? 'bg-red-400' :
+                      'bg-gray-400'
+                    }`}></div>
+                    <span className="text-sm font-medium drop-shadow capitalize">
+                      {characterStatus.status}
+                      {characterStatus.activity && ` • ${characterStatus.activity}`}
+                    </span>
                   </div>
                 </div>
               </div>

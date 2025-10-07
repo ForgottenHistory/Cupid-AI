@@ -26,6 +26,7 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - Character upload & parsing (PNG v2 cards)
 - Swipe interface with undo
 - Character profiles with AI-generated dating profiles
+- AI-generated weekly schedules from character descriptions
 - Matches collection
 - AI chat with context window management
 - Multi-message display (split by newlines)
@@ -37,6 +38,11 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - Unmatch functionality
 - User profile with LLM settings
 - Token-based context trimming
+- Dual LLM System (Phase 1: Reactions, Phase 2: Schedules & Engagement)
+- Engagement window system (realistic conversation bursts)
+- Character status system (online/away/busy/offline)
+- Status-based response delays
+- Real-time status display in chat
 
 ### 🔧 Known Issues
 - Character names default to "Character" when syncing to backend (cosmetic)
@@ -102,7 +108,7 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - Stored in messages table, displayed as badge overlay on user messages
 - Separate LLM settings for decision engine (lower temp, fewer tokens)
 
-### Phase 2: Schedule & Engagement System 🚧 PLANNED
+### Phase 2: Schedule & Engagement System ✅ IMPLEMENTED
 
 #### Character Status System
 Four status levels that affect availability:
@@ -212,6 +218,26 @@ Realistic conversation flow instead of flat delays:
    - Messages sent while character is offline → added to queue
    - When character comes online → process queue with engagement logic
    - Decision engine can decide to respond to multiple queued messages at once
+
+#### Implementation Notes (Phase 2)
+**Completed Features:**
+- ✅ Database schema: Added `schedule_data` and `schedule_generated_at` columns to characters table
+- ✅ Database schema: Created `character_states` table for engagement tracking
+- ✅ Backend service: Created `engagementService.js` for state management
+- ✅ Schedule generation: LLM generates plaintext schedules, parsed into JSON
+- ✅ Status calculation: Real-time status from schedule + current time
+- ✅ Engagement windows: 70% chance to engage, 2-5 message bursts with 5-15s delays
+- ✅ Status-based delays: online (30-120s), away (5-20min), busy (15-60min), offline (no response)
+- ✅ Frontend UI: Schedule tab in character profile with generation button
+- ✅ Frontend UI: Status display in chat header with colored badges
+- ✅ Automatic engagement state tracking and message burst consumption
+
+**Technical Details:**
+- Plaintext schedule format preferred over JSON (more reliable, fewer tokens)
+- 70% engagement probability on first message when disengaged
+- Engagement bursts are random (2-5 messages) with fast responses (5-15s)
+- Offline characters return no response, message waits for status change
+- Status colors: green (online), yellow (away), red (busy), gray (offline)
 
 ### Phase 3: Drama Engine 🔮 FUTURE
 - Random events that affect character mood/availability

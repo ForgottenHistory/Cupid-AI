@@ -83,6 +83,41 @@ function runMigrations() {
       db.exec(`ALTER TABLE messages ADD COLUMN reaction TEXT;`);
       console.log('✅ reaction column added to messages table');
     }
+
+    // Migration: Add schedule columns to characters table
+    const charactersColumns = db.pragma('table_info(characters)');
+    const charactersColumnNames = charactersColumns.map(col => col.name);
+
+    if (!charactersColumnNames.includes('schedule_data')) {
+      db.exec(`
+        ALTER TABLE characters ADD COLUMN schedule_data TEXT;
+        ALTER TABLE characters ADD COLUMN schedule_generated_at TIMESTAMP;
+      `);
+      console.log('✅ schedule_data and schedule_generated_at columns added to characters table');
+    }
+
+    // Migration: Create character_states table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS character_states (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        character_id TEXT NOT NULL,
+        current_status TEXT DEFAULT 'online',
+        engagement_state TEXT DEFAULT 'disengaged',
+        engagement_messages_remaining INTEGER DEFAULT 0,
+        last_check_time TIMESTAMP,
+        message_queue TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+        UNIQUE(user_id, character_id)
+      );
+    `);
+    console.log('✅ character_states table created');
+
+    // Create index for character_states
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_character_states_lookup ON character_states(user_id, character_id);`);
   } catch (error) {
     console.error('Migration error:', error);
   }
