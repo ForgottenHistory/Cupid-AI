@@ -88,12 +88,15 @@ export const useChatWebSocket = ({
         }
       }
 
-      // Refresh sidebar
-      window.dispatchEvent(new Event('characterUpdated'));
-
       // Mark messages as read since user is actively viewing this chat
-      chatService.markAsRead(characterId).catch(err => {
+      // Do this BEFORE refreshing sidebar so unread count is correct
+      chatService.markAsRead(characterId).then(() => {
+        // Refresh sidebar after marking as read
+        window.dispatchEvent(new Event('characterUpdated'));
+      }).catch(err => {
         console.error('Failed to mark messages as read:', err);
+        // Still refresh sidebar even if markAsRead fails
+        window.dispatchEvent(new Event('characterUpdated'));
       });
     };
 
