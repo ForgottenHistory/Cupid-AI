@@ -169,6 +169,21 @@ function runMigrations() {
       `);
       console.log('✅ swipes_today and last_swipe_date columns added to users table');
     }
+
+    // Migration: Add voice_id column to characters table
+    if (!charactersColumnNames.includes('voice_id')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN voice_id TEXT;`);
+      console.log('✅ voice_id column added to characters table');
+    }
+
+    // Migration: Add message_type and audio_url columns to messages table
+    if (!messagesColumnNames.includes('message_type')) {
+      db.exec(`
+        ALTER TABLE messages ADD COLUMN message_type TEXT DEFAULT 'text';
+        ALTER TABLE messages ADD COLUMN audio_url TEXT;
+      `);
+      console.log('✅ message_type and audio_url columns added to messages table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

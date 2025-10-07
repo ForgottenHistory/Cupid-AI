@@ -9,9 +9,9 @@ class DecisionEngineService {
 
   /**
    * Decision Engine: Analyze conversation and decide on actions
-   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean }
+   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean }
    */
-  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false }) {
+  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -19,12 +19,26 @@ class DecisionEngineService {
     try {
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
 
+      // Get personality data if available
+      let personalityContext = '';
+      if (characterData.personality_data) {
+        try {
+          const personality = JSON.parse(characterData.personality_data);
+          personalityContext = `\nPersonality Traits:
+- Extraversion: ${personality.extraversion}/100 (${personality.extraversion > 60 ? 'outgoing, expressive' : 'reserved, thoughtful'})
+- Openness: ${personality.openness}/100 (${personality.openness > 60 ? 'experimental, creative' : 'traditional, practical'})`;
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+
       // Build decision prompt (plaintext output)
       const decisionPrompt = `You are a decision-making AI that analyzes dating app conversations and decides how the character should respond.
 
 Character: ${characterData.name}
-Description: ${characterData.description || 'N/A'}
+Description: ${characterData.description || 'N/A'}${personalityContext}
 ${isEngaged ? '\nCurrent state: Character is actively engaged in conversation (responding quickly)' : '\nCurrent state: Character is disengaged (slower responses based on availability)'}
+${hasVoice ? '\nVoice available: This character has a voice sample and can send voice messages' : '\nVoice available: No (text only)'}
 
 Recent conversation context:
 ${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
@@ -36,6 +50,7 @@ Decide on the character's behavioral response. Output your decision in this EXAC
 Reaction: [emoji or "none"]
 Should Respond: [yes/no]
 Should Unmatch: [yes/no]
+${hasVoice ? 'Send Voice: [yes/no]' : ''}
 
 Guidelines:
 - "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
@@ -45,9 +60,15 @@ Guidelines:
   * Extremely annoying
   * Persistently ignoring boundaries after warnings
   * Not fulfilling character's needs in any way
-  This should almost NEVER be "yes" - reserve it for serious violations only. Normal awkwardness, bad jokes, or being boring should NOT trigger unmatch.
+  This should almost NEVER be "yes" - reserve it for serious violations only. Normal awkwardness, bad jokes, or being boring should NOT trigger unmatch.${hasVoice ? `
+- "Send Voice": Should be OCCASIONAL, not every message. Consider:
+  * Personality: High extraversion/openness = more likely to use voice
+  * Context: Emotional moments, excitement, longer responses = more voice
+  * Variety: Don't overuse voice - text is default, voice is special
+  * Quick replies: Usually text
+  * Deep/heartfelt messages: More likely voice` : ''}
 
-Output ONLY the three lines in the exact format shown above, nothing else.`;
+Output ONLY the ${hasVoice ? 'four' : 'three'} lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Decision Engine Request:', {
         model: decisionSettings.model,
@@ -191,7 +212,8 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
       const decision = {
         reaction: null,
         shouldRespond: true,
-        shouldUnmatch: false
+        shouldUnmatch: false,
+        shouldSendVoice: false
       };
 
       for (const line of lines) {
@@ -207,6 +229,9 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
         } else if (line.startsWith('Should Unmatch:')) {
           const value = line.substring('Should Unmatch:'.length).trim().toLowerCase();
           decision.shouldUnmatch = value === 'yes';
+        } else if (line.startsWith('Send Voice:')) {
+          const value = line.substring('Send Voice:'.length).trim().toLowerCase();
+          decision.shouldSendVoice = value === 'yes';
         }
       }
 
@@ -249,7 +274,8 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
     return {
       reaction: null,
       shouldRespond: true,
-      shouldUnmatch: false
+      shouldUnmatch: false,
+      shouldSendVoice: false
     };
   }
 

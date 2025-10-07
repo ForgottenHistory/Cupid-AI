@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
 import Library from './pages/Library';
+import VoiceLibrary from './pages/VoiceLibrary';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 
@@ -38,6 +39,17 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Library />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/voices"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <VoiceLibrary />
                 </MainLayout>
               </ProtectedRoute>
             }

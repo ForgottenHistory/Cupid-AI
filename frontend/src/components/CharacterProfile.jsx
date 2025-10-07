@@ -4,6 +4,7 @@ import characterService from '../services/characterService';
 import ProfileTab from './characterProfile/ProfileTab';
 import ScheduleTab from './characterProfile/ScheduleTab';
 import PersonalityTab from './characterProfile/PersonalityTab';
+import VoiceTab from './characterProfile/VoiceTab';
 import OverviewTab from './characterProfile/OverviewTab';
 
 const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpdate, mode = 'library' }) => {
@@ -23,6 +24,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         { id: 'profile', label: 'Dating Profile' },
         { id: 'schedule', label: 'Schedule' },
         { id: 'personality', label: 'Personality' },
+        { id: 'voice', label: 'Voice' },
         { id: 'overview', label: 'Overview' },
       ];
 
@@ -301,6 +303,13 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 data={data}
                 loading={loading}
                 onGenerate={handleGeneratePersonality}
+              />
+            )}
+
+            {activeTab === 'voice' && (
+              <VoiceTab
+                character={character}
+                onUpdate={onUpdate}
               />
             )}
 

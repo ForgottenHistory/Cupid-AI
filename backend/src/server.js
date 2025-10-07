@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import chatRoutes from './routes/chat.js';
 import charactersRoutes from './routes/characters.js';
+import ttsRoutes from './routes/tts.js';
 
 // Import services
 import proactiveMessageService from './services/proactiveMessageService.js';
@@ -79,6 +80,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/characters', charactersRoutes);
+app.use('/api/tts', ttsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

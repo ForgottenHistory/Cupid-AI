@@ -45,3 +45,7 @@ Thumbs.db
 temp/
 tmp/
 nul
+/tts-server/venv
+test_output.wav
+/backend/uploads
+/tts-server/voices

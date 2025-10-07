@@ -325,6 +325,136 @@ Realistic conversation flow based on time durations:
 - Gradient progress bars with color coding
 - One-click generation from character description
 
+### Voice Messaging System 🎙️ ✅ COMPLETE
+**Overview**: Characters can send voice messages instead of text, adding personality and immersion through voice cloning.
+
+**Architecture**:
+- **TTS Server**: Separate Python FastAPI server running ChatterBox TTS (port 5000)
+- **Voice Library**: User-uploaded voice samples stored and managed
+- **Decision Engine**: Decides between text or voice message
+- **Node.js Proxy**: Backend proxies TTS requests and serves audio files
+
+**ChatterBox TTS Server** (`tts-server/`):
+- FastAPI server with ChatterBox TTS model
+- Voice upload/conversion (converts to 24kHz mono WAV)
+- TTS generation with voice cloning
+- Runs independently on port 5000
+- GPU-accelerated (CUDA/ROCm) or CPU fallback
+
+**Voice Library System**:
+```
+Frontend (React):
+- Voice Library page/modal for managing voices
+- Upload voice samples (WAV/MP3/OGG/FLAC)
+- Assign voices to characters
+- Audio preview/playback
+
+Backend (Node.js):
+- Voice CRUD endpoints (list, upload, delete)
+- Proxy upload to ChatterBox server
+- Link voices to characters (voice_id)
+- Serve generated audio files
+
+ChatterBox Server (Python):
+- POST /upload-voice - Process and store voice samples
+- POST /generate - Generate TTS with voice cloning
+- GET /voices - List available voices
+- DELETE /voices/{name} - Remove voice
+```
+
+**Decision Engine Integration**:
+```javascript
+// Decision LLM prompt addition
+{
+  shouldRespond: boolean,
+  shouldSendVoice: boolean,  // NEW: decide voice vs text
+  reaction: "emoji" | null,
+  continueEngagement: boolean,
+  shouldUnmatch: boolean
+}
+```
+
+**Decision Logic**:
+- Character personality affects voice frequency
+  - Extraversion: Higher = more voice messages
+  - Openness: Higher = more experimental with format
+- Conversation context affects decision
+  - Emotional moments → more likely voice
+  - Quick replies → text
+  - Long messages → voice
+- Random variation (not every message should be voice)
+
+**Database Schema**:
+```sql
+-- Add to characters table
+ALTER TABLE characters ADD COLUMN voice_id TEXT;
+
+-- Add to messages table
+ALTER TABLE messages ADD COLUMN message_type TEXT DEFAULT 'text'; -- 'text' or 'voice'
+ALTER TABLE messages ADD COLUMN audio_url TEXT;
+```
+
+**Message Flow (Voice)**:
+```
+1. User sends text message
+2. Decision Engine decides: shouldSendVoice = true
+3. Content LLM generates text response
+4. Backend sends text to ChatterBox TTS server
+   POST /api/tts/generate
+   { text, voice_name: character.voice_id }
+5. ChatterBox generates audio, returns .wav file
+6. Backend saves audio file to /uploads/audio/
+7. Message saved with:
+   - message_type: 'voice'
+   - content: [text transcript]
+   - audio_url: '/uploads/audio/{messageId}.wav'
+8. WebSocket sends message to frontend
+9. Frontend displays audio player instead of text bubble
+```
+
+**Frontend Components**:
+```
+VoiceLibrary.jsx:
+- Upload voice samples
+- Preview/delete voices
+- Assign to characters
+
+AudioMessageBubble.jsx:
+- Audio player with waveform
+- Play/pause controls
+- Duration display
+- Transcript toggle (show/hide text)
+
+CharacterProfile.jsx:
+- Voice selection dropdown
+- "Test Voice" button (preview TTS)
+```
+
+**Implementation Steps**:
+1. ✅ ChatterBox TTS server setup (separate Python service)
+2. ✅ Backend voice library endpoints (CRUD operations)
+3. ✅ Backend TTS proxy endpoint (forward to ChatterBox)
+4. ✅ Database migrations (voice_id, message_type, audio_url)
+5. ✅ Decision engine voice decision logic
+6. ✅ Message processor voice generation
+7. ✅ Frontend voice library UI
+8. ✅ Frontend audio message bubbles
+9. ✅ Character voice assignment UI
+
+**Technical Notes**:
+- Voice samples: 10+ seconds recommended for quality cloning
+- Audio format: WAV files (24kHz, mono)
+- File storage: `/uploads/audio/` for generated messages
+- Caching: Consider caching common phrases per character
+- Fallback: If TTS fails, send text message instead
+- Performance: ~20 seconds generation time per message
+
+**Future Enhancements**:
+- Voice message transcription (STT for user audio)
+- Emotion control in voice (ChatterBox exaggeration parameter)
+- Voice mixing (blend multiple voice samples)
+- Real-time voice generation (streaming audio)
+
 ### Phase 3: Drama Engine 🔮 FUTURE
 - Random events that affect character mood/availability
 - Mood shifts based on conversation content

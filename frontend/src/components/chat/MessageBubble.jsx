@@ -1,4 +1,5 @@
 import { shouldShowTimestamp } from '../../utils/messageUtils';
+import AudioPlayer from './AudioPlayer';
 
 /**
  * Individual message bubble component
@@ -90,7 +91,18 @@ const MessageBubble = ({
             : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
         }`}
       >
-        <p className="break-words leading-relaxed">{message.content}</p>
+        {/* Voice message or text message */}
+        {message.message_type === 'voice' && message.audio_url ? (
+          <AudioPlayer
+            audioUrl={message.audio_url}
+            showTranscript={true}
+            transcript={message.content}
+            role={message.role}
+          />
+        ) : (
+          <p className="break-words leading-relaxed">{message.content}</p>
+        )}
+
         {/* Show timestamp for user messages or last part of assistant multi-messages */}
         {shouldShowTimestamp(message) && (
           <p
