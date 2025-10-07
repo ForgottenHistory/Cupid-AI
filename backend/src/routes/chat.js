@@ -131,8 +131,11 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
       schedule: characterData.schedule,
     });
 
+    // Clean up em dashes (replace with periods)
+    const cleanedContent = aiResponse.content.replace(/—/g, '.');
+
     // Save AI first message
-    messageService.saveMessage(conversation.id, 'assistant', aiResponse.content);
+    messageService.saveMessage(conversation.id, 'assistant', cleanedContent);
 
     // Update conversation timestamp and increment unread count
     conversationService.incrementUnreadCount(conversation.id);
@@ -144,7 +147,7 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
       conversation,
       messages: allMessages,
       aiResponse: {
-        content: aiResponse.content,
+        content: cleanedContent,
         model: aiResponse.model,
       }
     });
@@ -287,8 +290,11 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       schedule: characterData.schedule,
     });
 
+    // Clean up em dashes (replace with periods)
+    const cleanedContent = aiResponse.content.replace(/—/g, '.');
+
     // Save AI response
-    messageService.saveMessage(conversation.id, 'assistant', aiResponse.content);
+    messageService.saveMessage(conversation.id, 'assistant', cleanedContent);
 
     // Update conversation timestamp and increment unread count
     conversationService.incrementUnreadCount(conversation.id);
@@ -300,7 +306,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       conversation,
       messages,
       aiResponse: {
-        content: aiResponse.content,
+        content: cleanedContent,
         model: aiResponse.model,
       }
     });

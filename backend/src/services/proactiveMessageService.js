@@ -213,11 +213,14 @@ class ProactiveMessageService {
         proactiveType: decision.messageType
       });
 
+      // Clean up em dashes (replace with periods)
+      const cleanedContent = aiResponse.content.replace(/—/g, '.');
+
       // Save message
       const savedMessage = messageService.saveMessage(
         conversationId,
         'assistant',
-        aiResponse.content,
+        cleanedContent,
         null // No reaction for proactive messages
       );
 
@@ -230,7 +233,7 @@ class ProactiveMessageService {
         conversationId,
         message: savedMessage,
         aiResponse: {
-          content: aiResponse.content,
+          content: cleanedContent,
           model: aiResponse.model,
           reaction: null
         },

@@ -165,10 +165,13 @@ class MessageProcessor {
 
       // Save AI response with reaction
       if (aiResponse) {
+        // Clean up em dashes (replace with periods)
+        const cleanedContent = aiResponse.content.replace(/—/g, '.');
+
         const savedMessage = messageService.saveMessage(
           conversationId,
           'assistant',
-          aiResponse.content,
+          cleanedContent,
           decision.reaction
         );
 
@@ -186,7 +189,7 @@ class MessageProcessor {
           conversationId,
           message: savedMessage,
           aiResponse: {
-            content: aiResponse.content,
+            content: cleanedContent,
             model: aiResponse.model,
             reaction: decision.reaction
           }
