@@ -1,24 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install)",
-      "Bash(npm start)",
-      "Bash(timeout:*)",
-      "Bash(curl:*)",
-      "Bash(npm install:*)",
-      "Bash(npm run dev:*)",
-      "Bash(netstat:*)",
-      "Bash(findstr:*)",
-      "Bash(taskkill:*)",
-      "WebSearch",
-      "Bash(cmd //c taskkill:*)",
-      "Bash(npx vite:*)",
-      "Bash(cmd /c taskkill:*)",
-      "Bash(git init:*)",
-      "Bash(cmd //c \"tasklist | findstr node\")",
-      "Bash(git add:*)",
-      "Bash(git push:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nAdd super like system with personality-based probability\n\nFeatures:\n- Characters can super like users (2 per day limit)\n- Probability based on extraversion trait (0-10%)\n- Only triggers when character is online\n- Special animated modal with blue heart and sparkles\n- Guaranteed first message on super like\n- AI generates extra enthusiastic first message\n- Debug function: debugSuperLike() in browser console\n\nBackend:\n- SuperLikeService: daily limit tracking, probability calculation\n- Database columns: super_likes_today, last_super_like_date, is_super_like\n- API endpoint: POST /api/characters/:characterId/like\n- Enhanced first message prompt for super likes\n\nFrontend:\n- SuperLikeModal component with blue gradient and animations\n- Updated Home.jsx to handle super like flow\n- characterService calls backend to check super like status\n- characterHelpers utility for status calculation\nEOF\n)\")"
+      "Bash(find:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

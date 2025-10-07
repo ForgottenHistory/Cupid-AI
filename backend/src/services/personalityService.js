@@ -1,0 +1,114 @@
+import axios from 'axios';
+
+class PersonalityService {
+  constructor() {
+    this.apiKey = process.env.OPENROUTER_API_KEY;
+    this.baseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+  }
+
+  /**
+   * Generate Big Five personality traits for a character
+   * Returns: { openness: 0-100, conscientiousness: 0-100, extraversion: 0-100, agreeableness: 0-100, neuroticism: 0-100 }
+   */
+  async generatePersonality(characterData) {
+    if (!this.apiKey) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
+    try {
+      const prompt = `Analyze this character using the Big Five (OCEAN) personality model. Rate each trait on a 0-100 scale.
+
+Character: ${characterData.name}
+Description: ${characterData.description || 'N/A'}
+Personality: ${characterData.personality || 'N/A'}
+
+Rate these Big Five traits (0-100):
+- Openness: Curiosity, creativity, open to new experiences (0 = conventional/cautious, 100 = inventive/curious)
+- Conscientiousness: Organization, dependability, discipline (0 = spontaneous/careless, 100 = efficient/organized)
+- Extraversion: Sociability, assertiveness, energy around others (0 = reserved/introverted, 100 = outgoing/energetic)
+- Agreeableness: Compassion, cooperation, trust in others (0 = competitive/detached, 100 = friendly/compassionate)
+- Neuroticism: Emotional stability vs. tendency toward anxiety (0 = calm/stable, 100 = anxious/sensitive)
+
+Output ONLY in this exact format:
+Openness: [0-100]
+Conscientiousness: [0-100]
+Extraversion: [0-100]
+Agreeableness: [0-100]
+Neuroticism: [0-100]`;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: 'deepseek/deepseek-chat-v3', // Use small model for this
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7,
+          max_tokens: 200,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://localhost:3000',
+            'X-Title': 'AI-Dater Personality Generator',
+          }
+        }
+      );
+
+      const content = response.data.choices[0].message.content.trim();
+
+      // Parse response
+      const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const personality = this.getDefaultPersonality();
+
+      for (const line of lines) {
+        if (line.startsWith('Openness:')) {
+          const value = parseInt(line.substring('Openness:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.openness = value;
+          }
+        } else if (line.startsWith('Conscientiousness:')) {
+          const value = parseInt(line.substring('Conscientiousness:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.conscientiousness = value;
+          }
+        } else if (line.startsWith('Extraversion:')) {
+          const value = parseInt(line.substring('Extraversion:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.extraversion = value;
+          }
+        } else if (line.startsWith('Agreeableness:')) {
+          const value = parseInt(line.substring('Agreeableness:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.agreeableness = value;
+          }
+        } else if (line.startsWith('Neuroticism:')) {
+          const value = parseInt(line.substring('Neuroticism:'.length).trim());
+          if (!isNaN(value) && value >= 0 && value <= 100) {
+            personality.neuroticism = value;
+          }
+        }
+      }
+
+      console.log('✅ Big Five personality generated:', personality);
+      return personality;
+    } catch (error) {
+      console.error('❌ Personality generation error:', error.message);
+      return this.getDefaultPersonality();
+    }
+  }
+
+  /**
+   * Get default personality values
+   */
+  getDefaultPersonality() {
+    return {
+      openness: 50,
+      conscientiousness: 50,
+      extraversion: 50,
+      agreeableness: 50,
+      neuroticism: 50
+    };
+  }
+}
+
+export default new PersonalityService();
