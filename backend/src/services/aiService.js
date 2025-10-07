@@ -407,7 +407,7 @@ Stay true to your character but keep it real and chill.`);
     try {
       const decisionSettings = this.getDecisionLLMSettings(userId);
 
-      // Build decision prompt
+      // Build decision prompt (plaintext output)
       const decisionPrompt = `You are a decision-making AI that analyzes dating app conversations and decides how the character should respond.
 
 Character: ${characterData.name}
@@ -419,24 +419,29 @@ ${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterData.name
 
 User just sent: "${userMessage}"
 
-Decide on the character's behavioral response. You must output ONLY valid JSON in this exact format:
-{
-  "reaction": "emoji or null",
-  "shouldRespond": true,
-  "continueEngagement": ${isEngaged ? 'true or false' : 'false'}
-}
+Decide on the character's behavioral response. Output your decision in this EXACT plaintext format:
+
+Reaction: [emoji or "none"]
+Should Respond: [yes/no]
+Continue Engagement: [yes/no]
+Should Unmatch: [yes/no]
 
 Guidelines:
-- "reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get null. Don't react to every message!
+- "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
 - If you do react, choose ONE emoji that represents a strong emotional reaction (❤️, 😂, 🔥, 😍, 😭, etc.)
-- "shouldRespond": Always true for now (we will expand this later)
-${isEngaged ? `- "continueEngagement": Decide if the character wants to keep chatting actively (true) or needs to disengage and return to their schedule (false). Consider:
+- "Should Respond": Always "yes" for now (we will expand this later)
+${isEngaged ? `- "Continue Engagement": Decide if the character wants to keep chatting actively ("yes") or needs to disengage and return to their schedule ("no"). Consider:
   * Is the conversation naturally winding down?
   * Does the character need to get back to what they were doing?
   * Is this a good stopping point?
-  * Most conversations should last 2-5 quick exchanges before disengaging` : '- "continueEngagement": Always false when disengaged'}
+  * Most conversations should last 2-5 quick exchanges before disengaging` : '- "Continue Engagement": Always "no" when disengaged'}
+- "Should Unmatch": EXTREMELY RARE - Only "yes" if the user is being:
+  * Extremely annoying
+  * Persistently ignoring boundaries after warnings
+  * Not fulfilling character's needs in any way
+  This should almost NEVER be "yes" - reserve it for serious violations only. Normal awkwardness, bad jokes, or being boring should NOT trigger unmatch.
 
-Output ONLY the JSON, nothing else.`;
+Output ONLY the four lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Decision Engine Request:', {
         model: decisionSettings.model,
@@ -474,28 +479,44 @@ Output ONLY the JSON, nothing else.`;
         usage: response.data.usage
       });
 
-      // Parse JSON response (strip markdown code fences if present)
+      // Parse plaintext response
       try {
-        let jsonContent = content.trim();
+        const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const decision = {
+          reaction: null,
+          shouldRespond: true,
+          continueEngagement: false,
+          shouldUnmatch: false
+        };
 
-        // Remove markdown code fences if present
-        if (jsonContent.startsWith('```')) {
-          jsonContent = jsonContent.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+        for (const line of lines) {
+          if (line.startsWith('Reaction:')) {
+            const value = line.substring('Reaction:'.length).trim();
+            // If it's "none" or empty, keep null. Otherwise use the emoji
+            if (value && value.toLowerCase() !== 'none') {
+              decision.reaction = value;
+            }
+          } else if (line.startsWith('Should Respond:')) {
+            const value = line.substring('Should Respond:'.length).trim().toLowerCase();
+            decision.shouldRespond = value === 'yes';
+          } else if (line.startsWith('Continue Engagement:')) {
+            const value = line.substring('Continue Engagement:'.length).trim().toLowerCase();
+            decision.continueEngagement = value === 'yes';
+          } else if (line.startsWith('Should Unmatch:')) {
+            const value = line.substring('Should Unmatch:'.length).trim().toLowerCase();
+            decision.shouldUnmatch = value === 'yes';
+          }
         }
 
-        const decision = JSON.parse(jsonContent);
-        return {
-          reaction: decision.reaction || null,
-          shouldRespond: decision.shouldRespond !== false, // Default to true
-          continueEngagement: decision.continueEngagement === true // Default to false
-        };
+        return decision;
       } catch (parseError) {
-        console.error('Failed to parse decision JSON:', parseError, 'Content:', content);
-        // Fallback: no reaction, but respond, don't continue engagement
+        console.error('Failed to parse decision response:', parseError, 'Content:', content);
+        // Fallback: no reaction, but respond, don't continue engagement, don't unmatch
         return {
           reaction: null,
           shouldRespond: true,
-          continueEngagement: false
+          continueEngagement: false,
+          shouldUnmatch: false
         };
       }
     } catch (error) {
@@ -504,11 +525,12 @@ Output ONLY the JSON, nothing else.`;
         status: error.response?.status,
         data: error.response?.data
       });
-      // On error, fail gracefully: no reaction, but respond, don't continue engagement
+      // On error, fail gracefully: no reaction, but respond, don't continue engagement, don't unmatch
       return {
         reaction: null,
         shouldRespond: true,
-        continueEngagement: false
+        continueEngagement: false,
+        shouldUnmatch: false
       };
     }
   }

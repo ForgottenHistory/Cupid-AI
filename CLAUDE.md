@@ -100,7 +100,9 @@ Auto-run on startup via `database.js`:
 ### Dual LLM Architecture
 - **Decision Engine** (small LLM): Analyzes conversation context and makes behavioral decisions
   - Determines if character should react with emoji (rare, 1 in 5 messages or less)
-  - Returns: `{ reaction: "emoji"|null, shouldRespond: boolean }`
+  - Decides if character wants to continue engagement or disengage
+  - Decides if character should unmatch (extremely rare, only for inappropriate behavior)
+  - Returns: `{ reaction: "emoji"|null, shouldRespond: boolean, continueEngagement: boolean, shouldUnmatch: boolean }`
   - Uses separate user-configurable settings (lower temperature, fewer tokens)
   - Located in `aiService.js` `makeDecision()`
 - **Content Generator** (large LLM): Creates actual character responses
@@ -121,10 +123,11 @@ Located in `aiService.js` `buildSystemPrompt()`:
 3. Get/create engagement state → calculate response delay
 4. If disengaged, 70% chance to start engagement window (2-5 fast messages)
 5. Apply calculated delay (status-based or engagement-based)
-6. Decision LLM analyzes context → decides reaction
-7. Content LLM generates response (if `shouldRespond: true`)
-8. Response saved with reaction → engagement message consumed
-9. Response displayed with reaction badge on user's message
+6. Decision LLM analyzes context → decides reaction, engagement, and unmatch
+7. **If unmatch decision**: Character deleted from backend, conversation removed, unmatch modal shown
+8. Content LLM generates response (if `shouldRespond: true` and not unmatched)
+9. Response saved with reaction → engagement message consumed
+10. Response displayed with reaction badge on user's message
 
 ### Engagement Window System
 Located in `engagementService.js`:
@@ -158,6 +161,13 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
 
 ## Recent Changes
 
+- **Character-initiated unmatch** ✅
+  - Decision Engine can decide to unmatch (extremely rare, only for inappropriate user behavior)
+  - Character deleted from backend, conversation removed, user notified via WebSocket
+  - Animated unmatch modal (similar to match modal but with broken hearts and red theme)
+  - Modal shows character name, grayscale image, and "Back to Home" button
+  - Debug function `debugUnmatch()` available in browser console for testing
+  - Located in: `messageProcessor.js` (backend), `UnmatchModal.jsx` (frontend), `useChatWebSocket.js` (WebSocket handler)
 - **Phase 2: Schedule & Engagement System** ✅
   - LLM-generated weekly schedules (online/away/busy/offline status blocks)
   - Real-time status calculation from schedule + current time
@@ -168,7 +178,7 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
   - Schedule generation UI in character profile Library
   - Plaintext schedule format (more reliable than JSON, fewer tokens)
 - **Dual LLM system**: Decision engine + content generator architecture
-  - Small LLM makes behavioral decisions (reactions, mood changes)
+  - Small LLM makes behavioral decisions (reactions, mood changes, engagement, unmatch)
   - Large LLM generates character responses
   - Separate configurable settings for each in Profile (tabs: Content LLM / Decision LLM)
 - **Reaction system**: Emoji reactions overlay on user messages

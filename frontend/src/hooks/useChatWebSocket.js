@@ -29,6 +29,7 @@ export const useChatWebSocket = ({
   inputRef,
 }) => {
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
+  const [unmatchData, setUnmatchData] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -112,10 +113,34 @@ export const useChatWebSocket = ({
       setError(data.error || 'Failed to generate response');
     };
 
+    const handleCharacterUnmatched = async (data) => {
+      if (data.characterId !== characterId) return;
+      console.log('💔 Character has unmatched:', data);
+
+      // Unlike character in IndexedDB
+      try {
+        const characterService = (await import('../services/characterService')).default;
+        await characterService.unlikeCharacter(data.characterId);
+
+        // Notify other components to refresh
+        window.dispatchEvent(new Event('characterUpdated'));
+
+        // Set unmatch data to trigger modal display
+        setUnmatchData({
+          characterId: data.characterId,
+          characterName: data.characterName,
+          reason: data.reason
+        });
+      } catch (error) {
+        console.error('Failed to handle unmatch:', error);
+      }
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
     socketService.on('ai_response_error', handleAIResponseError);
+    socketService.on('character_unmatched', handleCharacterUnmatched);
 
     // Cleanup
     return () => {
@@ -123,11 +148,14 @@ export const useChatWebSocket = ({
       socketService.off('character_typing', handleCharacterTyping);
       socketService.off('character_offline', handleCharacterOffline);
       socketService.off('ai_response_error', handleAIResponseError);
+      socketService.off('character_unmatched', handleCharacterUnmatched);
     };
   }, [user, characterId]);
 
   return {
     showTypingIndicator,
     setShowTypingIndicator,
+    unmatchData,
+    setUnmatchData,
   };
 };

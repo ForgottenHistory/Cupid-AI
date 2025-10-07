@@ -14,6 +14,7 @@ import { useMessageActions } from '../hooks/useMessageActions';
 import ChatHeader from '../components/chat/ChatHeader';
 import MessageList from '../components/chat/MessageList';
 import ChatInput from '../components/chat/ChatInput';
+import UnmatchModal from '../components/UnmatchModal';
 
 const Chat = () => {
   const { characterId } = useParams();
@@ -77,7 +78,7 @@ const Chat = () => {
   });
 
   // WebSocket real-time messaging
-  const { showTypingIndicator } = useChatWebSocket({
+  const { showTypingIndicator, unmatchData, setUnmatchData } = useChatWebSocket({
     characterId,
     user,
     isMountedRef,
@@ -96,6 +97,23 @@ const Chat = () => {
     setDisplayingMessages(false);
     clearDisplayTimeouts();
   }, [characterId]);
+
+  // Debug function for testing unmatch modal
+  useEffect(() => {
+    if (character) {
+      window.debugUnmatch = () => {
+        console.log('🐛 Debug: Triggering unmatch modal');
+        setUnmatchData({
+          characterId: character.id,
+          characterName: character.name,
+          reason: 'Debug test unmatch'
+        });
+      };
+    }
+    return () => {
+      delete window.debugUnmatch;
+    };
+  }, [character]);
 
   // Handle unmatch
   const handleUnmatch = async () => {
@@ -203,6 +221,17 @@ const Chat = () => {
         onSend={handleSend}
         onRegenerate={handleRegenerateLast}
       />
+
+      {/* Unmatch Modal */}
+      {unmatchData && (
+        <UnmatchModal
+          character={{
+            name: unmatchData.characterName || character?.name,
+            imageUrl: character?.imageUrl
+          }}
+          onClose={() => setUnmatchData(null)}
+        />
+      )}
     </div>
   );
 };

@@ -108,6 +108,29 @@ class MessageProcessor {
 
       console.log('🎯 Decision made:', decision);
 
+      // Check if character wants to unmatch
+      if (decision.shouldUnmatch) {
+        console.log(`💔 Character ${characterId} has decided to unmatch user ${userId}`);
+
+        // Delete character from backend (removes match)
+        db.prepare(`
+          DELETE FROM characters WHERE id = ? AND user_id = ?
+        `).run(characterId, userId);
+
+        // Delete conversation and messages
+        conversationService.deleteConversation(userId, conversationId);
+
+        // Emit unmatch event to frontend
+        io.to(`user:${userId}`).emit('character_unmatched', {
+          characterId,
+          characterName: characterData.name || 'Character',
+          reason: 'The character has decided to unmatch with you.'
+        });
+
+        console.log(`✅ Character ${characterId} successfully unmatched user ${userId}`);
+        return; // Don't generate response, end processing
+      }
+
       // Get user bio
       const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
       const userBio = user?.bio || null;
