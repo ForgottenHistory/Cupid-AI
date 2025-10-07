@@ -247,6 +247,25 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
   - Rare (1 in 5 messages or less), only on emotionally significant messages
   - Positioned absolutely on user message bubbles (-bottom-2, -right-2)
   - Stored in messages table, displayed via lookahead (check next message)
+- **Voice messaging system** ✅ (DISABLED)
+  - ChatterBox TTS server integration (separate Python service on port 5000)
+  - Voice Library: Upload/manage voice samples (WAV/MP3/OGG/FLAC → 24kHz mono WAV)
+  - Character voice assignment in Image tab
+  - Decision Engine decides when to send voice vs text
+  - Web Audio API player with phone-quality effects (muffled, intimate)
+  - Database: `voice_id` (characters), `message_type`/`audio_url` (messages)
+  - Feature flag: `VOICE_MESSAGES_ENABLED=false` (disabled, audio effects need tuning)
+- **Image generation system** ✅
+  - Stable Diffusion WebUI integration (port 7860) with Highres fix + ADetailer
+  - Character image tags (Danbooru format) configured in Image tab
+  - Decision Engine decides when to send images + generates contextual tags
+  - Final prompt: `base + character tags + context tags` (e.g., "masterpiece, best quality, amazing quality, 1girl, solo, blue hair, red eyes, smiling, park, daytime")
+  - Context-aware decisions: user asks for photo → YES, flirty moments → consider, random → NO
+  - Content LLM informed of media decision to write appropriate accompanying text
+  - Database: `image_tags` (characters), `image_url` (messages)
+  - Images saved to `/uploads/images/`, displayed in chat (click to open full size)
+  - Debug function: `debugGenerateImage(contextTags)` in browser console
+  - Feature flag: `IMAGE_MESSAGES_ENABLED=true`
 - **File logging**: All console output logged to `backend/logs/server.log`
   - Auto-clears on server restart
   - Intercepts console.log/error/warn at startup
@@ -270,6 +289,10 @@ FRONTEND_URL=http://localhost:5173
 JWT_SECRET=<random-secret>
 OPENROUTER_API_KEY=<your-key>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+TTS_SERVER_URL=http://localhost:5000
+SD_SERVER_URL=http://127.0.0.1:7860
+VOICE_MESSAGES_ENABLED=false
+IMAGE_MESSAGES_ENABLED=true
 ```
 
 No frontend env vars needed (API URL hardcoded to localhost:3000).

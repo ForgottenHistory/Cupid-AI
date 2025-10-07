@@ -112,9 +112,87 @@ const Chat = () => {
           reason: 'Debug test unmatch'
         });
       };
+
+      // Debug function for generating character image
+      window.debugGenerateImage = async (contextTags = 'smiling, casual clothes, outdoors, daytime') => {
+        console.log('🐛 Debug: Generating image for', character.name);
+        console.log('🎨 Context tags:', contextTags);
+
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:3000/api/debug/generate-image/${character.id}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ contextTags })
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            console.error('❌ Image generation failed:', error);
+            alert(`Failed to generate image: ${error.error}`);
+            return;
+          }
+
+          const result = await response.json();
+          console.log('✅ Image generated!');
+          console.log('📝 Full prompt:', result.prompt);
+
+          // Download image
+          try {
+            const link = document.createElement('a');
+            link.href = result.image;
+            link.download = `${character.name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.png`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            console.log('💾 Image downloaded!');
+            alert(`Image generated and downloaded!\n\nPrompt: ${result.prompt}`);
+          } catch (downloadError) {
+            console.error('Download failed, showing image in console instead:', downloadError);
+            console.log('🖼️ Image data:', result.image);
+
+            // Try to open in new window as fallback
+            try {
+              const newWindow = window.open('', '_blank');
+              if (newWindow) {
+                newWindow.document.write(`
+                  <html>
+                    <head><title>${character.name} - Generated Image</title></head>
+                    <body style="margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh;">
+                      <img src="${result.image}" style="max-width: 90vw; max-height: 80vh; object-fit: contain;" />
+                      <div style="color: white; text-align: center; padding: 20px; font-family: monospace; font-size: 12px; max-width: 90vw; word-wrap: break-word;">
+                        <p><strong>Prompt:</strong> ${result.prompt}</p>
+                        <p style="margin-top: 10px;"><em>Right-click image to save</em></p>
+                      </div>
+                    </body>
+                  </html>
+                `);
+                newWindow.document.close();
+              } else {
+                alert('Image generated! Check console for image data (copy the data URI to browser to view)');
+              }
+            } catch (windowError) {
+              alert('Image generated! Check console - copy the image data URI to your browser to view it.');
+            }
+          }
+        } catch (error) {
+          console.error('❌ Debug image generation error:', error);
+          alert(`Error: ${error.message}`);
+        }
+      };
+
+      console.log('🐛 Debug functions available:');
+      console.log('  - debugUnmatch() - Test unmatch modal');
+      console.log('  - debugGenerateImage(contextTags) - Generate character image');
+      console.log('    Example: debugGenerateImage("smiling, waving, park, sunny day")');
     }
     return () => {
       delete window.debugUnmatch;
+      delete window.debugGenerateImage;
     };
   }, [character]);
 

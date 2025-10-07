@@ -184,6 +184,37 @@ function runMigrations() {
       `);
       console.log('✅ message_type and audio_url columns added to messages table');
     }
+
+    // Migration: Add image_tags column to characters table
+    if (!charactersColumnNames.includes('image_tags')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN image_tags TEXT;`);
+      console.log('✅ image_tags column added to characters table');
+    }
+
+    // Migration: Add image_url column to messages table
+    if (!messagesColumnNames.includes('image_url')) {
+      db.exec(`ALTER TABLE messages ADD COLUMN image_url TEXT;`);
+      console.log('✅ image_url column added to messages table');
+    }
+
+    // Migration: Add Stable Diffusion settings columns to users table
+    if (!userColumnNames.includes('sd_steps')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN sd_steps INTEGER DEFAULT 30;
+        ALTER TABLE users ADD COLUMN sd_cfg_scale REAL DEFAULT 7.0;
+        ALTER TABLE users ADD COLUMN sd_sampler TEXT DEFAULT 'DPM++ 2M';
+        ALTER TABLE users ADD COLUMN sd_scheduler TEXT DEFAULT 'Karras';
+        ALTER TABLE users ADD COLUMN sd_enable_hr INTEGER DEFAULT 1;
+        ALTER TABLE users ADD COLUMN sd_hr_scale REAL DEFAULT 1.5;
+        ALTER TABLE users ADD COLUMN sd_hr_upscaler TEXT DEFAULT 'remacri_original';
+        ALTER TABLE users ADD COLUMN sd_hr_steps INTEGER DEFAULT 15;
+        ALTER TABLE users ADD COLUMN sd_hr_cfg REAL DEFAULT 5.0;
+        ALTER TABLE users ADD COLUMN sd_denoising_strength REAL DEFAULT 0.7;
+        ALTER TABLE users ADD COLUMN sd_enable_adetailer INTEGER DEFAULT 1;
+        ALTER TABLE users ADD COLUMN sd_adetailer_model TEXT DEFAULT 'face_yolov8n.pt';
+      `);
+      console.log('✅ Stable Diffusion settings columns added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

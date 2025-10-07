@@ -44,4 +44,46 @@ router.put('/:characterId/voice', authenticateToken, (req, res) => {
   }
 });
 
+// ===== Get Character Data Route =====
+router.get('/:characterId', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+
+    const character = db.prepare(`
+      SELECT * FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    res.json(character);
+  } catch (error) {
+    console.error('Failed to get character:', error);
+    res.status(500).json({ error: 'Failed to get character' });
+  }
+});
+
+// ===== Image Tags Assignment Route =====
+router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { image_tags } = req.body;
+    const userId = req.user.id;
+
+    // Update character image_tags
+    db.prepare(`
+      UPDATE characters
+      SET image_tags = ?
+      WHERE id = ? AND user_id = ?
+    `).run(image_tags, characterId, userId);
+
+    res.json({ success: true, image_tags });
+  } catch (error) {
+    console.error('Failed to update character image tags:', error);
+    res.status(500).json({ error: 'Failed to update character image tags' });
+  }
+});
+
 export default router;

@@ -18,13 +18,13 @@ class AIService {
   /**
    * Send a chat completion request to OpenRouter
    */
-  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null }) {
+  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
     try {
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType);
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision);
       const userSettings = llmSettingsService.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;

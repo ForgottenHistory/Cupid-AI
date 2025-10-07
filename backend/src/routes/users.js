@@ -397,4 +397,74 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
   }
 });
 
+/**
+ * GET /api/users/sd-settings
+ * Get user's Stable Diffusion settings
+ */
+router.get('/sd-settings', authenticateToken, (req, res) => {
+  try {
+    const settings = db.prepare(`
+      SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
+             sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
+             sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model
+      FROM users WHERE id = ?
+    `).get(req.user.id);
+
+    if (!settings) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      sd_steps: settings.sd_steps,
+      sd_cfg_scale: settings.sd_cfg_scale,
+      sd_sampler: settings.sd_sampler,
+      sd_scheduler: settings.sd_scheduler,
+      sd_enable_hr: Boolean(settings.sd_enable_hr),
+      sd_hr_scale: settings.sd_hr_scale,
+      sd_hr_upscaler: settings.sd_hr_upscaler,
+      sd_hr_steps: settings.sd_hr_steps,
+      sd_hr_cfg: settings.sd_hr_cfg,
+      sd_denoising_strength: settings.sd_denoising_strength,
+      sd_enable_adetailer: Boolean(settings.sd_enable_adetailer),
+      sd_adetailer_model: settings.sd_adetailer_model
+    });
+  } catch (error) {
+    console.error('Get SD settings error:', error);
+    res.status(500).json({ error: 'Failed to get SD settings' });
+  }
+});
+
+/**
+ * PUT /api/users/sd-settings
+ * Update user's Stable Diffusion settings
+ */
+router.put('/sd-settings', authenticateToken, (req, res) => {
+  try {
+    const {
+      sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
+      sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
+      sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model
+    } = req.body;
+    const userId = req.user.id;
+
+    db.prepare(`
+      UPDATE users
+      SET sd_steps = ?, sd_cfg_scale = ?, sd_sampler = ?, sd_scheduler = ?,
+          sd_enable_hr = ?, sd_hr_scale = ?, sd_hr_upscaler = ?, sd_hr_steps = ?,
+          sd_hr_cfg = ?, sd_denoising_strength = ?, sd_enable_adetailer = ?, sd_adetailer_model = ?
+      WHERE id = ?
+    `).run(
+      sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
+      sd_enable_hr ? 1 : 0, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
+      sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer ? 1 : 0, sd_adetailer_model,
+      userId
+    );
+
+    res.json({ success: true, message: 'SD settings updated successfully' });
+  } catch (error) {
+    console.error('Update SD settings error:', error);
+    res.status(500).json({ error: 'Failed to update SD settings' });
+  }
+});
+
 export default router;

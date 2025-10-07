@@ -5,6 +5,7 @@ import ProfileTab from './characterProfile/ProfileTab';
 import ScheduleTab from './characterProfile/ScheduleTab';
 import PersonalityTab from './characterProfile/PersonalityTab';
 import VoiceTab from './characterProfile/VoiceTab';
+import ImageTab from './characterProfile/ImageTab';
 import OverviewTab from './characterProfile/OverviewTab';
 
 const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpdate, mode = 'library' }) => {
@@ -25,6 +26,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         { id: 'schedule', label: 'Schedule' },
         { id: 'personality', label: 'Personality' },
         { id: 'voice', label: 'Voice' },
+        { id: 'image', label: 'Image' },
         { id: 'overview', label: 'Overview' },
       ];
 
@@ -308,6 +310,13 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
 
             {activeTab === 'voice' && (
               <VoiceTab
+                character={character}
+                onUpdate={onUpdate}
+              />
+            )}
+
+            {activeTab === 'image' && (
+              <ImageTab
                 character={character}
                 onUpdate={onUpdate}
               />

@@ -4,6 +4,7 @@ import engagementService from './engagementService.js';
 import conversationService from './conversationService.js';
 import messageService from './messageService.js';
 import ttsService from './ttsService.js';
+import sdService from './sdService.js';
 import { getCurrentStatusFromSchedule, sleep } from '../utils/chatHelpers.js';
 
 class MessageProcessor {
@@ -46,6 +47,10 @@ class MessageProcessor {
       // Check if character has a voice assigned
       const hasVoice = backendCharacter?.voice_id ? true : false;
       const voiceId = backendCharacter?.voice_id || null;
+
+      // Check if character has image tags configured
+      const hasImage = backendCharacter?.image_tags ? true : false;
+      const imageTags = backendCharacter?.image_tags || null;
 
       // Step 3: Get or create engagement state
       const engagementState = engagementService.getEngagementState(userId, characterId);
@@ -120,7 +125,7 @@ class MessageProcessor {
         }
       }
 
-      // Call Decision LLM (pass current engagement state and voice availability)
+      // Call Decision LLM (pass current engagement state, voice, and image availability)
       const currentlyEngaged = engagementState?.engagement_state === 'engaged';
       const decision = await aiService.makeDecision({
         messages: aiMessages,
@@ -128,7 +133,8 @@ class MessageProcessor {
         userMessage: userMessage,
         userId: userId,
         isEngaged: currentlyEngaged,
-        hasVoice: hasVoice
+        hasVoice: hasVoice,
+        hasImage: hasImage
       });
 
       console.log('🎯 Decision made:', decision);
@@ -170,7 +176,8 @@ class MessageProcessor {
           currentStatus: currentStatusInfo,
           userBio: userBio,
           schedule: schedule,
-          isDeparting: isDeparting
+          isDeparting: isDeparting,
+          decision: decision  // Pass decision so Content LLM knows about media
         });
       }
 
@@ -181,6 +188,7 @@ class MessageProcessor {
 
         let messageType = 'text';
         let audioUrl = null;
+        let imageUrl = null;
 
         // Generate voice message if decision says so (and feature is enabled)
         const voiceMessagesEnabled = process.env.VOICE_MESSAGES_ENABLED === 'true';
@@ -228,13 +236,69 @@ class MessageProcessor {
           }
         }
 
+        // Generate image if decision says so (and feature is enabled)
+        const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
+        if (imageMessagesEnabled && decision.shouldSendImage && hasImage && imageTags && decision.imageContext) {
+          console.log(`🎨 Generating image for character ${characterId}`);
+          console.log(`Character tags: ${imageTags}`);
+          console.log(`Context tags: ${decision.imageContext}`);
+
+          try {
+            // Fetch user's SD settings
+            const userSettings = db.prepare(`
+              SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
+                     sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
+                     sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model
+              FROM users WHERE id = ?
+            `).get(userId);
+
+            const imageResult = await sdService.generateImage({
+              characterTags: imageTags,
+              contextTags: decision.imageContext,
+              userSettings: userSettings
+            });
+
+            if (imageResult.success) {
+              // Save image file
+              const fs = await import('fs');
+              const path = await import('path');
+              const { fileURLToPath } = await import('url');
+
+              const __filename = fileURLToPath(import.meta.url);
+              const __dirname = path.dirname(__filename);
+
+              const imageDir = path.join(__dirname, '..', '..', 'uploads', 'images');
+              if (!fs.existsSync(imageDir)) {
+                fs.mkdirSync(imageDir, { recursive: true });
+              }
+
+              const timestamp = Date.now();
+              const filename = `image_${characterId}_${timestamp}.png`;
+              const filepath = path.join(imageDir, filename);
+
+              fs.writeFileSync(filepath, imageResult.imageBuffer);
+
+              messageType = 'image';
+              imageUrl = `/uploads/images/${filename}`;
+
+              console.log(`✅ Image saved: ${imageUrl}`);
+            } else {
+              console.warn(`⚠️  Image generation failed, falling back to text: ${imageResult.error}`);
+            }
+          } catch (error) {
+            console.error(`❌ Image generation error:`, error);
+            console.warn(`⚠️  Falling back to text message`);
+          }
+        }
+
         const savedMessage = messageService.saveMessage(
           conversationId,
           'assistant',
           cleanedContent,
           decision.reaction,
           messageType,
-          audioUrl
+          audioUrl,
+          imageUrl
         );
 
         // Handle departure
@@ -255,7 +319,8 @@ class MessageProcessor {
             model: aiResponse.model,
             reaction: decision.reaction,
             messageType: messageType,
-            audioUrl: audioUrl
+            audioUrl: audioUrl,
+            imageUrl: imageUrl
           }
         });
 

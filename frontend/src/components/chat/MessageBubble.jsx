@@ -91,14 +91,28 @@ const MessageBubble = ({
             : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
         }`}
       >
-        {/* Voice message or text message */}
+        {/* Voice message, image message, or text message */}
         {message.message_type === 'voice' && message.audio_url ? (
           <AudioPlayer
-            audioUrl={message.audio_url}
+            audioUrl={`http://localhost:3000${message.audio_url}`}
             showTranscript={true}
             transcript={message.content}
             role={message.role}
           />
+        ) : message.message_type === 'image' && message.image_url ? (
+          <div className="space-y-2">
+            <img
+              src={`http://localhost:3000${message.image_url}`}
+              alt="AI-generated character image"
+              className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+              onClick={() => window.open(`http://localhost:3000${message.image_url}`, '_blank')}
+            />
+            {message.content && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                {message.content}
+              </p>
+            )}
+          </div>
         ) : (
           <p className="break-words leading-relaxed">{message.content}</p>
         )}

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 import axios from 'axios';
+import ImageGenSettings from './profile/ImageGenSettings';
 
 const LLMSettings = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState('content'); // 'content' or 'decision'
+  const [activeTab, setActiveTab] = useState('content'); // 'content', 'decision', or 'imagegen'
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -140,8 +141,8 @@ const LLMSettings = ({ onClose }) => {
         <div className="p-6 border-b bg-gradient-to-r from-pink-500 to-purple-600">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-white">LLM Settings</h2>
-              <p className="text-white/80 text-sm mt-1">Configure AI model and generation parameters</p>
+              <h2 className="text-2xl font-bold text-white">Global Settings</h2>
+              <p className="text-white/80 text-sm mt-1">Configure AI models, image generation, and parameters</p>
             </div>
             <button
               onClick={onClose}
@@ -176,11 +177,25 @@ const LLMSettings = ({ onClose }) => {
           >
             Decision LLM
           </button>
+          <button
+            onClick={() => setActiveTab('imagegen')}
+            className={`flex-1 px-6 py-3 font-semibold transition ${
+              activeTab === 'imagegen'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            Image Gen
+          </button>
         </div>
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-14rem)]">
-          {loading ? (
+          {activeTab === 'imagegen' ? (
+            <div className="p-6">
+              <ImageGenSettings />
+            </div>
+          ) : loading ? (
             <div className="p-8 text-center">
               <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600">Loading settings...</p>

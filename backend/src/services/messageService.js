@@ -52,11 +52,11 @@ class MessageService {
   /**
    * Save a message
    */
-  saveMessage(conversationId, role, content, reaction = null, messageType = 'text', audioUrl = null) {
+  saveMessage(conversationId, role, content, reaction = null, messageType = 'text', audioUrl = null, imageUrl = null) {
     const result = db.prepare(`
-      INSERT INTO messages (conversation_id, role, content, reaction, message_type, audio_url)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(conversationId, role, content, reaction, messageType, audioUrl);
+      INSERT INTO messages (conversation_id, role, content, reaction, message_type, audio_url, image_url)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(conversationId, role, content, reaction, messageType, audioUrl, imageUrl);
 
     return this.getMessage(result.lastInsertRowid);
   }

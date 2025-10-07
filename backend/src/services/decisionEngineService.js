@@ -9,9 +9,9 @@ class DecisionEngineService {
 
   /**
    * Decision Engine: Analyze conversation and decide on actions
-   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean }
+   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, imageContext: string|null }
    */
-  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false }) {
+  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -39,6 +39,7 @@ Character: ${characterData.name}
 Description: ${characterData.description || 'N/A'}${personalityContext}
 ${isEngaged ? '\nCurrent state: Character is actively engaged in conversation (responding quickly)' : '\nCurrent state: Character is disengaged (slower responses based on availability)'}
 ${hasVoice ? '\nVoice available: This character has a voice sample and can send voice messages' : '\nVoice available: No (text only)'}
+${hasImage ? '\nImage generation: This character has image tags configured and can send generated images' : '\nImage generation: No'}
 
 Recent conversation context:
 ${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
@@ -50,7 +51,9 @@ Decide on the character's behavioral response. Output your decision in this EXAC
 Reaction: [emoji or "none"]
 Should Respond: [yes/no]
 Should Unmatch: [yes/no]
-${hasVoice ? 'Send Voice: [yes/no]' : ''}
+${hasVoice ? 'Send Voice: [yes/no]' : ''}${hasImage ? `
+Send Image: [yes/no]
+Image Context: [danbooru tags or "none"]` : ''}
 
 Guidelines:
 - "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
@@ -66,9 +69,19 @@ Guidelines:
   * Context: Emotional moments, excitement, longer responses = more voice
   * Variety: Don't overuse voice - text is default, voice is special
   * Quick replies: Usually text
-  * Deep/heartfelt messages: More likely voice` : ''}
+  * Deep/heartfelt messages: More likely voice` : ''}${hasImage ? `
+- "Send Image": Consider context carefully. Send image when:
+  * User directly asks for a photo/pic/selfie → Usually YES
+  * Character wants to show what they're doing/wearing → YES if relevant
+  * Flirty moment where visual would enhance chemistry → Consider YES
+  * Sharing a moment (food, location, outfit, activity) → Consider YES
+  * Random messages with no visual context → NO
+  * Early conversation before rapport built → Usually NO
+  * Personality: High openness/extraversion = more likely to send spontaneous pics
+  Images should feel natural to the conversation flow, not forced or random.
+- "Image Context": If Send Image is "yes", provide Danbooru-style tags describing the situation/pose/expression/clothing/location. IMPORTANT: Default to "selfie" unless context clearly suggests a different perspective (e.g., user asking "what are you doing" = selfie with activity, flirty moment = selfie, showing outfit = selfie). Examples: "selfie, smiling, waving, casual clothes" or "selfie, bedroom, lying down, phone in hand, soft lighting" or "selfie, biting lip, winking, teasing". If "no", write "none".` : ''}
 
-Output ONLY the ${hasVoice ? 'four' : 'three'} lines in the exact format shown above, nothing else.`;
+Output ONLY the ${hasVoice && hasImage ? 'six' : hasVoice || hasImage ? 'five' : 'three'} lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Decision Engine Request:', {
         model: decisionSettings.model,
@@ -213,7 +226,9 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
         reaction: null,
         shouldRespond: true,
         shouldUnmatch: false,
-        shouldSendVoice: false
+        shouldSendVoice: false,
+        shouldSendImage: false,
+        imageContext: null
       };
 
       for (const line of lines) {
@@ -232,6 +247,14 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
         } else if (line.startsWith('Send Voice:')) {
           const value = line.substring('Send Voice:'.length).trim().toLowerCase();
           decision.shouldSendVoice = value === 'yes';
+        } else if (line.startsWith('Send Image:')) {
+          const value = line.substring('Send Image:'.length).trim().toLowerCase();
+          decision.shouldSendImage = value === 'yes';
+        } else if (line.startsWith('Image Context:')) {
+          const value = line.substring('Image Context:'.length).trim();
+          if (value && value.toLowerCase() !== 'none') {
+            decision.imageContext = value;
+          }
         }
       }
 
@@ -275,7 +298,9 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
       reaction: null,
       shouldRespond: true,
       shouldUnmatch: false,
-      shouldSendVoice: false
+      shouldSendVoice: false,
+      shouldSendImage: false,
+      imageContext: null
     };
   }
 

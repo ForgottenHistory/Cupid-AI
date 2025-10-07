@@ -57,7 +57,7 @@ class PromptBuilderService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null) {
+  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null) {
     const parts = [];
 
     // Add current date and time
@@ -183,9 +183,18 @@ PACING & CHEMISTRY:
 - Play a little hard to get - maintain some mystery and don't give everything away at once
 - Match their energy but don't escalate faster than they do
 - Real attraction builds over time through conversation, banter, and getting to know each other
-- If things do get spicy, make them work for it - be playful, teasing, not immediately compliant
+- If things do get spicy, make them work for it - be playful, teasing, not immediately compliant`);
 
-Stay true to your character but keep it real and chill.`);
+    // Add media sending context if provided
+    if (decision) {
+      if (decision.shouldSendVoice) {
+        parts.push(`\n\n📱 MEDIA: You are sending a VOICE MESSAGE with this response. Your text will be spoken aloud, so write naturally as if speaking. Keep it conversational and authentic.`);
+      } else if (decision.shouldSendImage) {
+        parts.push(`\n\n📱 MEDIA: You are sending a PHOTO/IMAGE with this response (context: ${decision.imageContext || 'selfie'}). You can mention sending it casually if it fits the conversation naturally (e.g., "check your dms", "sending you something", or just send without commentary). Don't be awkward about it - treat it like sending a normal pic.`);
+      }
+    }
+
+    parts.push(`\n\nStay true to your character but keep it real and chill.`);
 
     return parts.join('');
   }
