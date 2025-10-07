@@ -44,6 +44,8 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - Real-time status display in chat
 - Cooldown system (blocks responses until status changes)
 - AI reply suggestions (serious, sarcastic, flirty tones)
+- Proactive messaging system (characters send messages first)
+- Big Five personality traits (OCEAN model with visual UI)
 
 ### 🔧 Known Issues
 - Character names default to "Character" when syncing to backend (cosmetic)
@@ -255,10 +257,77 @@ Realistic conversation flow based on time durations:
 - Status colors: green (online), yellow (away), red (busy), gray (offline)
 - AI suggestions use conversation context to generate tone-specific user replies
 
+### Proactive Messaging System ✅ IMPLEMENTED
+**Overview**: Characters can send messages first after time gaps, making conversations feel more natural and alive.
+
+**Background Service**:
+- Runs every 5 minutes via `setInterval` in `server.js`
+- Checks all conversations where last message was from user
+- Only considers characters with status = online
+- Minimum time gap: 1 hour
+
+**Send Probability Calculation**:
+- Base probability: 5% per hour of gap time (capped at 50%)
+- Personality modifier: Extraversion trait affects frequency
+  - High extraversion (80-100): +25% modifier
+  - Low extraversion (0-20): -25% modifier
+  - Medium extraversion (40-60): neutral
+- Example: After 5 hours with 80 extraversion → 50% (capped) + 20% = 70% chance
+
+**Daily Limits**:
+- Maximum 5 proactive messages per day per user
+- Counter resets at midnight (tracked in `users` table)
+- Global limit prevents spam across all characters
+
+**Decision Engine (Proactive Mode)**:
+- Analyzes last 5 messages for conversation context
+- Decides: `{ shouldSend: boolean, messageType: "resume"|"fresh"|"callback" }`
+- **Resume**: Continue previous topic if conversation was mid-flow
+- **Fresh**: Start new conversation if topic naturally ended
+- **Callback**: Reference something interesting from earlier
+
+**Content Generation**:
+- Uses `isProactive` and `proactiveType` flags in system prompt
+- Natural message generation based on type
+- No apologies for not responding (character is reaching out!)
+
+**Database Tracking**:
+- `users` table: `proactive_messages_today`, `last_proactive_date`
+- Automatic daily reset logic
+
+### Big Five Personality System ✅ IMPLEMENTED
+**Model**: OCEAN (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)
+
+**Generation**:
+- Small LLM (DeepSeek Chat v3) analyzes character description + personality field
+- Rates each trait 0-100 on psychological scales
+- Stores in both `personality_data` column (backend) and `personalityTraits` (IndexedDB)
+
+**Traits**:
+1. **Openness** (0-100): Curiosity, creativity, openness to new experiences
+2. **Conscientiousness** (0-100): Organization, dependability, discipline
+3. **Extraversion** (0-100): Sociability, assertiveness, energy around others
+4. **Agreeableness** (0-100): Compassion, cooperation, trust in others
+5. **Neuroticism** (0-100): Emotional sensitivity vs. stability
+
+**Current Usage**:
+- Extraversion affects proactive messaging frequency
+- Foundation for future behavioral modeling
+
+**Future Potential**:
+- Openness → willingness to try new topics/activities
+- Conscientiousness → schedule adherence, message timing
+- Agreeableness → conflict handling, compromise
+- Neuroticism → mood swings, emotional reactions
+
+**UI**:
+- Personality tab in Library (CharacterProfile component)
+- Gradient progress bars with color coding
+- One-click generation from character description
+
 ### Phase 3: Drama Engine 🔮 FUTURE
 - Random events that affect character mood/availability
 - Mood shifts based on conversation content
-- Proactive messages after long gaps
 - Tension/conflict system
 
 ### Phase 4: Advanced Orchestration 🔮 FUTURE

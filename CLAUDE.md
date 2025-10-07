@@ -25,8 +25,9 @@
 ### Backend Structure
 - **Routes**: `auth.js`, `users.js`, `characters.js`, `chat.js`
 - **Services**:
-  - `aiService.js` - OpenRouter integration, system prompts, token counting/trimming, decision engine
+  - `aiService.js` - OpenRouter integration, system prompts, token counting/trimming, decision engine, Big Five personality generation
   - `engagementService.js` - Character state tracking, time-based engagement durations, cooldown system
+  - `proactiveMessageService.js` - Background service for proactive messaging (checks every 5 minutes)
 - **Utils**: `logger.js` - File logging with console intercept (auto-clears on restart)
 - **Database**: `database.js` - better-sqlite3 with auto-migrations
 - **Auth**: JWT tokens, `authenticateToken` middleware
@@ -56,6 +57,8 @@
 - **Status display**: Chat header shows real-time status with colored badges and activity text
 - **Time-based engagement**: Characters stay engaged for realistic durations based on status, then depart naturally
 - **AI reply suggestions**: Three-button UI generates suggested user replies (serious, sarcastic, flirty styles)
+- **Proactive messaging**: Characters can send messages first after time gaps (only when online, context-aware)
+- **Big Five personality**: OCEAN model personality traits generated per character, affects proactive messaging frequency
 
 ### Unread Notifications
 - Backend increments `unread_count` on AI responses
@@ -80,10 +83,10 @@
 ## Database Schema Notes
 
 ### Key Tables
-- `users` - LLM settings (model, temperature, max_tokens, context_window, etc.) + Decision LLM settings
+- `users` - LLM settings (model, temperature, max_tokens, context_window, etc.) + Decision LLM settings + proactive message tracking
 - `conversations` - Links user + character, tracks `unread_count`, `last_message`
 - `messages` - role ('user'|'assistant'), content, timestamps, reaction (emoji or null)
-- `characters` - Synced from IndexedDB, stores full card_data JSON, schedule_data, schedule_generated_at
+- `characters` - Synced from IndexedDB, stores full card_data JSON, schedule_data, schedule_generated_at, personality_data
 - `character_states` - Per user-character engagement tracking (status, engagement_state, engagement_started_at, departed_status, last_check_time)
 
 ### Migrations
@@ -96,6 +99,8 @@ Auto-run on startup via `database.js`:
 - Adds `schedule_data` and `schedule_generated_at` columns to characters table
 - Creates `character_states` table for engagement tracking
 - Adds `engagement_started_at` and `departed_status` columns to character_states table
+- Adds `personality_data` column to characters table (stores Big Five traits)
+- Adds `proactive_messages_today` and `last_proactive_date` columns to users table
 
 ## AI System
 
@@ -147,6 +152,31 @@ Located in `engagementService.js`:
 - **70% engagement probability**: On first message when disengaged (30% chance of no response)
 - **State tracking**: `character_states` table tracks `engagement_started_at`, `departed_status` per user-character pair
 
+### Proactive Messaging System
+Located in `proactiveMessageService.js`:
+- **Background checker**: Runs every 5 minutes via setInterval in `server.js`
+- **Triggers**: Only when character status = online, last message from user, gap > 1 hour
+- **Send probability**: Base 5% per hour (capped at 50%), modified by extraversion trait
+  - High extraversion (80-100) increases probability by up to +25%
+  - Low extraversion (0-20) decreases probability by up to -25%
+- **Daily limit**: Maximum 5 proactive messages per day across all characters
+- **Decision Engine (proactive mode)**: Analyzes conversation context
+  - Decides: `{ shouldSend: boolean, messageType: "resume"|"fresh"|"callback" }`
+  - **Resume**: Continue previous topic naturally
+  - **Fresh**: Start new conversation
+  - **Callback**: Reference something interesting from earlier
+- **Content LLM generation**: Uses `isProactive` and `proactiveType` flags in system prompt
+- **Delivery**: Messages sent via WebSocket with `isProactive: true` flag
+
+### Big Five Personality System
+Located in `aiService.js` `generatePersonality()`:
+- **Model**: OCEAN (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)
+- **Generation**: Small LLM analyzes character description → rates each trait 0-100
+- **Storage**: Stored in `personality_data` column (characters table) and `personalityTraits` field (IndexedDB cardData)
+- **Usage**: Extraversion affects proactive messaging frequency
+- **Future potential**: Can inform mood changes, dialogue style, reaction patterns
+- **UI**: Personality tab in Library with gradient progress bars for visual representation
+
 ## Development Commands
 
 ```bash
@@ -167,6 +197,21 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
 
 ## Recent Changes
 
+- **Proactive messaging system** ✅
+  - Characters can send messages first after time gaps (only when online)
+  - Background service checks every 5 minutes for proactive opportunities
+  - Context-aware Decision Engine analyzes conversation → decides if/how to respond
+  - Three message types: resume conversation, fresh start, callback to earlier topic
+  - Send probability scales with time gap (5% per hour, cap 50%) and extraversion trait
+  - Daily limit: 5 proactive messages across all characters
+  - Messages delivered via WebSocket with special flag for frontend handling
+- **Big Five personality traits** ✅
+  - OCEAN model personality generation (Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism)
+  - LLM analyzes character description → rates each trait 0-100
+  - Personality tab in Library with beautiful gradient progress bars
+  - Extraversion trait affects proactive messaging frequency
+  - Stored in both IndexedDB (frontend) and SQLite (backend)
+  - Foundation for future features (mood changes, dialogue style, reaction patterns)
 - **Time-based engagement overhaul** ✅
   - Replaced arbitrary message-count disengagement with realistic time-based durations
   - Online: unlimited engagement, Away: 30-60min, Busy: 15-30min
