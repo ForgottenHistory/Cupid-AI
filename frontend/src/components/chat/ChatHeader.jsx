@@ -92,7 +92,11 @@ const ChatHeader = ({ character, characterStatus, onBack, onUnmatch }) => {
                   src={character.imageUrl}
                   alt={character.name}
                   className="w-24 h-32 rounded-xl object-cover border-4 border-white shadow-2xl"
-                  style={{ imageRendering: '-webkit-optimize-contrast' }}
+                  style={{
+                    imageRendering: 'auto',
+                    transform: 'translateZ(0)',
+                    backfaceVisibility: 'hidden'
+                  }}
                 />
               </div>
               {/* Status indicator with glow */}

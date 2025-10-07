@@ -202,7 +202,11 @@ const MainLayout = ({ children }) => {
                             src={match.imageUrl}
                             alt={match.name}
                             className="w-16 h-20 rounded-lg object-cover border-2 border-white"
-                            style={{ imageRendering: '-webkit-optimize-contrast' }}
+                            style={{
+                              imageRendering: 'auto',
+                              transform: 'translateZ(0)',
+                              backfaceVisibility: 'hidden'
+                            }}
                           />
                         </div>
                         {/* Status indicator with glow */}
