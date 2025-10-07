@@ -72,22 +72,36 @@ router.post('/generate-dating-profile', authenticateToken, async (req, res) => {
 Character Description:
 ${description}
 
-Generate a JSON response with the following fields (all in first-person, as if ${characterName} is writing their own profile):
+Generate a dating profile in this EXACT plaintext format:
 
-{
-  "bio": "A 2-3 sentence 'About Me' section in first person. Make it natural and engaging, like a real dating profile.",
-  "interests": ["interest1", "interest2", "interest3", "interest4", "interest5"],
-  "funFacts": ["fun fact 1 in first person", "fun fact 2 in first person", "fun fact 3 in first person"],
-  "age": <determine age from character description or make a reasonable estimate based on their personality and background>,
-  "occupation": "optional occupation if clear from description, otherwise null",
-  "lookingFor": "1-2 sentences about what I'm looking for in first person, or null if not applicable"
-}
+Bio: [A 2-3 sentence 'About Me' section in first person. Make it natural and engaging, like a real dating profile.]
+
+Interests: [interest1, interest2, interest3, interest4, interest5]
+
+Fun Facts:
+- [fun fact 1 in first person]
+- [fun fact 2 in first person]
+- [fun fact 3 in first person]
+
+Age: [number, minimum 20, could be much higher depending on context]
+
+Occupation: [occupation or "none"]
+
+Looking For: [1-2 sentences about what I'm looking for in first person, or "none"]
+
+Height: [height in feet/inches like 5'6" or cm, make reasonable estimate]
+
+Body Type: [one word: slim/athletic/curvy/average/petite/plus-size/muscular]
+
+Measurements: [bust-waist-hips like 34-26-36, or "none" if not applicable]
 
 Important:
 - Write EVERYTHING in first-person (I, me, my)
 - Make it sound natural, like ${characterName} is actually writing their profile
 - Be creative but stay true to the character description
-- Only return valid JSON, no other text`
+- Height and body type should be reasonable estimates based on the character's description
+- Measurements are optional - only include if it makes sense for the character
+- Output ONLY the plaintext format shown above, nothing else`
       }
     ];
 
@@ -97,21 +111,65 @@ Important:
       userId: req.user.id,
     });
 
-    // Parse JSON response
+    // Parse plaintext response
     const content = response.content.trim();
-    let profileData;
+    const profileData = {
+      bio: null,
+      interests: [],
+      funFacts: [],
+      age: null,
+      occupation: null,
+      lookingFor: null,
+      height: null,
+      bodyType: null,
+      measurements: null
+    };
 
     try {
-      // Try to extract JSON if there's extra text
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        profileData = JSON.parse(jsonMatch[0]);
-      } else {
-        profileData = JSON.parse(content);
+      const lines = content.split('\n');
+      let currentSection = null;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        if (line.startsWith('Bio:')) {
+          profileData.bio = line.substring('Bio:'.length).trim();
+        } else if (line.startsWith('Interests:')) {
+          const interestsStr = line.substring('Interests:'.length).trim();
+          profileData.interests = interestsStr.split(',').map(i => i.trim()).filter(i => i.length > 0);
+        } else if (line.startsWith('Fun Facts:')) {
+          currentSection = 'funFacts';
+        } else if (line.startsWith('Age:')) {
+          const ageStr = line.substring('Age:'.length).trim();
+          profileData.age = parseInt(ageStr) || null;
+          currentSection = null;
+        } else if (line.startsWith('Occupation:')) {
+          const value = line.substring('Occupation:'.length).trim();
+          profileData.occupation = (value && value.toLowerCase() !== 'none') ? value : null;
+          currentSection = null;
+        } else if (line.startsWith('Looking For:')) {
+          const value = line.substring('Looking For:'.length).trim();
+          profileData.lookingFor = (value && value.toLowerCase() !== 'none') ? value : null;
+          currentSection = null;
+        } else if (line.startsWith('Height:')) {
+          profileData.height = line.substring('Height:'.length).trim();
+          currentSection = null;
+        } else if (line.startsWith('Body Type:')) {
+          profileData.bodyType = line.substring('Body Type:'.length).trim();
+          currentSection = null;
+        } else if (line.startsWith('Measurements:')) {
+          const value = line.substring('Measurements:'.length).trim();
+          profileData.measurements = (value && value.toLowerCase() !== 'none') ? value : null;
+          currentSection = null;
+        } else if (currentSection === 'funFacts' && line.startsWith('-')) {
+          const fact = line.substring(1).trim();
+          if (fact) profileData.funFacts.push(fact);
+        }
       }
     } catch (parseError) {
-      console.error('Failed to parse JSON:', content);
-      throw new Error('AI returned invalid JSON format');
+      console.error('Failed to parse dating profile:', parseError, 'Content:', content);
+      throw new Error('AI returned invalid format');
     }
 
     res.json({ profile: profileData });

@@ -292,6 +292,30 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                       </div>
                     )}
 
+                    {/* Physical Stats */}
+                    {(data.datingProfile.height || data.datingProfile.bodyType || data.datingProfile.measurements) && (
+                      <div className="flex gap-3">
+                        {data.datingProfile.height && (
+                          <div className="flex-1 bg-purple-50 rounded-lg p-3 border border-purple-200">
+                            <div className="text-xs font-semibold text-purple-600 mb-1">Height</div>
+                            <div className="text-lg font-bold text-purple-900">{data.datingProfile.height}</div>
+                          </div>
+                        )}
+                        {data.datingProfile.bodyType && (
+                          <div className="flex-1 bg-pink-50 rounded-lg p-3 border border-pink-200">
+                            <div className="text-xs font-semibold text-pink-600 mb-1">Body Type</div>
+                            <div className="text-sm font-semibold text-pink-900 capitalize">{data.datingProfile.bodyType}</div>
+                          </div>
+                        )}
+                        {data.datingProfile.measurements && (
+                          <div className="flex-1 bg-rose-50 rounded-lg p-3 border border-rose-200">
+                            <div className="text-xs font-semibold text-rose-600 mb-1">Measurements</div>
+                            <div className="text-sm font-semibold text-rose-900">{data.datingProfile.measurements}</div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {/* Interests */}
                     {data.datingProfile.interests && data.datingProfile.interests.length > 0 && (
                       <div>
