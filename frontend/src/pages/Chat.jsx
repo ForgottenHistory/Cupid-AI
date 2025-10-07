@@ -176,7 +176,7 @@ const Chat = () => {
   const showAnyTypingIndicator = showTypingIndicator || showTypingIndicatorInternal;
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30">
+    <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30">
       {/* Chat Header */}
       {character && (
         <ChatHeader

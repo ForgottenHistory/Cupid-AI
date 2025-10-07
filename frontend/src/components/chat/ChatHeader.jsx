@@ -28,7 +28,7 @@ const ChatHeader = ({ character, characterStatus, onBack, onUnmatch }) => {
           alt={character.name}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-purple-900/30 to-black/70"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-purple-900/30 to-black/70 dark:from-black/40 dark:via-purple-950/50 dark:to-black/80"></div>
 
         {/* Back Button */}
         <button
