@@ -2,6 +2,44 @@ import characterService from '../services/characterService';
 import api from '../services/api';
 
 /**
+ * Sync all characters from IndexedDB to backend
+ * This ensures all characters are available for post generation
+ */
+export async function syncAllCharacters(userId) {
+  try {
+    console.log('📤 Starting full character sync...');
+
+    // Get all characters from IndexedDB
+    const characters = await characterService.getAllCharacters(userId);
+
+    if (!characters || characters.length === 0) {
+      console.log('⚠️  No characters found in IndexedDB');
+      return { success: true, synced: 0, skipped: 0, total: 0 };
+    }
+
+    // Extract all character data
+    const characterData = characters.map(char => ({
+      id: char.id,
+      cardData: char.cardData,
+      imageUrl: char.imageUrl || null
+    }));
+
+    console.log(`📋 Syncing ${characterData.length} characters to backend...`);
+
+    // Send to backend
+    const response = await api.post('/sync/characters', {
+      characters: characterData
+    });
+
+    console.log(`✅ Character sync complete:`, response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Character sync failed:', error);
+    throw error;
+  }
+}
+
+/**
  * One-time sync of character images from IndexedDB to backend
  * Call this once to fix existing characters
  */
@@ -38,7 +76,8 @@ export async function syncCharacterImages(userId) {
   }
 }
 
-// For debugging: call this from browser console
+// For debugging: call these from browser console
 if (typeof window !== 'undefined') {
+  window.syncAllCharacters = syncAllCharacters;
   window.syncCharacterImages = syncCharacterImages;
 }

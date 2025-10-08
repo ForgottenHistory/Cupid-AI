@@ -7,6 +7,7 @@ import { getImageUrl } from '../services/api';
 import LLMSettings from './LLMSettings';
 import SDSettings from './SDSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
+import { syncAllCharacters } from '../utils/syncCharacterImages';
 
 const MainLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -19,6 +20,16 @@ const MainLayout = ({ children }) => {
   const [showLLMSettings, setShowLLMSettings] = useState(false);
   const [showSDSettings, setShowSDSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
+
+  // Sync all characters from IndexedDB to backend on mount
+  // This ensures all characters are available for post generation
+  useEffect(() => {
+    if (user?.id) {
+      syncAllCharacters(user.id).catch(error => {
+        console.error('Failed to sync characters:', error);
+      });
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     loadMatches();

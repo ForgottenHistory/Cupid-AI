@@ -316,11 +316,12 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
   - Posts only when character is online/away (not offline/busy)
   - Click avatar/name to navigate to DM with character
   - Post counter in header (e.g., "3 / 8")
+  - **All characters post**, not just matched ones - automatic sync on app load
   - Database: `posts` table (character_id, content, image_url, post_type, created_at)
-  - Backend: `postGenerationService.js`, `routes/feed.js`
-  - Frontend: `Feed.jsx` with full-screen view, smooth slide transitions
+  - Backend: `postGenerationService.js`, `routes/feed.js`, `routes/sync.js` with `/sync/characters` endpoint
+  - Frontend: `Feed.jsx` with full-screen view, smooth slide transitions, auto-sync in `MainLayout`
   - Character images synced from IndexedDB to backend (`image_url` column)
-  - One-time sync utility: `/api/sync/character-images` endpoint (50MB body limit)
+  - Sync preserves existing character data (schedule, personality, etc.)
 - **Character Wizard** ✅
   - AI-powered 4-step character creation as alternative to importing character cards
   - Stage 1: Select age (weighted randomize), archetype, personality traits
