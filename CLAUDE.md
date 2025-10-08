@@ -15,17 +15,32 @@
 - **Core Pages**:
   - `Home.jsx` - Tinder-style swipe interface
   - `Chat.jsx` - Individual chat conversations
-  - `Library.jsx` - Character management
+  - `Library.jsx` - Character management with "Character Wizard" button
   - `Profile.jsx` - User settings and LLM config
+  - `CharacterWizard.jsx` - 4-step AI character creation wizard
+- **Wizard Components** (`components/wizard/`):
+  - `WizardProgress.jsx` - Visual progress indicator
+  - `IdentityStep.jsx` - Age, archetype, personality trait selection
+  - `DescriptionStep.jsx` - LLM name + description generation
+  - `ImageStep.jsx` - LLM appearance + SD image generation
+  - `OptionsStep.jsx` - Auto-generation options + save
+- **Settings Components** (`components/settings/`):
+  - `LLMSettingsForm.jsx` - Shared form for Content/Decision LLM settings
+  - `ModelSelector.jsx` - Search/filter model dropdown
+  - `SliderParameter.jsx` - Reusable slider component
+  - `AdvancedSettings.jsx` - Collapsible advanced settings section
 - **Services**:
   - `characterService.js` - IndexedDB operations for characters
   - `chatService.js` - Backend API calls for conversations/messages
   - `api.js` - Axios instance with auth token injection
+- **Hooks**:
+  - `useLLMSettings.js` - State management for LLM settings (load, save, update, reset)
 
 ### Backend Structure
-- **Routes**: `auth.js`, `users.js`, `characters.js`, `chat.js`
+- **Routes**: `auth.js`, `users.js`, `characters.js`, `chat.js`, `wizard.js`
 - **Services**:
   - `aiService.js` - OpenRouter integration, system prompts, token counting/trimming, decision engine, Big Five personality generation
+  - `characterWizardService.js` - AI character generation (name, description, appearance, image tags), SD integration
   - `engagementService.js` - Character state tracking, time-based engagement durations, cooldown system
   - `proactiveMessageService.js` - Background service for proactive messaging (checks every 5 minutes)
   - `superLikeService.js` - Super like probability calculation, daily limit tracking (2 per day)
@@ -36,9 +51,17 @@
 ## Important Patterns
 
 ### Character Data Flow
+
+**Imported Characters**:
 1. PNG upload → Parse v2 card → Store in IndexedDB (frontend)
 2. Like character → Sync to backend SQLite (user_id + character_id)
 3. Dating profile generated on-demand via OpenRouter (cached in cardData)
+
+**Wizard-Generated Characters**:
+1. Complete 4-step wizard → LLM generates name/description, appearance, SD generates image
+2. Create in IndexedDB via `createCharacter()` with minimal v2 card (name, description, imageTags)
+3. Optional auto-generation on save (dating profile, schedule, Big Five personality)
+4. Like character → Sync to backend SQLite with imageTags from cardData
 
 ### Chat System
 - Conversations created on first message
@@ -170,6 +193,94 @@ Located in `aiService.js` `generatePersonality()`:
 - **Future potential**: Can inform mood changes, dialogue style, reaction patterns
 - **UI**: Personality tab in Library with gradient progress bars for visual representation
 
+## Character Wizard
+
+AI-powered 4-step character creation system. Alternative to importing character cards.
+
+### Architecture
+
+**Backend** (`characterWizardService.js`):
+- `generateDescription()`: LLM generates full name + detailed character description from age/archetype/personality traits
+- `generateAppearance()`: LLM suggests cohesive appearance (hair, eyes, body, clothing style) matching personality
+- `generateImageTags()`: Content LLM creates personality-driven Danbooru tags for dating profile picture
+- `buildImageTags()`: Converts appearance selections to base Danbooru tags (stored long-term)
+- `generateImage()`: Orchestrates SD generation - uses enhanced tags for image, stores only base tags
+
+**Frontend Components**:
+- `CharacterWizard.jsx`: Main orchestrator with 4-step flow, save logic, auto-generation
+- `WizardProgress.jsx`: Visual progress indicator
+- `IdentityStep.jsx`: Age (weighted random: 50% 18-25, 30% 26-35, 15% 36-45, 5% 46+), archetype, 3-5 personality traits
+- `DescriptionStep.jsx`: LLM generates name + description, user can edit
+- `ImageStep.jsx`: LLM appearance generation, SD profile picture with personality enhancements
+- `OptionsStep.jsx`: Optional auto-generation checkboxes (dating profile, schedule, Big Five), save button
+
+**Data Files** (plain text, one value per line):
+- `archetypes.txt`: College Student, Career Professional, Creative Artist, Gym Enthusiast, etc.
+- `personalityTraits.txt`: Sweet, Confident, Playful, Mysterious, Shy, Sarcastic, etc.
+
+### Wizard Flow
+
+**Stage 1: Identity**
+- Select age range, archetype, 3-5 personality traits
+- Randomize button with weighted age distribution
+- No name input (generated in Stage 2)
+
+**Stage 2: Description**
+- Click "Generate Character" → LLM creates name + 2-3 paragraph description
+- Name format: Full name (first + last) or nickname, female characters only
+- Description covers: background, occupation, personality, interests, communication style
+- User can edit both name and description
+
+**Stage 3: Image**
+- "Generate Appearance" button: LLM suggests cohesive appearance matching personality
+- Manual override: Dropdowns for hair color/style, eye color, body type, clothing style
+- "Generate Character Image":
+  - LLM creates enhanced Danbooru tags (base appearance + expression + pose + setting + lighting)
+  - SD generates dating profile picture with personality (smiling, looking at viewer, warm lighting, etc.)
+  - Only base appearance tags stored to `imageTags` field (enhancements are one-time)
+
+**Stage 4: Options & Save**
+- Checkboxes for optional auto-generation on save:
+  - Dating Profile: LLM-generated profile summary
+  - Weekly Schedule: LLM-generated online/away/busy/offline schedule
+  - Big Five Personality: OCEAN trait ratings (0-100)
+- All optional (can save without checking any)
+- Click "Save Character" → creates in IndexedDB, auto-generates selected features, redirects to Library
+
+### API Endpoints
+
+- `POST /api/wizard/generate-description`: Generate name + description from age/archetype/traits
+- `POST /api/wizard/generate-appearance`: LLM suggests cohesive appearance
+- `POST /api/wizard/generate-image`: SD generation with LLM-enhanced tags
+
+### Character Storage
+
+**IndexedDB (wizard-generated)**:
+- Created via `characterService.createCharacter()` (not `importCharacterFromPNG`)
+- Character v2 card structure with minimal fields (name, description, tags, imageTags)
+- Auto-generated features stored in `cardData.data` (datingProfile, schedule, personalityTraits)
+
+**Backend Sync**:
+- Character synced to SQLite when liked (swiped right)
+- `image_tags` column populated from `cardData.data.imageTags`
+- `characterInteractionController.js` extracts and stores imageTags on like
+
+### LLMSettings Refactor
+
+Broke 489-line monolithic component into modular structure:
+
+**Hook**:
+- `useLLMSettings.js`: State management (load, save, update, reset) for Content/Decision LLM settings
+
+**Components**:
+- `SliderParameter.jsx`: Reusable slider with label, value, description, custom labels
+- `AdvancedSettings.jsx`: Collapsible section for top_p, frequency_penalty, presence_penalty
+- `ModelSelector.jsx`: Search/filter dropdown for model selection
+- `LLMSettingsForm.jsx`: Shared form used by both Content and Decision tabs
+
+**Main Component**:
+- `LLMSettings.jsx`: Reduced to ~106 lines, tab management, delegates to LLMSettingsForm
+
 ## Development Commands
 
 ```bash
@@ -190,6 +301,18 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
 
 ## Recent Changes
 
+- **Character Wizard** ✅
+  - AI-powered 4-step character creation as alternative to importing character cards
+  - Stage 1: Select age (weighted randomize), archetype, personality traits
+  - Stage 2: LLM generates full name + detailed description from traits
+  - Stage 3: LLM appearance generation matching personality, SD profile picture with enhancements
+  - Stage 4: Optional auto-generation checkboxes (dating profile, schedule, Big Five)
+  - Backend: `characterWizardService.js`, routes `/generate-description`, `/generate-appearance`, `/generate-image`
+  - Frontend: `CharacterWizard.jsx` with 4 step components, plain text data files (`archetypes.txt`, `personalityTraits.txt`)
+  - Enhanced SD tags (expression, pose, lighting) for one-time profile pic, base tags stored long-term
+  - LLMSettings refactored: 489-line component broken into reusable hooks/components (106 lines main)
+  - `createCharacter()` method for wizard characters, `ImageTab` fallback to IndexedDB for unsynced characters
+  - Library page updated with prominent "Character Wizard" button
 - **Proactive messaging improvements** ✅
   - Content LLM now receives `gapHours` for time-aware message generation
   - Time-specific guidance: 2-hour gap feels different from 20-hour gap

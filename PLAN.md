@@ -24,6 +24,11 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 ### ✅ Completed Features
 - Authentication (JWT, login/signup)
 - Character upload & parsing (PNG v2 cards)
+- **Character Wizard** - AI-powered 4-step character creation (alternative to importing cards)
+  - Stage 1: Identity (age, archetype, personality traits with weighted randomize)
+  - Stage 2: Description (LLM generates full name + detailed description)
+  - Stage 3: Image (LLM appearance generation + SD profile picture with personality enhancements)
+  - Stage 4: Options (optional auto-generation of dating profile, schedule, Big Five on save)
 - Swipe interface with undo
 - Character profiles with AI-generated dating profiles
 - AI-generated weekly schedules from character descriptions
@@ -36,7 +41,7 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - AI message regeneration
 - Unread message tracking
 - Unmatch functionality
-- User profile with LLM settings
+- User profile with LLM settings (refactored into modular components)
 - Token-based context trimming
 - Dual LLM System (Phase 1: Reactions, Phase 2: Schedules & Engagement)
 - Time-based engagement system (realistic durations with natural departures)
@@ -46,12 +51,17 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - AI reply suggestions (serious, sarcastic, flirty tones)
 - Proactive messaging system (characters send messages first)
 - Big Five personality traits (OCEAN model with visual UI)
+- Super like system (extraversion-based probability, 2/day limit)
+- Character-initiated unmatch (Decision Engine, extremely rare)
 
 ### 🔧 Known Issues
 - Character names default to "Character" when syncing to backend (cosmetic)
 - Swipe undo limited to last action (no full history)
 
 ### 🔨 Recently Fixed
+- ✅ Character Wizard image tags - Base appearance tags stored separately from one-time profile pic enhancements
+- ✅ ImageTab fallback - Wizard characters show image tags from IndexedDB before backend sync
+- ✅ LLMSettings refactor - 489-line component broken into reusable hooks and components (106 lines main)
 - ✅ Sidebar status color mismatch - status indicators now match between sidebar and chat view
 - ✅ Proactive messages now time-aware - Content LLM receives gap hours for natural phrasing
 
@@ -79,8 +89,9 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 
 ### Low Priority
 - [ ] Dark/light theme toggle
-- [ ] Voice chat integration (TTS/STT)
-- [ ] Image generation for characters
+- [ ] Voice chat integration (TTS/STT) - Partially implemented, disabled (VOICE_MESSAGES_ENABLED=false)
+- [x] Character creation system ✅ Character Wizard implemented (AI-powered 4-step creation)
+- [x] Image generation for characters ✅ Stable Diffusion integration with personality-driven enhancements
 - [ ] Chat export (download conversation history)
 
 ## Character v2 Card Format Reference
