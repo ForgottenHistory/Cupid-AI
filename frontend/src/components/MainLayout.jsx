@@ -5,6 +5,7 @@ import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
 import LLMSettings from './LLMSettings';
+import SDSettings from './SDSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
 
 const MainLayout = ({ children }) => {
@@ -16,6 +17,7 @@ const MainLayout = ({ children }) => {
   const [stats, setStats] = useState({ total: 0, liked: 0, remaining: 0 });
   const [conversations, setConversations] = useState([]);
   const [showLLMSettings, setShowLLMSettings] = useState(false);
+  const [showSDSettings, setShowSDSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
 
   useEffect(() => {
@@ -309,6 +311,15 @@ const MainLayout = ({ children }) => {
               </svg>
             </button>
             <button
+              onClick={() => setShowSDSettings(true)}
+              className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
+              title="Image Generation Settings"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+            <button
               onClick={handleLogout}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
               title="Logout"
@@ -394,6 +405,11 @@ const MainLayout = ({ children }) => {
       {/* LLM Settings Modal */}
       {showLLMSettings && (
         <LLMSettings onClose={() => setShowLLMSettings(false)} />
+      )}
+
+      {/* SD Settings Modal */}
+      {showSDSettings && (
+        <SDSettings onClose={() => setShowSDSettings(false)} />
       )}
     </div>
   );

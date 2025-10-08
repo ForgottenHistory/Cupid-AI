@@ -227,6 +227,16 @@ function runMigrations() {
       `);
       console.log('✅ Stable Diffusion settings columns added to users table');
     }
+
+    // Migration: Add SD main prompt, negative prompt, and model columns
+    if (!userColumnNames.includes('sd_main_prompt')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN sd_main_prompt TEXT DEFAULT 'masterpiece, best quality, amazing quality';
+        ALTER TABLE users ADD COLUMN sd_negative_prompt TEXT DEFAULT 'nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry';
+        ALTER TABLE users ADD COLUMN sd_model TEXT DEFAULT '';
+      `);
+      console.log('✅ SD main prompt, negative prompt, and model columns added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

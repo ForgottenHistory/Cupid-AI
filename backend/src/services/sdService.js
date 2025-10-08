@@ -27,19 +27,6 @@ class SDService {
     userSettings = null
   }) {
     try {
-      // Build full prompt
-      const mainPrompt = 'masterpiece, best quality, amazing quality, 1girl, solo';
-      const fullPrompt = [mainPrompt, characterTags, contextTags]
-        .filter(p => p && p.trim())
-        .join(', ');
-
-      const mainNegative = 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, speech bubble, multiple views,';
-      const fullNegative = negativePrompt || mainNegative;
-
-      console.log(`🎨 Generating image with SD...`);
-      console.log(`Prompt: ${fullPrompt}`);
-      console.log(`User settings:`, userSettings);
-
       // Use user settings or defaults
       const settings = userSettings || {
         sd_steps: 30,
@@ -53,8 +40,25 @@ class SDService {
         sd_hr_cfg: 5.0,
         sd_denoising_strength: 0.7,
         sd_enable_adetailer: 1,
-        sd_adetailer_model: 'face_yolov8n.pt'
+        sd_adetailer_model: 'face_yolov8n.pt',
+        sd_main_prompt: 'masterpiece, best quality, amazing quality, 1girl, solo',
+        sd_negative_prompt: 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, speech bubble, multiple views,',
+        sd_model: ''
       };
+
+      // Build full prompt using user's main prompt
+      const mainPrompt = settings.sd_main_prompt || 'masterpiece, best quality, amazing quality, 1girl, solo';
+      const fullPrompt = [mainPrompt, characterTags, contextTags]
+        .filter(p => p && p.trim())
+        .join(', ');
+
+      // Use user's negative prompt
+      const mainNegative = settings.sd_negative_prompt || 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, speech bubble, multiple views,';
+      const fullNegative = negativePrompt || mainNegative;
+
+      console.log(`🎨 Generating image with SD...`);
+      console.log(`Prompt: ${fullPrompt}`);
+      console.log(`User settings:`, userSettings);
 
       // Build base payload
       const payload = {
@@ -72,6 +76,13 @@ class SDService {
         send_images: true,
         save_images: false
       };
+
+      // Add model override if specified
+      if (settings.sd_model && settings.sd_model.trim()) {
+        payload.override_settings = {
+          sd_model_checkpoint: settings.sd_model
+        };
+      }
 
       // Add ADetailer configuration if enabled
       if (Boolean(settings.sd_enable_adetailer)) {

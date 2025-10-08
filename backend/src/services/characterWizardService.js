@@ -208,7 +208,8 @@ STYLE: [Casual|Elegant|Sporty|Gothic|Cute|Professional]`;
       const settings = db.prepare(`
         SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
                sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
-               sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model
+               sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model,
+               sd_main_prompt, sd_negative_prompt, sd_model
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -226,7 +227,10 @@ STYLE: [Casual|Elegant|Sporty|Gothic|Cute|Professional]`;
           sd_hr_cfg: 5.0,
           sd_denoising_strength: 0.7,
           sd_enable_adetailer: 1,
-          sd_adetailer_model: 'face_yolov8n.pt'
+          sd_adetailer_model: 'face_yolov8n.pt',
+          sd_main_prompt: 'masterpiece, best quality, amazing quality',
+          sd_negative_prompt: 'nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
+          sd_model: ''
         };
       }
 
@@ -246,7 +250,10 @@ STYLE: [Casual|Elegant|Sporty|Gothic|Cute|Professional]`;
         sd_hr_cfg: 5.0,
         sd_denoising_strength: 0.7,
         sd_enable_adetailer: 1,
-        sd_adetailer_model: 'face_yolov8n.pt'
+        sd_adetailer_model: 'face_yolov8n.pt',
+        sd_main_prompt: 'masterpiece, best quality, amazing quality',
+        sd_negative_prompt: 'nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
+        sd_model: ''
       };
     }
   }

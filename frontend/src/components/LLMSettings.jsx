@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useLLMSettings } from '../hooks/useLLMSettings';
 import LLMSettingsForm from './settings/LLMSettingsForm';
-import ImageGenSettings from './profile/ImageGenSettings';
 
 const LLMSettings = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState('content'); // 'content', 'decision', or 'imagegen'
+  const [activeTab, setActiveTab] = useState('content'); // 'content' or 'decision'
 
   // Hook for Content LLM settings
   const contentLLM = useLLMSettings('content');
@@ -28,8 +27,8 @@ const LLMSettings = ({ onClose }) => {
         <div className="p-6 border-b bg-gradient-to-r from-pink-500 to-purple-600">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-bold text-white">Global Settings</h2>
-              <p className="text-white/80 text-sm mt-1">Configure AI models, image generation, and parameters</p>
+              <h2 className="text-2xl font-bold text-white">LLM Settings</h2>
+              <p className="text-white/80 text-sm mt-1">Configure AI models and parameters</p>
             </div>
             <button
               onClick={onClose}
@@ -64,38 +63,22 @@ const LLMSettings = ({ onClose }) => {
           >
             Decision LLM
           </button>
-          <button
-            onClick={() => setActiveTab('imagegen')}
-            className={`flex-1 px-6 py-3 font-semibold transition ${
-              activeTab === 'imagegen'
-                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-            }`}
-          >
-            Image Gen
-          </button>
         </div>
 
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-14rem)]">
-          {activeTab === 'imagegen' ? (
-            <div className="p-6">
-              <ImageGenSettings />
-            </div>
-          ) : (
-            <LLMSettingsForm
-              type={activeTab}
-              settings={currentSettings.settings}
-              loading={currentSettings.loading}
-              saving={currentSettings.saving}
-              error={currentSettings.error}
-              success={currentSettings.success}
-              updateSetting={currentSettings.updateSetting}
-              onSubmit={handleSubmit}
-              onReset={currentSettings.resetToDefaults}
-              onCancel={onClose}
-            />
-          )}
+          <LLMSettingsForm
+            type={activeTab}
+            settings={currentSettings.settings}
+            loading={currentSettings.loading}
+            saving={currentSettings.saving}
+            error={currentSettings.error}
+            success={currentSettings.success}
+            updateSetting={currentSettings.updateSetting}
+            onSubmit={handleSubmit}
+            onReset={currentSettings.resetToDefaults}
+            onCancel={onClose}
+          />
         </div>
       </div>
     </div>

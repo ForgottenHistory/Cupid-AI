@@ -1,0 +1,441 @@
+import { useState, useEffect } from 'react';
+import api from '../services/api';
+
+const SDSettings = ({ onClose }) => {
+  const [settings, setSettings] = useState({
+    mainPrompt: '',
+    negativePrompt: '',
+    model: '',
+    sd_steps: 30,
+    sd_cfg_scale: 7.0,
+    sd_sampler: 'DPM++ 2M',
+    sd_scheduler: 'Karras',
+    sd_enable_hr: true,
+    sd_hr_scale: 1.5,
+    sd_hr_upscaler: 'remacri_original',
+    sd_hr_steps: 15,
+    sd_hr_cfg: 5.0,
+    sd_denoising_strength: 0.7,
+    sd_enable_adetailer: true,
+    sd_adetailer_model: 'face_yolov8n.pt'
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/users/sd-settings');
+      setSettings({
+        mainPrompt: response.data.sd_main_prompt,
+        negativePrompt: response.data.sd_negative_prompt,
+        model: response.data.sd_model,
+        sd_steps: response.data.sd_steps,
+        sd_cfg_scale: response.data.sd_cfg_scale,
+        sd_sampler: response.data.sd_sampler,
+        sd_scheduler: response.data.sd_scheduler,
+        sd_enable_hr: response.data.sd_enable_hr,
+        sd_hr_scale: response.data.sd_hr_scale,
+        sd_hr_upscaler: response.data.sd_hr_upscaler,
+        sd_hr_steps: response.data.sd_hr_steps,
+        sd_hr_cfg: response.data.sd_hr_cfg,
+        sd_denoising_strength: response.data.sd_denoising_strength,
+        sd_enable_adetailer: response.data.sd_enable_adetailer,
+        sd_adetailer_model: response.data.sd_adetailer_model
+      });
+    } catch (err) {
+      console.error('Failed to load SD settings:', err);
+      setError('Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setSaving(true);
+
+    try {
+      await api.put('/users/sd-settings', {
+        sd_main_prompt: settings.mainPrompt,
+        sd_negative_prompt: settings.negativePrompt,
+        sd_model: settings.model,
+        sd_steps: settings.sd_steps,
+        sd_cfg_scale: settings.sd_cfg_scale,
+        sd_sampler: settings.sd_sampler,
+        sd_scheduler: settings.sd_scheduler,
+        sd_enable_hr: settings.sd_enable_hr,
+        sd_hr_scale: settings.sd_hr_scale,
+        sd_hr_upscaler: settings.sd_hr_upscaler,
+        sd_hr_steps: settings.sd_hr_steps,
+        sd_hr_cfg: settings.sd_hr_cfg,
+        sd_denoising_strength: settings.sd_denoising_strength,
+        sd_enable_adetailer: settings.sd_enable_adetailer,
+        sd_adetailer_model: settings.sd_adetailer_model
+      });
+
+      setSuccess('Settings saved successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Failed to save SD settings:', err);
+      setError(err.response?.data?.error || 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReset = () => {
+    setSettings({
+      mainPrompt: 'masterpiece, best quality, amazing quality',
+      negativePrompt: 'nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
+      model: '',
+      sd_steps: 30,
+      sd_cfg_scale: 7.0,
+      sd_sampler: 'DPM++ 2M',
+      sd_scheduler: 'Karras',
+      sd_enable_hr: true,
+      sd_hr_scale: 1.5,
+      sd_hr_upscaler: 'remacri_original',
+      sd_hr_steps: 15,
+      sd_hr_cfg: 5.0,
+      sd_denoising_strength: 0.7,
+      sd_enable_adetailer: true,
+      sd_adetailer_model: 'face_yolov8n.pt'
+    });
+    setError('');
+    setSuccess('');
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-4 flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-white">Image Generation Settings</h2>
+          <button
+            onClick={onClose}
+            className="text-white hover:text-gray-200 transition"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Messages */}
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                  {success}
+                </div>
+              )}
+
+              {/* Main Prompt */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Main Prompt
+                </label>
+                <textarea
+                  value={settings.mainPrompt}
+                  onChange={(e) => setSettings({ ...settings, mainPrompt: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  rows="3"
+                  placeholder="Tags added to the beginning of every image generation"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  These tags are added to the start of every image prompt. Example: "masterpiece, best quality, amazing quality"
+                </p>
+              </div>
+
+              {/* Negative Prompt */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Negative Prompt
+                </label>
+                <textarea
+                  value={settings.negativePrompt}
+                  onChange={(e) => setSettings({ ...settings, negativePrompt: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  rows="4"
+                  placeholder="Tags to avoid in image generation"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  These tags tell Stable Diffusion what to avoid. Example: "lowres, bad anatomy, bad hands, text, error"
+                </p>
+              </div>
+
+              {/* Model */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Stable Diffusion Model
+                </label>
+                <input
+                  type="text"
+                  value={settings.model}
+                  onChange={(e) => setSettings({ ...settings, model: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  placeholder="Leave empty to use default model"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  The checkpoint/model name to use in Stable Diffusion WebUI. Leave empty to use the currently loaded model.
+                </p>
+              </div>
+
+              {/* Base Settings */}
+              <div className="space-y-4 pt-4 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Base Generation</h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sampling Steps
+                    </label>
+                    <input
+                      type="number"
+                      value={settings.sd_steps}
+                      onChange={(e) => setSettings({ ...settings, sd_steps: parseInt(e.target.value) })}
+                      min="1"
+                      max="150"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CFG Scale
+                    </label>
+                    <input
+                      type="number"
+                      value={settings.sd_cfg_scale}
+                      onChange={(e) => setSettings({ ...settings, sd_cfg_scale: parseFloat(e.target.value) })}
+                      min="1"
+                      max="30"
+                      step="0.5"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sampler
+                    </label>
+                    <select
+                      value={settings.sd_sampler}
+                      onChange={(e) => setSettings({ ...settings, sd_sampler: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                    >
+                      <option>DPM++ 2M</option>
+                      <option>DPM++ SDE</option>
+                      <option>Euler a</option>
+                      <option>Euler</option>
+                      <option>DDIM</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Scheduler
+                    </label>
+                    <select
+                      value={settings.sd_scheduler}
+                      onChange={(e) => setSettings({ ...settings, sd_scheduler: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                    >
+                      <option>Karras</option>
+                      <option>Exponential</option>
+                      <option>Normal</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Highres Fix */}
+              <div className="space-y-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">Highres Fix</h3>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.sd_enable_hr}
+                      onChange={(e) => setSettings({ ...settings, sd_enable_hr: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                {settings.sd_enable_hr && (
+                  <div className="space-y-4 pl-4 border-l-2 border-purple-300">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Upscale Factor
+                        </label>
+                        <input
+                          type="number"
+                          value={settings.sd_hr_scale}
+                          onChange={(e) => setSettings({ ...settings, sd_hr_scale: parseFloat(e.target.value) })}
+                          min="1.0"
+                          max="2.0"
+                          step="0.1"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Upscaler
+                        </label>
+                        <select
+                          value={settings.sd_hr_upscaler}
+                          onChange={(e) => setSettings({ ...settings, sd_hr_upscaler: e.target.value })}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                        >
+                          <option>remacri_original</option>
+                          <option>4x-UltraSharp</option>
+                          <option>Latent</option>
+                          <option>Latent (bicubic)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Highres Steps
+                        </label>
+                        <input
+                          type="number"
+                          value={settings.sd_hr_steps}
+                          onChange={(e) => setSettings({ ...settings, sd_hr_steps: parseInt(e.target.value) })}
+                          min="0"
+                          max="150"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Highres CFG
+                        </label>
+                        <input
+                          type="number"
+                          value={settings.sd_hr_cfg}
+                          onChange={(e) => setSettings({ ...settings, sd_hr_cfg: parseFloat(e.target.value) })}
+                          min="1"
+                          max="30"
+                          step="0.5"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Denoising Strength
+                        </label>
+                        <input
+                          type="number"
+                          value={settings.sd_denoising_strength}
+                          onChange={(e) => setSettings({ ...settings, sd_denoising_strength: parseFloat(e.target.value) })}
+                          min="0"
+                          max="1"
+                          step="0.05"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ADetailer */}
+              <div className="space-y-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900">ADetailer</h3>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.sd_enable_adetailer}
+                      onChange={(e) => setSettings({ ...settings, sd_enable_adetailer: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
+                </div>
+
+                {settings.sd_enable_adetailer && (
+                  <div className="pl-4 border-l-2 border-purple-300">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Detection Model
+                    </label>
+                    <select
+                      value={settings.sd_adetailer_model}
+                      onChange={(e) => setSettings({ ...settings, sd_adetailer_model: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                    >
+                      <option>face_yolov8n.pt</option>
+                      <option>face_yolov8s.pt</option>
+                      <option>Eyes.pt</option>
+                      <option>mediapipe_face_full</option>
+                      <option>hand_yolov8n.pt</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                >
+                  {saving ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Saving...
+                    </span>
+                  ) : (
+                    'Save Settings'
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  disabled={saving}
+                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                >
+                  Reset to Defaults
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default SDSettings;
