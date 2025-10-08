@@ -335,6 +335,246 @@ Realistic conversation flow based on time durations:
 - Gradient progress bars with color coding
 - One-click generation from character description
 
+### Character Wizard - PLANNED
+**Overview**: AI-powered character generator that creates unique characters from scratch instead of importing existing cards. Uses LLM + Stable Diffusion to generate complete Character v2 cards.
+
+**Purpose**:
+- Generate fresh, unique characters with AI
+- Alternative to importing existing character cards
+- Creates complete characters with description, image, schedule, personality, dating profile
+
+**Character Structure** (Simplified):
+Cupid-AI only uses **name** and **description** from Character v2 spec:
+- `name` - Character name
+- `description` - Detailed character description (backstory, traits, likes/dislikes, behavior)
+  - **Note**: This is backend-only, used for AI behavior/prompting - user never sees this
+- Everything else (schedule, dating profile, Big Five) auto-generated from description
+
+**Extensibility via JSON Files**:
+```
+frontend/src/data/
+├── archetypes.json          # Character archetypes (easily add more)
+└── personalityTraits.json   # Personality tags (easily add more)
+```
+
+**archetypes.json** example:
+```json
+[
+  {
+    "id": "college_student",
+    "name": "College Student",
+    "description": "Young, energetic, balancing studies and social life"
+  },
+  {
+    "id": "career_professional",
+    "name": "Career Professional",
+    "description": "Ambitious, goal-oriented, work-life balance"
+  }
+]
+```
+
+**personalityTraits.json** example:
+```json
+[
+  { "id": "sweet", "name": "Sweet" },
+  { "id": "confident", "name": "Confident" },
+  { "id": "playful", "name": "Playful" }
+]
+```
+
+---
+
+#### Wizard Flow (3 Stages)
+
+**Stage 1: Character Identity**
+User defines core identity:
+- **Name** (text input)
+- **Age** (dropdown: 18-25, 26-35, 36-45, 46+)
+- **Archetype** (load from `archetypes.json`)
+  - Display as grid of selectable cards
+  - Examples: College Student, Career Professional, Creative Artist, Gym Enthusiast, Bookworm, Gamer, etc.
+- **Personality Tags** (load from `personalityTraits.json`)
+  - Grid of selectable buttons
+  - Select 3-5 traits (e.g., Sweet, Confident, Playful, Mysterious, Shy, Sarcastic)
+
+**Stage 2: Generate Description**
+LLM generates character description:
+1. User clicks **"Generate Character"** button
+2. Backend LLM call with prompt:
+   ```
+   "Create a detailed character description for a dating app AI character:
+   - Name: [name]
+   - Age: [age]
+   - Archetype: [archetype description]
+   - Personality: [trait1, trait2, trait3]
+
+   Write 2-3 paragraphs covering:
+   - Background and occupation
+   - Personality traits and behavior
+   - Interests, hobbies, likes/dislikes
+   - Communication style
+
+   This description will be used to guide the AI's behavior in conversations."
+   ```
+3. Display generated description in **editable textarea**
+4. **"Regenerate"** button if user wants different description
+5. **Auto-generate** supporting data:
+   - Dating profile (existing system)
+   - Weekly schedule (existing system)
+   - Big Five personality (existing system)
+
+**Stage 3: Generate Image & Save**
+Generate character image and save:
+
+**Appearance Selection**:
+- Hair color (dropdown: Blonde, Brunette, Black, Red, etc.)
+- Hair style (dropdown: Long Straight, Wavy, Bob Cut, Ponytail, etc.)
+- Eye color (dropdown: Brown, Blue, Green, Hazel, etc.)
+- Body type (dropdown: Petite, Slim, Athletic, Curvy, Plus Size)
+- Style (dropdown: Casual, Elegant, Sporty, Gothic, Cute, Professional)
+
+**Image Generation**:
+1. Click **"Generate Image"** button
+2. Build Danbooru tags from appearance selections
+   - Example: `1girl, solo, blonde hair, long hair, blue eyes, athletic, casual clothing`
+3. Call Stable Diffusion WebUI (existing integration):
+   - Uses user's SD settings (Highres fix, ADetailer, etc.)
+   - Generation takes ~20-30 seconds
+   - Shows loading spinner + progress
+4. Display generated image
+5. **"Regenerate Image"** button if not satisfied
+
+**Save Character**:
+1. Click **"Save Character"** button
+2. Create Character v2 card JSON:
+   ```json
+   {
+     "spec": "chara_card_v2",
+     "data": {
+       "name": "Emily",
+       "description": "[LLM-generated description]",
+       "tags": ["generated", "wizard"]
+     }
+   }
+   ```
+3. Embed JSON metadata into PNG image
+4. Save to IndexedDB (frontend storage)
+5. Auto-generate supporting data:
+   - Dating profile
+   - Weekly schedule
+   - Big Five personality
+6. Redirect to Library page
+
+---
+
+#### Technical Implementation
+
+**Frontend Structure**:
+```
+frontend/src/
+├── data/
+│   ├── archetypes.json (NEW)
+│   └── personalityTraits.json (NEW)
+├── pages/
+│   └── CharacterWizard.jsx (NEW - main wizard component)
+├── components/wizard/
+│   ├── WizardProgress.jsx (NEW - progress bar)
+│   ├── IdentityStep.jsx (NEW - Stage 1)
+│   ├── DescriptionStep.jsx (NEW - Stage 2: LLM generation)
+│   └── ImageStep.jsx (NEW - Stage 3: SD + save)
+```
+
+**Backend Endpoints**:
+```javascript
+POST /api/characters/wizard/generate-description
+// Input: { name, age, archetype, personalityTags }
+// Output: { description }
+
+POST /api/characters/wizard/generate-image
+// Input: { appearance: { hair, eyes, body, style } }
+// Output: { imageUrl, imageTags }
+
+POST /api/characters/wizard/create
+// Input: { name, description, imageBlob, imageTags }
+// Output: { characterId, character }
+```
+
+**Backend Services**:
+- `characterWizardService.js` (NEW):
+  - `generateDescription(name, age, archetype, traits)` → LLM call
+  - `generateImageTags(appearance)` → Build Danbooru tags
+  - `generateImage(tags)` → Call SD WebUI
+  - `createCharacterCard(name, description, image)` → Build v2 card + embed PNG
+- Reuse existing services:
+  - `aiService.js` - LLM calls for description generation
+  - `scheduleService.js` - Generate weekly schedule
+  - `personalityService.js` - Generate Big Five traits
+  - `characterService.js` - Dating profile generation
+
+**Data Flow**:
+```
+Stage 1: User Input
+  → Store: { name, age, archetype, personalityTags }
+
+Stage 2: LLM Generation
+  → API: /wizard/generate-description
+  → Backend: Content LLM generates description
+  → Store: { ...stage1, description }
+
+Stage 3: Image + Save
+  → User selects appearance
+  → API: /wizard/generate-image (SD WebUI)
+  → API: /wizard/create (save to DB)
+  → Auto-generate: schedule, dating profile, personality
+  → Save to IndexedDB as Character v2 card
+  → Redirect to Library
+```
+
+---
+
+#### UI/UX Details
+
+**Progress Bar**:
+- 3-step indicator: Identity → Description → Image
+- Shows current stage with icon + color
+- Progress fills as stages complete
+
+**Navigation**:
+- **Previous** button (disabled on Stage 1)
+- **Next** button (Stage 1 → Stage 2)
+- **Generate Character** button (Stage 2)
+- **Generate Image** button (Stage 3)
+- **Save Character** button (final action)
+- **Cancel** button (all stages) → discard and return to Library
+
+**Validation**:
+- Stage 1: Name required, archetype required, 3+ personality tags
+- Stage 2: Description generated (not empty)
+- Stage 3: Image generated (not null)
+
+**Error Handling**:
+- LLM generation fails → show error, allow retry
+- SD generation fails → show error, allow retry
+- Save fails → show error, keep data in wizard state
+
+---
+
+#### Benefits
+
+✅ **Extensible**: Add archetypes/traits via JSON files (no code changes)
+✅ **Simple**: 3 stages, only name + description needed
+✅ **Integrated**: Auto-generates schedule, dating profile, Big Five personality
+✅ **Reuses systems**: Existing LLM, SD, personality, schedule generation
+✅ **Unique characters**: LLM creates varied descriptions from same inputs
+✅ **User-friendly**: Guided wizard flow with regeneration options
+
+#### Future Enhancements
+- Import archetype/trait presets from community
+- Save/load partial wizard progress
+- Character templates (save wizard config for reuse)
+- Bulk generation (create multiple characters at once)
+- Advanced customization (system_prompt, scenario, etc.)
+
 ### Voice Messaging System 🎙️ ✅ COMPLETE
 **Overview**: Characters can send voice messages instead of text, adding personality and immersion through voice cloning.
 

@@ -74,17 +74,23 @@ export async function likeCharacter(req, res) {
     // Check if this should be a super like (based on extraversion)
     const isSuperLike = superLikeService.shouldSuperLike(userId, currentStatus, personality);
 
+    // Extract image tags if available
+    const imageTags = characterData.imageTags || null;
+
+    console.log('🔍 Character sync - imageTags:', imageTags);
+
     // Create or update character in backend
     db.prepare(`
-      INSERT OR REPLACE INTO characters (id, user_id, name, card_data, schedule_data, personality_data)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO characters (id, user_id, name, card_data, schedule_data, personality_data, image_tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `).run(
       characterId,
       userId,
       characterData.name || 'Character',
       JSON.stringify(characterData),
       characterData.schedule ? JSON.stringify(characterData.schedule) : null,
-      characterData.personalityTraits ? JSON.stringify(characterData.personalityTraits) : null
+      characterData.personalityTraits ? JSON.stringify(characterData.personalityTraits) : null,
+      imageTags
     );
 
     // If super like, mark it

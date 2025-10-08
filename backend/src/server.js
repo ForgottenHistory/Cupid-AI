@@ -17,6 +17,7 @@ import chatRoutes from './routes/chat.js';
 import charactersRoutes from './routes/characters.js';
 import ttsRoutes from './routes/tts.js';
 import debugRoutes from './routes/debug.js';
+import wizardRoutes from './routes/wizard.js';
 
 // Import services
 import proactiveMessageService from './services/proactiveMessageService.js';
@@ -83,6 +84,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/characters', charactersRoutes);
 app.use('/api/tts', ttsRoutes);
 app.use('/api/debug', debugRoutes);
+app.use('/api/wizard', wizardRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

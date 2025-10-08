@@ -16,12 +16,19 @@ const ImageTab = ({ character, onUpdate }) => {
   const loadImageTags = async () => {
     try {
       setLoading(true);
+      // Try to load from backend first
       const response = await api.get(`/characters/${character.id}`);
       setImageTags(response.data.image_tags || '');
       setError(null);
     } catch (err) {
-      console.error('Failed to load image tags:', err);
-      setError('Failed to load image tags');
+      // If 404 (character not synced to backend yet), try loading from local cardData
+      if (err.response?.status === 404 && character.cardData?.data?.imageTags) {
+        setImageTags(character.cardData.data.imageTags);
+        setError(null);
+      } else {
+        console.error('Failed to load image tags:', err);
+        setError('Failed to load image tags');
+      }
     } finally {
       setLoading(false);
     }

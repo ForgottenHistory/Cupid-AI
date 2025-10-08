@@ -11,6 +11,7 @@ import Library from './pages/Library';
 import VoiceLibrary from './pages/VoiceLibrary';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
+import CharacterWizard from './pages/CharacterWizard';
 
 function App() {
   return (
@@ -40,6 +41,15 @@ function App() {
                 <MainLayout>
                   <Library />
                 </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/wizard"
+            element={
+              <ProtectedRoute>
+                <CharacterWizard />
               </ProtectedRoute>
             }
           />

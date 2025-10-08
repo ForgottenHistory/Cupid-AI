@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import UploadZone from '../components/UploadZone';
 import CharacterGrid from '../components/CharacterGrid';
@@ -7,6 +8,7 @@ import characterService from '../services/characterService';
 
 const Library = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'liked', 'unviewed'
@@ -117,9 +119,31 @@ const Library = () => {
           </div>
         </div>
 
-        {/* Upload Zone */}
-        <div className="mb-8">
-          <UploadZone onUpload={handleUpload} />
+        {/* Add Characters Section */}
+        <div className="mb-8 space-y-4">
+          <h2 className="text-xl font-semibold text-gray-900">Add Characters</h2>
+
+          {/* Create Character Button */}
+          <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl p-6 shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white mb-2">Create from Scratch</h3>
+                <p className="text-pink-100">Use AI to generate a unique character with custom personality and appearance</p>
+              </div>
+              <button
+                onClick={() => navigate('/wizard')}
+                className="px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition font-semibold shadow-md"
+              >
+                Character Wizard
+              </button>
+            </div>
+          </div>
+
+          {/* Upload Zone */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 mb-3">Import Character Cards</h3>
+            <UploadZone onUpload={handleUpload} />
+          </div>
         </div>
 
         {/* Filter */}

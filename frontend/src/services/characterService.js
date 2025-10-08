@@ -41,6 +41,31 @@ class CharacterService {
   }
 
   /**
+   * Create character directly with cardData and image blob (for wizard-generated characters)
+   */
+  async createCharacter({ cardData, imageBlob, userId }) {
+    try {
+      // Check if character already exists
+      const exists = await characterStorage.characterExists(userId, cardData.data.name);
+      if (exists) {
+        throw new Error(`Character "${cardData.data.name}" already exists`);
+      }
+
+      // Store character with image
+      const character = await characterStorage.addCharacter({
+        cardData,
+        imageBlob,
+        userId,
+      });
+
+      return character;
+    } catch (error) {
+      console.error('Failed to create character:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Import multiple characters from PNG files
    */
   async importMultipleCharacters(files, userId) {
