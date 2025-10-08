@@ -7,6 +7,7 @@ import MainLayout from './components/MainLayout';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Home from './pages/Home';
+import Feed from './pages/Feed';
 import Library from './pages/Library';
 import VoiceLibrary from './pages/VoiceLibrary';
 import Profile from './pages/Profile';
@@ -29,6 +30,17 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Home />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/feed"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Feed />
                 </MainLayout>
               </ProtectedRoute>
             }

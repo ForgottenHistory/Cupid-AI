@@ -14,10 +14,13 @@
 - **Main Layout**: `MainLayout.jsx` - Sidebar with matches, unread indicators, nav
 - **Core Pages**:
   - `Home.jsx` - Tinder-style swipe interface
+  - `Feed.jsx` - Social media feed with full-screen post view
   - `Chat.jsx` - Individual chat conversations
   - `Library.jsx` - Character management with "Character Wizard" button
   - `Profile.jsx` - User settings and LLM config
   - `CharacterWizard.jsx` - 4-step AI character creation wizard
+- **Feed Components**:
+  - `PostCard.jsx` - Post display (deprecated, replaced by full-screen view)
 - **Wizard Components** (`components/wizard/`):
   - `WizardProgress.jsx` - Visual progress indicator
   - `IdentityStep.jsx` - Age, archetype, personality trait selection
@@ -37,12 +40,13 @@
   - `useLLMSettings.js` - State management for LLM settings (load, save, update, reset)
 
 ### Backend Structure
-- **Routes**: `auth.js`, `users.js`, `characters.js`, `chat.js`, `wizard.js`
+- **Routes**: `auth.js`, `users.js`, `characters.js`, `chat.js`, `wizard.js`, `feed.js`, `sync.js`
 - **Services**:
   - `aiService.js` - OpenRouter integration, system prompts, token counting/trimming, decision engine, Big Five personality generation
   - `characterWizardService.js` - AI character generation (name, description, appearance, image tags), SD integration
   - `engagementService.js` - Character state tracking, time-based engagement durations, cooldown system
   - `proactiveMessageService.js` - Background service for proactive messaging (checks every 5 minutes)
+  - `postGenerationService.js` - Background service for character posts (checks every 60 minutes, 10 posts/day limit)
   - `superLikeService.js` - Super like probability calculation, daily limit tracking (2 per day)
 - **Utils**: `logger.js` - File logging with console intercept (auto-clears on restart)
 - **Database**: `database.js` - better-sqlite3 with auto-migrations
@@ -97,8 +101,9 @@
 - `users` - LLM settings (model, temperature, max_tokens, context_window, etc.) + Decision LLM settings + proactive message tracking + super like tracking
 - `conversations` - Links user + character, tracks `unread_count`, `last_message`
 - `messages` - role ('user'|'assistant'), content, timestamps, reaction (emoji or null)
-- `characters` - Synced from IndexedDB, stores full card_data JSON, schedule_data, schedule_generated_at, personality_data, is_super_like
+- `characters` - Synced from IndexedDB, stores full card_data JSON, image_url, schedule_data, schedule_generated_at, personality_data, is_super_like
 - `character_states` - Per user-character engagement tracking (status, engagement_state, engagement_started_at, departed_status, last_check_time)
+- `posts` - Character-generated social media posts (character_id, content, image_url, post_type, created_at)
 
 ### Migrations
 Auto-run on startup via `database.js`:
@@ -301,6 +306,21 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
 
 ## Recent Changes
 
+- **Social Media Feed System** ✅
+  - Full-screen single-post view (like Instagram Stories) instead of traditional feed
+  - Large character avatar on left (320px wide, full height), content on right
+  - Navigation: Arrow buttons + keyboard arrows (← →) with swoosh animation
+  - Character posts generated every 60 minutes by background service
+  - 10 posts per day cap distributed by personality (high extraversion = more posts)
+  - LLM generates post content (1-3 sentences, social media style)
+  - Posts only when character is online/away (not offline/busy)
+  - Click avatar/name to navigate to DM with character
+  - Post counter in header (e.g., "3 / 8")
+  - Database: `posts` table (character_id, content, image_url, post_type, created_at)
+  - Backend: `postGenerationService.js`, `routes/feed.js`
+  - Frontend: `Feed.jsx` with full-screen view, smooth slide transitions
+  - Character images synced from IndexedDB to backend (`image_url` column)
+  - One-time sync utility: `/api/sync/character-images` endpoint (50MB body limit)
 - **Character Wizard** ✅
   - AI-powered 4-step character creation as alternative to importing character cards
   - Stage 1: Select age (weighted randomize), archetype, personality traits

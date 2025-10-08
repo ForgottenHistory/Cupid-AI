@@ -133,6 +133,57 @@ class AIService {
   }
 
   /**
+   * Basic completion for simple tasks (post generation, etc.)
+   * No character context, just a simple prompt → response
+   */
+  async createBasicCompletion(prompt, options = {}) {
+    if (!this.apiKey) {
+      throw new Error('OpenRouter API key not configured');
+    }
+
+    try {
+      const defaultSettings = llmSettingsService.getDefaultContentSettings();
+      const model = options.model || defaultSettings.model;
+      const temperature = options.temperature ?? 0.8;
+      const max_tokens = options.max_tokens ?? 300;
+
+      const response = await axios.post(
+        `${this.baseUrl}/chat/completions`,
+        {
+          model: model,
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+          temperature: temperature,
+          max_tokens: max_tokens,
+          top_p: options.top_p ?? 1.0,
+          frequency_penalty: options.frequency_penalty ?? 0.0,
+          presence_penalty: options.presence_penalty ?? 0.0,
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://localhost:3000',
+            'X-Title': 'AI-Dater',
+          }
+        }
+      );
+
+      const content = response.data.choices[0].message.content;
+
+      return {
+        content: content,
+        model: response.data.model,
+        usage: response.data.usage,
+      };
+    } catch (error) {
+      console.error('❌ Basic completion error:', error.message);
+      throw new Error(error.response?.data?.error?.message || error.message || 'AI service error');
+    }
+  }
+
+  /**
    * Stream chat completion (for future implementation)
    */
   async createChatCompletionStream({ messages, characterData, model = null, currentStatus = null, userBio = null, schedule = null }) {

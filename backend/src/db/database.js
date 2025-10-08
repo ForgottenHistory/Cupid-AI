@@ -237,6 +237,44 @@ function runMigrations() {
       `);
       console.log('✅ SD main prompt, negative prompt, and model columns added to users table');
     }
+
+    // Migration: Populate image_url from card_data for existing characters
+    const existingCharacters = db.prepare('SELECT id, card_data FROM characters WHERE image_url IS NULL').all();
+    let migratedCount = 0;
+    for (const char of existingCharacters) {
+      try {
+        const cardData = JSON.parse(char.card_data);
+        if (cardData.image) {
+          db.prepare('UPDATE characters SET image_url = ? WHERE id = ?').run(cardData.image, char.id);
+          migratedCount++;
+        }
+      } catch (error) {
+        console.error(`Failed to migrate image for character ${char.id}:`, error.message);
+      }
+    }
+    if (migratedCount > 0) {
+      console.log(`✅ Migrated ${migratedCount} character images from card_data`);
+    }
+
+    // Migration: Create posts table for social media feed
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS posts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        character_id TEXT,
+        user_id INTEGER,
+        content TEXT NOT NULL,
+        image_url TEXT,
+        post_type TEXT DEFAULT 'text',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+    `);
+    console.log('✅ posts table created');
+
+    // Create index for posts
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_posts_character ON posts(character_id);`);
   } catch (error) {
     console.error('Migration error:', error);
   }

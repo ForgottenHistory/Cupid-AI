@@ -18,9 +18,12 @@ import charactersRoutes from './routes/characters.js';
 import ttsRoutes from './routes/tts.js';
 import debugRoutes from './routes/debug.js';
 import wizardRoutes from './routes/wizard.js';
+import feedRoutes from './routes/feed.js';
+import syncRoutes from './routes/sync.js';
 
 // Import services
 import proactiveMessageService from './services/proactiveMessageService.js';
+import postGenerationService from './services/postGenerationService.js';
 
 // Import database to initialize it
 import './db/database.js';
@@ -71,8 +74,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); // Increase limit for character images
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
@@ -85,6 +88,8 @@ app.use('/api/characters', charactersRoutes);
 app.use('/api/tts', ttsRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/wizard', wizardRoutes);
+app.use('/api/feed', feedRoutes);
+app.use('/api/sync', syncRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -125,6 +130,21 @@ httpServer.listen(PORT, () => {
       console.error('Proactive message service error:', error);
     });
   }, 5 * 60 * 1000); // 5 minutes
+
+  // Start post generation service (runs every 60 minutes)
+  console.log('📝 Post generation service started (checks every 60 minutes)');
+  setInterval(() => {
+    postGenerationService.generatePosts().catch(error => {
+      console.error('Post generation service error:', error);
+    });
+  }, 60 * 60 * 1000); // 60 minutes
+
+  // Generate initial posts after 5 seconds (to avoid startup spam)
+  setTimeout(() => {
+    postGenerationService.generatePosts().catch(error => {
+      console.error('Initial post generation error:', error);
+    });
+  }, 5000);
 });
 
 export default app;

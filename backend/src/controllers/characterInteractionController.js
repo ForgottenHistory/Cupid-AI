@@ -74,20 +74,20 @@ export async function likeCharacter(req, res) {
     // Check if this should be a super like (based on extraversion)
     const isSuperLike = superLikeService.shouldSuperLike(userId, currentStatus, personality);
 
-    // Extract image tags if available
+    // Extract image tags and image URL if available
     const imageTags = characterData.imageTags || null;
-
-    console.log('🔍 Character sync - imageTags:', imageTags);
+    const imageUrl = characterData.image || null; // Base64 image from card data
 
     // Create or update character in backend
     db.prepare(`
-      INSERT OR REPLACE INTO characters (id, user_id, name, card_data, schedule_data, personality_data, image_tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO characters (id, user_id, name, card_data, image_url, schedule_data, personality_data, image_tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       characterId,
       userId,
       characterData.name || 'Character',
       JSON.stringify(characterData),
+      imageUrl,
       characterData.schedule ? JSON.stringify(characterData.schedule) : null,
       characterData.personalityTraits ? JSON.stringify(characterData.personalityTraits) : null,
       imageTags
