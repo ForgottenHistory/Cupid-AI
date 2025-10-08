@@ -61,11 +61,11 @@ class MessageService {
   /**
    * Save a message
    */
-  saveMessage(conversationId, role, content, reaction = null, messageType = 'text', audioUrl = null, imageUrl = null, imageTags = null) {
+  saveMessage(conversationId, role, content, reaction = null, messageType = 'text', audioUrl = null, imageUrl = null, imageTags = null, isProactive = false) {
     const result = db.prepare(`
-      INSERT INTO messages (conversation_id, role, content, reaction, message_type, audio_url, image_url, image_tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(conversationId, role, content, reaction, messageType, audioUrl, imageUrl, imageTags);
+      INSERT INTO messages (conversation_id, role, content, reaction, message_type, audio_url, image_url, image_tags, is_proactive)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(conversationId, role, content, reaction, messageType, audioUrl, imageUrl, imageTags, isProactive ? 1 : 0);
 
     return this.getMessage(result.lastInsertRowid);
   }

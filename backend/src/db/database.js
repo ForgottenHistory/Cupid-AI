@@ -203,6 +203,12 @@ function runMigrations() {
       console.log('✅ image_tags column added to messages table');
     }
 
+    // Migration: Add is_proactive column to messages table
+    if (!messagesColumnNames.includes('is_proactive')) {
+      db.exec(`ALTER TABLE messages ADD COLUMN is_proactive INTEGER DEFAULT 0;`);
+      console.log('✅ is_proactive column added to messages table');
+    }
+
     // Migration: Add Stable Diffusion settings columns to users table
     if (!userColumnNames.includes('sd_steps')) {
       db.exec(`

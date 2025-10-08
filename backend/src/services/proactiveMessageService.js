@@ -5,44 +5,6 @@ import conversationService from './conversationService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 
 class ProactiveMessageService {
-  /**
-   * Check if user has reached daily proactive message limit
-   */
-  checkDailyLimit(userId) {
-    const user = db.prepare(`
-      SELECT proactive_messages_today, last_proactive_date FROM users WHERE id = ?
-    `).get(userId);
-
-    if (!user) return false;
-
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-    // Reset counter if it's a new day
-    if (user.last_proactive_date !== today) {
-      db.prepare(`
-        UPDATE users
-        SET proactive_messages_today = 0, last_proactive_date = ?
-        WHERE id = ?
-      `).run(today, userId);
-      return true; // Can send
-    }
-
-    // Check if under limit (5 per day)
-    return user.proactive_messages_today < 5;
-  }
-
-  /**
-   * Increment proactive message counter for user
-   */
-  incrementProactiveCount(userId) {
-    const today = new Date().toISOString().split('T')[0];
-    db.prepare(`
-      UPDATE users
-      SET proactive_messages_today = proactive_messages_today + 1,
-          last_proactive_date = ?
-      WHERE id = ?
-    `).run(today, userId);
-  }
 
   /**
    * Calculate probability of sending proactive message
@@ -74,11 +36,6 @@ class ProactiveMessageService {
     const users = db.prepare('SELECT id FROM users').all();
 
     for (const user of users) {
-      // Check daily limit
-      if (!this.checkDailyLimit(user.id)) {
-        continue;
-      }
-
       // Get all matched characters for this user
       const characters = db.prepare(`
         SELECT c.*, conv.id as conversation_id
@@ -99,6 +56,10 @@ class ProactiveMessageService {
         `).get(character.conversation_id);
 
         // Skip if no messages or last message was from assistant
+        // We only send proactive messages when the user has left us on read
+        // This also enforces the "1 in a row" limit:
+        // - Proactive message is sent → becomes last message (assistant)
+        // - Won't send another until user responds (last message becomes user)
         if (!lastMessage || lastMessage.role === 'assistant') {
           continue;
         }
@@ -216,12 +177,17 @@ class ProactiveMessageService {
       // Clean up em dashes (replace with periods)
       const cleanedContent = aiResponse.content.replace(/—/g, '.');
 
-      // Save message
+      // Save message with is_proactive flag
       const savedMessage = messageService.saveMessage(
         conversationId,
         'assistant',
         cleanedContent,
-        null // No reaction for proactive messages
+        null, // No reaction for proactive messages
+        'text', // messageType
+        null, // audioUrl
+        null, // imageUrl
+        null, // imageTags
+        true // isProactive
       );
 
       // Update conversation and increment unread count
@@ -239,9 +205,6 @@ class ProactiveMessageService {
         },
         isProactive: true
       });
-
-      // Increment user's proactive message count
-      this.incrementProactiveCount(userId);
 
       console.log(`✅ Sent proactive message from ${characterData.name} to user ${userId}`);
       return true;
@@ -262,11 +225,10 @@ class ProactiveMessageService {
       const candidates = this.findCandidates();
       console.log(`📋 Found ${candidates.length} candidates`);
 
-      // Process each candidate (but stop if we send 5 total)
+      // Process each candidate
+      // Note: No global cap - the "1 in a row" per-character limit prevents spam
       let sent = 0;
       for (const candidate of candidates) {
-        if (sent >= 5) break; // Global cap to avoid spamming
-
         const didSend = await this.processCandidate(candidate, io);
         if (didSend) {
           sent++;
