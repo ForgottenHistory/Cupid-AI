@@ -79,6 +79,33 @@ class AIService {
         finalMessages.push({ role: 'system', content: proactiveInstructions });
       }
 
+      // Append decision context at the VERY END (maximum recency bias)
+      if (decision) {
+        const decisionParts = ['DECISION:'];
+
+        if (decision.shouldSendImage) {
+          decisionParts.push('IMAGE: YES (use [IMAGE_TAGS: ...] format)');
+        } else {
+          decisionParts.push('IMAGE: NO (do not mention pics)');
+        }
+
+        if (decision.shouldSendVoice) {
+          decisionParts.push('VOICE: YES (write for speech)');
+        } else {
+          decisionParts.push('VOICE: NO');
+        }
+
+        if (decision.reaction) {
+          decisionParts.push(`REACTION: ${decision.reaction}`);
+        }
+
+        if (decision.reason) {
+          decisionParts.push(`REASON: ${decision.reason}`);
+        }
+
+        finalMessages.push({ role: 'system', content: decisionParts.join('\n') });
+      }
+
       // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
       const characterName = characterData.data?.name || characterData.name || 'Character';
       const logUserName = userName || 'User';

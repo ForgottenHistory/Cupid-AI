@@ -5,6 +5,7 @@ import { useState } from 'react';
  */
 const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   // Calculate approximate token count (1 token ≈ 4 characters)
   const calculateTokens = () => {
@@ -29,7 +30,7 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
   return (
     <div className="relative flex-shrink-0">
       {/* Banner Image */}
-      <div className="relative h-52 overflow-hidden">
+      <div className={`relative overflow-hidden transition-all duration-300 ${collapsed ? 'h-16' : 'h-52'}`}>
         <img
           src={character.imageUrl}
           alt={character.name}
@@ -37,18 +38,24 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-purple-900/30 to-black/70 dark:from-black/40 dark:via-purple-950/50 dark:to-black/80"></div>
 
-        {/* Back Button */}
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
+        {/* Top Right Buttons */}
+        <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+          {/* Collapse/Expand Button */}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
+            title={collapsed ? 'Expand banner' : 'Collapse banner'}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {collapsed ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+              )}
+            </svg>
+          </button>
 
-        {/* Menu Button */}
-        <div className="absolute top-4 right-4 z-30">
+          {/* Menu Button */}
           <button
             onClick={() => setShowMenu(!showMenu)}
             className="relative z-30 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
@@ -58,14 +65,16 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
             </svg>
           </button>
 
-          {/* Dropdown Menu */}
-          {showMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-10"
-                onClick={() => setShowMenu(false)}
-              />
-              <div className="absolute right-0 top-14 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-1 min-w-[180px] z-20">
+        </div>
+
+        {/* Dropdown Menu */}
+        {showMenu && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setShowMenu(false)}
+            />
+            <div className="absolute right-4 top-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-1 min-w-[180px] z-20">
                 <div className="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-sm border-b border-purple-100/50 dark:border-purple-900/50">
                   <div className="flex items-center gap-2 font-medium">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,45 +103,63 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
                   </svg>
                   Unmatch
                 </button>
-              </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
 
         {/* Character Info Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-          <div className="flex items-end gap-4">
-            {/* Avatar with gradient ring and glow */}
-            <div className="relative flex-shrink-0">
-              <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl blur-lg opacity-60"></div>
-              <div className="relative p-1 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl">
-                <img
-                  src={character.imageUrl}
-                  alt={character.name}
-                  className="w-24 h-32 rounded-xl object-cover border-4 border-white shadow-2xl"
-                  style={{
-                    imageRendering: 'auto',
-                    transform: 'translateZ(0)',
-                    backfaceVisibility: 'hidden'
-                  }}
-                />
+        {collapsed ? (
+          // Compact mode - just name and status
+          <div className="absolute bottom-0 left-0 right-0 px-6 py-3 text-white flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className={`w-3 h-3 ${getStatusColor(characterStatus.status)} rounded-full shadow-lg`}>
+                  <div className={`absolute inset-0 ${getStatusColor(characterStatus.status)} rounded-full animate-ping opacity-75`}></div>
+                </div>
               </div>
-              {/* Status indicator with glow */}
-              <div className={`absolute bottom-1 right-1 w-5 h-5 ${getStatusColor(characterStatus.status)} border-3 border-white rounded-full shadow-xl`}>
-                <div className={`absolute inset-0 ${getStatusColor(characterStatus.status)} rounded-full animate-ping opacity-75`}></div>
-              </div>
+              <h2 className="text-lg font-bold drop-shadow-2xl">{character.name}</h2>
+              <span className="text-xs font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20">
+                {characterStatus.status}
+                {characterStatus.activity && ` • ${characterStatus.activity}`}
+              </span>
             </div>
-            <div className="flex-1 pb-2">
-              <h2 className="text-2xl font-bold drop-shadow-2xl mb-1">{character.name}</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
-                  {characterStatus.status}
-                  {characterStatus.activity && ` • ${characterStatus.activity}`}
-                </span>
+          </div>
+        ) : (
+          // Full mode - avatar and details
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+            <div className="flex items-end gap-4">
+              {/* Avatar with gradient ring and glow */}
+              <div className="relative flex-shrink-0">
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl blur-lg opacity-60"></div>
+                <div className="relative p-1 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl">
+                  <img
+                    src={character.imageUrl}
+                    alt={character.name}
+                    className="w-24 h-32 rounded-xl object-cover border-4 border-white shadow-2xl"
+                    style={{
+                      imageRendering: 'auto',
+                      transform: 'translateZ(0)',
+                      backfaceVisibility: 'hidden'
+                    }}
+                  />
+                </div>
+                {/* Status indicator with glow */}
+                <div className={`absolute bottom-1 right-1 w-5 h-5 ${getStatusColor(characterStatus.status)} border-3 border-white rounded-full shadow-xl`}>
+                  <div className={`absolute inset-0 ${getStatusColor(characterStatus.status)} rounded-full animate-ping opacity-75`}></div>
+                </div>
+              </div>
+              <div className="flex-1 pb-2">
+                <h2 className="text-2xl font-bold drop-shadow-2xl mb-1">{character.name}</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
+                    {characterStatus.status}
+                    {characterStatus.activity && ` • ${characterStatus.activity}`}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

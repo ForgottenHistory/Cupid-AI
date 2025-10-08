@@ -291,6 +291,25 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
     const userBio = user?.bio || null;
 
+    // Get character from backend to check voice/image availability
+    const backendCharacter = db.prepare('SELECT voice_id, image_tags FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+    const hasVoice = backendCharacter?.voice_id ? true : false;
+    const hasImage = backendCharacter?.image_tags ? true : false;
+
+    // Call Decision LLM first
+    const userMessage = aiMessages[aiMessages.length - 1]?.content || '';
+    const decision = await aiService.makeDecision({
+      messages: aiMessages,
+      characterData: characterData,
+      userMessage: userMessage,
+      userId: userId,
+      isEngaged: true, // Assume engaged for regenerate
+      hasVoice: hasVoice,
+      hasImage: hasImage
+    });
+
+    console.log('🎯 Decision made (regenerate):', decision);
+
     // Get AI response
     const aiResponse = await aiService.createChatCompletion({
       messages: aiMessages,
@@ -299,13 +318,75 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       currentStatus: currentStatusInfo,
       userBio: userBio,
       schedule: characterData.schedule,
+      decision: decision  // Pass decision to Content LLM
     });
 
     // Clean up em dashes (replace with periods)
     const cleanedContent = aiResponse.content.replace(/—/g, '.');
 
-    // Save AI response
-    messageService.saveMessage(conversation.id, 'assistant', cleanedContent);
+    let messageType = 'text';
+    let imageUrl = null;
+
+    // Generate image if decision says so (and feature is enabled)
+    const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
+    if (imageMessagesEnabled && decision.shouldSendImage && hasImage && backendCharacter?.image_tags && aiResponse.imageTags) {
+      console.log(`🎨 Generating image for character ${characterId}`);
+      console.log(`Character tags: ${backendCharacter.image_tags}`);
+      console.log(`Context tags (from Content LLM): ${aiResponse.imageTags}`);
+
+      try {
+        const sdService = (await import('../services/sdService.js')).default;
+
+        // Fetch user's SD settings
+        const userSettings = db.prepare(`
+          SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
+                 sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
+                 sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model,
+                 sd_main_prompt, sd_negative_prompt, sd_model
+          FROM users WHERE id = ?
+        `).get(userId);
+
+        const imageResult = await sdService.generateImage({
+          characterTags: backendCharacter.image_tags,
+          contextTags: aiResponse.imageTags,
+          userSettings: userSettings
+        });
+
+        if (imageResult.success) {
+          // Save image file
+          const fs = await import('fs');
+          const path = await import('path');
+          const { fileURLToPath } = await import('url');
+
+          const __filename = fileURLToPath(import.meta.url);
+          const __dirname = path.dirname(__filename);
+
+          const imageDir = path.join(__dirname, '..', '..', 'uploads', 'images');
+          if (!fs.existsSync(imageDir)) {
+            fs.mkdirSync(imageDir, { recursive: true });
+          }
+
+          const timestamp = Date.now();
+          const filename = `image_${characterId}_${timestamp}.png`;
+          const filepath = path.join(imageDir, filename);
+
+          fs.writeFileSync(filepath, imageResult.imageBuffer);
+
+          messageType = 'image';
+          imageUrl = `/uploads/images/${filename}`;
+
+          console.log(`✅ Image saved: ${imageUrl}`);
+        } else {
+          console.warn(`⚠️  Image generation failed, falling back to text: ${imageResult.error}`);
+        }
+      } catch (error) {
+        console.error(`❌ Image generation error:`, error);
+        console.warn(`⚠️  Falling back to text message`);
+      }
+    }
+
+    // Save AI response with reaction
+    messageService.saveMessage(conversation.id, 'assistant', cleanedContent, decision.reaction, messageType, null, imageUrl, aiResponse.imageTags || null);
 
     // Update conversation timestamp and increment unread count
     conversationService.incrementUnreadCount(conversation.id);
