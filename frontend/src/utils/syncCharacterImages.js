@@ -76,8 +76,26 @@ export async function syncCharacterImages(userId) {
   }
 }
 
+/**
+ * Debug function to clear all posts
+ */
+export async function clearAllPosts() {
+  try {
+    console.log('🗑️  Clearing all posts...');
+
+    const response = await api.delete('/debug/clear-posts');
+
+    console.log(`✅ Cleared ${response.data.deleted} posts`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed to clear posts:', error);
+    throw error;
+  }
+}
+
 // For debugging: call these from browser console
 if (typeof window !== 'undefined') {
   window.syncAllCharacters = syncAllCharacters;
   window.syncCharacterImages = syncCharacterImages;
+  window.clearAllPosts = clearAllPosts;
 }

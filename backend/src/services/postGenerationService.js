@@ -5,22 +5,6 @@ import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 class PostGenerationService {
 
   /**
-   * Get current post count for today
-   */
-  getTodayPostCount() {
-    const today = new Date().toISOString().split('T')[0];
-
-    const result = db.prepare(`
-      SELECT COUNT(*) as count
-      FROM posts
-      WHERE character_id IS NOT NULL
-      AND DATE(created_at) = ?
-    `).get(today);
-
-    return result.count;
-  }
-
-  /**
    * Select characters to post based on personality weights
    * Returns array of character objects with their posting weight
    */
@@ -103,16 +87,17 @@ class PostGenerationService {
 Character Description:
 ${characterData.description || characterData.personality || ''}
 
-Generate a short social media post (like Twitter/X). This is a post YOU are making to share with your followers. Write 1-3 sentences about something interesting, funny, or relevant to your character.
+You're posting an update on a dating app feed to show your personality and what you're up to. Write a short, casual post in first person (1-3 sentences) about something interesting, funny, or relevant to your life right now.
 
 Guidelines:
-- Write in first person (you are posting this yourself)
-- Stay true to your character's personality and interests
-- Keep it casual and social media appropriate
-- Don't use hashtags or emojis excessively
-- Make it feel natural and authentic
+- Be authentic and show your personality
+- Share something relatable or intriguing that might catch someone's attention
+- Keep it casual and conversational
+- Don't use excessive hashtags or emojis
+- Make people want to DM you
 
-Write just the post text, nothing else.`;
+IMPORTANT: Write ONLY the post text itself. No quotation marks, no "Here's my post:", no extra formatting. Just the raw text.`;
+
 
       // Call Content LLM to generate post
       const response = await aiService.createBasicCompletion(prompt, {
@@ -120,7 +105,17 @@ Write just the post text, nothing else.`;
         max_tokens: 200
       });
 
-      const postContent = response.content.trim();
+      // Clean up the response - remove quotes and extra formatting
+      let postContent = response.content.trim();
+
+      // Remove surrounding quotes if present
+      if ((postContent.startsWith('"') && postContent.endsWith('"')) ||
+          (postContent.startsWith("'") && postContent.endsWith("'"))) {
+        postContent = postContent.slice(1, -1).trim();
+      }
+
+      // Remove any "Here's my post:" or similar prefixes
+      postContent = postContent.replace(/^(Here's my post:|Post:|Tweet:)\s*/i, '');
 
       // Decide if this should be an image post (10% chance)
       const shouldGenerateImage = Math.random() < 0.1;
@@ -160,43 +155,29 @@ Write just the post text, nothing else.`;
 
   /**
    * Run the post generation service
-   * Called periodically by interval in server.js
+   * Called periodically by interval in server.js (every 60 minutes)
+   * Generates 1 post per run
    */
   async generatePosts() {
     try {
-      console.log('🔍 Checking post generation...');
+      console.log('🔍 Running post generation (1 post/hour)...');
 
-      const DAILY_POST_LIMIT = 10;
-      const currentCount = this.getTodayPostCount();
+      // Select one character to post
+      const selectedCharacters = this.selectCharactersToPost(1);
 
-      console.log(`📊 Posts today: ${currentCount}/${DAILY_POST_LIMIT}`);
-
-      if (currentCount >= DAILY_POST_LIMIT) {
-        console.log('⏸️ Daily post limit reached, skipping generation');
+      if (selectedCharacters.length === 0) {
+        console.log('⏸️ No characters available to post');
         return;
       }
 
-      // Calculate how many posts we can generate
-      const slotsAvailable = DAILY_POST_LIMIT - currentCount;
+      // Generate post
+      const post = await this.generatePost(selectedCharacters[0]);
 
-      // For each run, generate 1-2 posts max (spread them out over the day)
-      const postsToGenerate = Math.min(slotsAvailable, Math.floor(Math.random() * 2) + 1);
-
-      console.log(`🎯 Generating ${postsToGenerate} post(s)...`);
-
-      // Select characters to post
-      const selectedCharacters = this.selectCharactersToPost(postsToGenerate);
-
-      // Generate posts
-      let generated = 0;
-      for (const candidate of selectedCharacters) {
-        const post = await this.generatePost(candidate);
-        if (post) {
-          generated++;
-        }
+      if (post) {
+        console.log(`✅ Successfully generated post`);
+      } else {
+        console.log('❌ Failed to generate post');
       }
-
-      console.log(`✅ Successfully generated ${generated} post(s)`);
     } catch (error) {
       console.error('Post generation error:', error);
     }

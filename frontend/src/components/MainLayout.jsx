@@ -7,7 +7,7 @@ import { getImageUrl } from '../services/api';
 import LLMSettings from './LLMSettings';
 import SDSettings from './SDSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
-import { syncAllCharacters } from '../utils/syncCharacterImages';
+import { syncAllCharacters, clearAllPosts } from '../utils/syncCharacterImages';
 
 const MainLayout = ({ children }) => {
   const { user, logout } = useAuth();

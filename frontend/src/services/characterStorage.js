@@ -105,6 +105,15 @@ class CharacterStorage {
   async deleteCharacter(characterId) {
     const db = await getDB();
     await db.delete(STORES.CHARACTERS, characterId);
+
+    // Also delete from backend
+    try {
+      const api = (await import('./api')).default;
+      await api.delete(`/characters/${characterId}`);
+    } catch (error) {
+      console.error('Failed to delete character from backend:', error);
+      // Don't throw - IndexedDB deletion already succeeded
+    }
   }
 
   /**

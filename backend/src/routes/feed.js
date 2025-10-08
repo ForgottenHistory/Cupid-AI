@@ -20,7 +20,7 @@ router.get('/', authenticateToken, (req, res) => {
     const posts = db.prepare(`
       SELECT
         p.*,
-        c.card_data,
+        c.name as character_name,
         c.image_url as character_image_url
       FROM posts p
       JOIN characters c ON p.character_id = c.id
@@ -29,23 +29,13 @@ router.get('/', authenticateToken, (req, res) => {
       LIMIT ? OFFSET ?
     `).all(limit, offset);
 
-    // Parse character data for each post
+    // Map posts to response format
     const postsWithCharacterData = posts.map(post => {
-      let characterData = {};
-      try {
-        characterData = JSON.parse(post.card_data);
-      } catch (error) {
-        console.error('Failed to parse character data:', error);
-      }
-
-      // Use character image_url from database (synced from IndexedDB)
-      const characterAvatar = post.character_image_url || null;
-
       return {
         id: post.id,
         character_id: post.character_id,
-        character_name: characterData.name || 'Unknown',
-        character_avatar: characterAvatar,
+        character_name: post.character_name || 'Unknown',
+        character_avatar: post.character_image_url || null,
         content: post.content,
         image_url: post.image_url,
         post_type: post.post_type,

@@ -6,6 +6,33 @@ import db from '../db/database.js';
 const router = express.Router();
 
 /**
+ * Debug endpoint to clear all posts
+ */
+router.delete('/clear-posts', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Delete all posts for this user's characters
+    const result = db.prepare(`
+      DELETE FROM posts
+      WHERE character_id IN (
+        SELECT id FROM characters WHERE user_id = ?
+      )
+    `).run(userId);
+
+    console.log(`🗑️  Debug: Cleared ${result.changes} posts`);
+
+    res.json({
+      success: true,
+      deleted: result.changes
+    });
+  } catch (error) {
+    console.error('Debug clear posts error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Debug endpoint to generate an image for a character
  */
 router.post('/generate-image/:characterId', authenticateToken, async (req, res) => {

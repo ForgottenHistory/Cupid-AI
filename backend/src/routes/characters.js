@@ -86,4 +86,27 @@ router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
   }
 });
 
+// ===== Delete Character Route =====
+router.delete('/:characterId', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+
+    // Delete character (CASCADE will handle related data like conversations, messages, posts)
+    const result = db.prepare(`
+      DELETE FROM characters WHERE id = ? AND user_id = ?
+    `).run(characterId, userId);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    console.log(`🗑️  Deleted character ${characterId}`);
+    res.json({ success: true, characterId });
+  } catch (error) {
+    console.error('Failed to delete character:', error);
+    res.status(500).json({ error: 'Failed to delete character' });
+  }
+});
+
 export default router;

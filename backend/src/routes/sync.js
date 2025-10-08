@@ -21,7 +21,12 @@ router.post('/characters', authenticateToken, (req, res) => {
 
     let synced = 0;
     let skipped = 0;
+    let deleted = 0;
 
+    // Get list of character IDs from IndexedDB
+    const indexedDBCharacterIds = characters.map(c => c.id).filter(Boolean);
+
+    // Sync characters from IndexedDB to backend
     for (const char of characters) {
       if (!char.id || !char.cardData) {
         skipped++;
@@ -73,12 +78,24 @@ router.post('/characters', authenticateToken, (req, res) => {
       }
     }
 
-    console.log(`✅ Synced ${synced} characters to backend (${skipped} skipped)`);
+    // Clean up: delete backend characters that don't exist in IndexedDB
+    // This removes characters the user deleted from frontend
+    const backendCharacters = db.prepare('SELECT id FROM characters WHERE user_id = ?').all(userId);
+    for (const backendChar of backendCharacters) {
+      if (!indexedDBCharacterIds.includes(backendChar.id)) {
+        db.prepare('DELETE FROM characters WHERE id = ? AND user_id = ?').run(backendChar.id, userId);
+        deleted++;
+        console.log(`🗑️  Deleted character ${backendChar.id} (not in IndexedDB)`);
+      }
+    }
+
+    console.log(`✅ Synced ${synced} characters to backend (${skipped} skipped, ${deleted} deleted)`);
 
     res.json({
       success: true,
       synced,
       skipped,
+      deleted,
       total: characters.length
     });
   } catch (error) {
