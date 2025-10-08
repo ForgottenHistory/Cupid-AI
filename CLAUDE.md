@@ -150,12 +150,15 @@ Located in `proactiveMessageService.js`:
   - High extraversion (80-100) increases probability by up to +25%
   - Low extraversion (0-20) decreases probability by up to -25%
 - **Daily limit**: Maximum 5 proactive messages per day across all characters
-- **Decision Engine (proactive mode)**: Analyzes conversation context
+- **Decision Engine (proactive mode)**: Analyzes conversation context + time gap
   - Decides: `{ shouldSend: boolean, messageType: "resume"|"fresh"|"callback" }`
   - **Resume**: Continue previous topic naturally
   - **Fresh**: Start new conversation
   - **Callback**: Reference something interesting from earlier
-- **Content LLM generation**: Uses `isProactive` and `proactiveType` flags in system prompt
+- **Content LLM generation**: Receives `gapHours`, `isProactive`, and `proactiveType` in system prompt
+  - Time-aware guidance: <3hrs (immediate), 3-12hrs (earlier today), 12-24hrs (most of a day), 24+hrs (yesterday)
+  - Directive phrasing: "You want to CONTINUE..." / "You want to START SOMETHING NEW..."
+  - Natural message generation based on both type AND time gap
 - **Delivery**: Messages sent via WebSocket with `isProactive: true` flag
 
 ### Big Five Personality System
@@ -187,6 +190,15 @@ cd backend && npm start     # Port 3000 (nodemon auto-restart)
 
 ## Recent Changes
 
+- **Proactive messaging improvements** ✅
+  - Content LLM now receives `gapHours` for time-aware message generation
+  - Time-specific guidance: 2-hour gap feels different from 20-hour gap
+  - Directive prompts: "You want to CONTINUE..." vs. "You want to START SOMETHING NEW..."
+  - Better natural message phrasing based on both type (resume/fresh/callback) AND elapsed time
+- **Sidebar status bug fix** ✅
+  - Fixed status indicator color mismatch between sidebar and chat view
+  - Removed engagement-based override that showed green (online) when character was actually busy/away
+  - Status colors now accurately reflect character's schedule status in both sidebar and chat
 - **Proactive messaging system** ✅
   - Characters can send messages first after time gaps (only when online)
   - Background service checks every 5 minutes for proactive opportunities

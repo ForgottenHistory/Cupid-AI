@@ -55,21 +55,34 @@ class ProactiveMessageService {
           LIMIT 1
         `).get(character.conversation_id);
 
-        // Skip if no messages or last message was from assistant
-        // We only send proactive messages when the user has left us on read
-        // This also enforces the "1 in a row" limit:
-        // - Proactive message is sent → becomes last message (assistant)
-        // - Won't send another until user responds (last message becomes user)
-        if (!lastMessage || lastMessage.role === 'assistant') {
+        if (!lastMessage) {
           continue;
         }
 
-        // Calculate time gap (in hours)
-        const lastMessageTime = new Date(lastMessage.created_at);
-        const now = new Date();
-        const gapHours = (now - lastMessageTime) / (1000 * 60 * 60);
+        // Block if last message was a proactive message from assistant
+        // This enforces "no two proactive messages in a row"
+        if (lastMessage.role === 'assistant' && lastMessage.is_proactive) {
+          continue;
+        }
 
-        // Skip if gap is less than 1 hour
+        // Get last message from user
+        const lastUserMessage = db.prepare(`
+          SELECT * FROM messages
+          WHERE conversation_id = ? AND role = 'user'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).get(character.conversation_id);
+
+        if (!lastUserMessage) {
+          continue;
+        }
+
+        // Calculate time gap from user's last message (in hours)
+        const lastUserMessageTime = new Date(lastUserMessage.created_at);
+        const now = new Date();
+        const gapHours = (now - lastUserMessageTime) / (1000 * 60 * 60);
+
+        // Skip if user sent a message within the last hour
         if (gapHours < 1) {
           continue;
         }
@@ -171,7 +184,8 @@ class ProactiveMessageService {
         userBio: userBio,
         schedule: schedule,
         isProactive: true,
-        proactiveType: decision.messageType
+        proactiveType: decision.messageType,
+        gapHours: gapHours
       });
 
       // Clean up em dashes (replace with periods)

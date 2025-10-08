@@ -57,7 +57,7 @@ class PromptBuilderService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null) {
+  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null) {
     const parts = [];
 
     // Add current date and time
@@ -114,24 +114,31 @@ class PromptBuilderService {
 
     // Add proactive messaging context
     if (isProactive && proactiveType) {
-      parts.push(`\n\n💬 PROACTIVE MESSAGE CONTEXT: You are reaching out to them first after some time has passed.`);
+      const timeGapText = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since their last message.` : ' Some time has passed.';
+      parts.push(`\n\n💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
 
       if (proactiveType === 'resume') {
-        parts.push(`\n- Type: RESUME - Continue the previous conversation/topic naturally`);
-        parts.push(`\n- Reference what you were talking about before`);
-        parts.push(`\n- Keep it casual, like you've been thinking about it`);
+        parts.push(`\n\nYou want to CONTINUE the previous conversation. Pick up where you left off - reference what you were talking about before. Keep it casual, like you've been thinking about it.`);
       } else if (proactiveType === 'fresh') {
-        parts.push(`\n- Type: FRESH START - Begin a new conversation`);
-        parts.push(`\n- Don't reference the previous topic (it ended naturally)`);
-        parts.push(`\n- Share something new, ask how they're doing, or bring up something you're doing`);
+        parts.push(`\n\nYou want to START SOMETHING NEW. Don't reference the previous topic (it ended naturally). Share something new, ask how they're doing, or bring up something you're currently doing.`);
       } else if (proactiveType === 'callback') {
-        parts.push(`\n- Type: CALLBACK - Reference something interesting from earlier`);
-        parts.push(`\n- Bring up a topic or detail from the previous conversation`);
-        parts.push(`\n- Make it feel like you've been thinking about it`);
+        parts.push(`\n\nYou want to BRING UP something interesting from earlier in the conversation. Reference a topic or detail that stuck with you. Make it feel like you've been thinking about it.`);
       }
 
-      parts.push(`\n- Keep it short and natural (1-2 sentences)`);
-      parts.push(`\n- Don't apologize for not responding (they're the ones who should be responding to you!)`);
+      parts.push(`\n\nKeep it short and natural (1-2 sentences). Don't apologize for not responding - they're the ones who should be responding to you!`);
+
+      // Add time-specific guidance
+      if (gapHours) {
+        if (gapHours < 3) {
+          parts.push(`\nThe time gap is short - keep it casual and immediate, like you just thought of it.`);
+        } else if (gapHours < 12) {
+          parts.push(`\nSeveral hours have passed - you can reference "earlier" or "this morning/afternoon" if natural.`);
+        } else if (gapHours < 24) {
+          parts.push(`\nIt's been most of a day - you can acknowledge the time gap naturally if it fits.`);
+        } else {
+          parts.push(`\nIt's been over a day - you can reference "yesterday" or the time gap if it feels natural.`);
+        }
+      }
     }
 
     // Add recent and upcoming activities

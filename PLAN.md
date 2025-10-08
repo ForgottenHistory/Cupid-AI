@@ -51,6 +51,10 @@ A Tinder-style app for discovering and matching with AI character cards (Charact
 - Character names default to "Character" when syncing to backend (cosmetic)
 - Swipe undo limited to last action (no full history)
 
+### 🔨 Recently Fixed
+- ✅ Sidebar status color mismatch - status indicators now match between sidebar and chat view
+- ✅ Proactive messages now time-aware - Content LLM receives gap hours for natural phrasing
+
 ## Planned Enhancements
 
 ### High Priority
@@ -280,15 +284,21 @@ Realistic conversation flow based on time durations:
 - Global limit prevents spam across all characters
 
 **Decision Engine (Proactive Mode)**:
-- Analyzes last 5 messages for conversation context
+- Analyzes last 5 messages for conversation context + time gap
 - Decides: `{ shouldSend: boolean, messageType: "resume"|"fresh"|"callback" }`
 - **Resume**: Continue previous topic if conversation was mid-flow
 - **Fresh**: Start new conversation if topic naturally ended
 - **Callback**: Reference something interesting from earlier
 
 **Content Generation**:
-- Uses `isProactive` and `proactiveType` flags in system prompt
-- Natural message generation based on type
+- Receives `gapHours`, `isProactive`, and `proactiveType` in system prompt
+- Time-aware guidance based on gap duration:
+  - <3 hours: "keep it casual and immediate, like you just thought of it"
+  - 3-12 hours: "you can reference 'earlier' or 'this morning/afternoon'"
+  - 12-24 hours: "it's been most of a day - acknowledge the time gap naturally"
+  - 24+ hours: "you can reference 'yesterday' or the time gap if natural"
+- Directive phrasing: "You want to CONTINUE..." / "You want to START SOMETHING NEW..."
+- Natural message generation based on both type AND elapsed time
 - No apologies for not responding (character is reaching out!)
 
 **Database Tracking**:

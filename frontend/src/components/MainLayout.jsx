@@ -17,7 +17,6 @@ const MainLayout = ({ children }) => {
   const [conversations, setConversations] = useState([]);
   const [showLLMSettings, setShowLLMSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
-  const [characterEngagements, setCharacterEngagements] = useState({});
 
   useEffect(() => {
     loadMatches();
@@ -72,25 +71,19 @@ const MainLayout = ({ children }) => {
         try {
           // Get schedule from character card data (stored in IndexedDB)
           const schedule = match.cardData?.data?.schedule;
-          const [status, engagement] = await Promise.all([
-            characterService.getCharacterStatus(match.id, schedule),
-            characterService.getCharacterEngagement(match.id)
-          ]);
-          return { characterId: match.id, status, engagement };
+          const status = await characterService.getCharacterStatus(match.id, schedule);
+          return { characterId: match.id, status };
         } catch (err) {
           console.error(`Failed to load status for ${match.id}:`, err);
-          return { characterId: match.id, status: null, engagement: null };
+          return { characterId: match.id, status: null };
         }
       });
       const results = await Promise.all(dataPromises);
       const statusMap = {};
-      const engagementMap = {};
-      results.forEach(({ characterId, status, engagement }) => {
+      results.forEach(({ characterId, status }) => {
         statusMap[characterId] = status;
-        engagementMap[characterId] = engagement;
       });
       setCharacterStatuses(statusMap);
-      setCharacterEngagements(engagementMap);
     } catch (error) {
       console.error('Failed to load character statuses:', error);
     }
@@ -118,13 +111,7 @@ const MainLayout = ({ children }) => {
     return conversation?.unread_count || 0;
   };
 
-  const getStatusIndicatorColor = (characterId, status) => {
-    // If engaged and not offline, show green
-    const isEngaged = characterEngagements[characterId]?.isEngaged;
-    if (isEngaged && status?.toLowerCase() !== 'offline') {
-      return 'bg-green-400';
-    }
-
+  const getStatusIndicatorColor = (status) => {
     if (!status) return 'bg-gray-400';
     switch (status.toLowerCase()) {
       case 'online':
@@ -212,8 +199,8 @@ const MainLayout = ({ children }) => {
                           />
                         </div>
                         {/* Status indicator with glow */}
-                        <div className={`absolute bottom-0.5 right-0.5 w-4 h-4 ${getStatusIndicatorColor(match.id, characterStatuses[match.id]?.status)} border-2 border-white rounded-full shadow-lg`}>
-                          <div className={`absolute inset-0 ${getStatusIndicatorColor(match.id, characterStatuses[match.id]?.status)} rounded-full animate-ping opacity-75`}></div>
+                        <div className={`absolute bottom-0.5 right-0.5 w-4 h-4 ${getStatusIndicatorColor(characterStatuses[match.id]?.status)} border-2 border-white rounded-full shadow-lg`}>
+                          <div className={`absolute inset-0 ${getStatusIndicatorColor(characterStatuses[match.id]?.status)} rounded-full animate-ping opacity-75`}></div>
                         </div>
                         {/* Unread badge with pulse */}
                         {unreadCount > 0 && (

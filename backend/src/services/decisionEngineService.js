@@ -158,8 +158,9 @@ ${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m
 Analyze:
 1. Did the conversation naturally end or trail off?
 2. Is there an open question or unresolved topic?
-3. Would it feel natural for the character to reach out now?
-4. Consider time of day and how long it's been
+3. Did the user make any timing requests? ("text me later", "talk at 5", "message me after [time]")
+4. Would it feel natural and respectful for the character to reach out now?
+5. Consider how long it's been vs. any timing expectations set
 
 Output your decision in this EXACT format:
 
@@ -167,7 +168,12 @@ Should Send: [yes/no]
 Message Type: [resume/fresh/callback]
 
 Guidelines:
-- "Should Send": yes if character would naturally reach out, no if conversation ended cleanly
+- "Should Send":
+  * YES if character would naturally reach out AND enough time has passed
+  * NO if conversation ended cleanly
+  * NO if user requested to be contacted at a specific time that hasn't arrived yet
+  * NO if user said "text me later" and it's only been a short time
+  * Consider the user's explicit wishes and respect their timing
 - "Message Type":
   * "resume" - Continue the previous topic (if conversation was mid-flow)
   * "fresh" - Start a new conversation (if enough time has passed or topic ended)
