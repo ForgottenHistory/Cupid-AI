@@ -4,6 +4,12 @@ import tokenService from './tokenService.js';
 import promptBuilderService from './promptBuilderService.js';
 import decisionEngineService from './decisionEngineService.js';
 import personalityService from './personalityService.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class AIService {
   constructor() {
@@ -18,7 +24,7 @@ class AIService {
   /**
    * Send a chat completion request to OpenRouter
    */
-  async createChatCompletion({ messages, characterData, model = null, userId = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null }) {
+  async createChatCompletion({ messages, characterData, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -46,14 +52,44 @@ class AIService {
         originalMessageCount: messages.length
       });
 
+      // Build final messages array
+      const finalMessages = [
+        { role: 'system', content: systemPrompt },
+        ...trimmedMessages
+      ];
+
+      // Append current date/time reminder AFTER message history (recency bias)
+      const now = new Date();
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const dayOfWeek = dayNames[now.getDay()];
+      const month = monthNames[now.getMonth()];
+      const day = now.getDate();
+      const year = now.getFullYear();
+      const hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const displayHours = hours % 12 || 12;
+      const timeReminder = `⏰ IMPORTANT: Current date and time is ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}. Make sure any time/day references in your message are accurate!`;
+      finalMessages.push({ role: 'system', content: timeReminder });
+
+      // For proactive messages, append instructions AFTER message history
+      if (isProactive && proactiveType) {
+        const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours);
+        finalMessages.push({ role: 'system', content: proactiveInstructions });
+      }
+
+      // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
+      const characterName = characterData.data?.name || characterData.name || 'Character';
+      const logUserName = userName || 'User';
+      const messageType = isProactive ? `proactive-${proactiveType}` : 'chat';
+      this.savePromptLog(finalMessages, messageType, characterName, logUserName);
+
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         {
           model: selectedModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            ...trimmedMessages
-          ],
+          messages: finalMessages,
           temperature: userSettings.temperature,
           max_tokens: effectiveMaxTokens,
           top_p: userSettings.top_p,
@@ -180,6 +216,74 @@ class AIService {
     } catch (error) {
       console.error('❌ Basic completion error:', error.message);
       throw new Error(error.response?.data?.error?.message || error.message || 'AI service error');
+    }
+  }
+
+  /**
+   * Save prompt to log file for debugging (keep last 5)
+   * Logs the ACTUAL messages array being sent to the API
+   */
+  savePromptLog(finalMessages, messageType, characterName, userName) {
+    try {
+      const logsDir = path.join(__dirname, '../../logs/prompts');
+
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+
+      // Generate filename with timestamp
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `${messageType}-${timestamp}.txt`;
+      const filepath = path.join(logsDir, filename);
+
+      // Build log content from finalMessages array
+      const parts = [
+        `PROMPT LOG`,
+        `Type: ${messageType}`,
+        `Timestamp: ${now.toISOString()}`,
+        ''
+      ];
+
+      // Process each message in order
+      finalMessages.forEach((msg, index) => {
+        if (msg.role === 'system') {
+          parts.push(`[SYSTEM MESSAGE ${index > 0 ? index : ''}]:`);
+          parts.push(msg.content);
+          parts.push('');
+        } else {
+          const name = msg.role === 'user' ? userName : characterName;
+          parts.push(`${name}: ${msg.content}`);
+        }
+      });
+
+      const logContent = parts.join('\n');
+
+      // Write to file
+      fs.writeFileSync(filepath, logContent, 'utf8');
+
+      // Keep only last 5 files per type (chat, proactive-fresh, etc)
+      const files = fs.readdirSync(logsDir)
+        .filter(f => f.startsWith(messageType.split('-')[0])) // Match by prefix (chat or proactive)
+        .map(f => ({
+          name: f,
+          path: path.join(logsDir, f),
+          mtime: fs.statSync(path.join(logsDir, f)).mtime
+        }))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      // Delete old files (keep only 5 newest per type)
+      if (files.length > 5) {
+        files.slice(5).forEach(file => {
+          fs.unlinkSync(file.path);
+          console.log(`🗑️  Deleted old prompt log: ${file.name}`);
+        });
+      }
+
+      console.log(`📝 Saved prompt log: ${filename}`);
+    } catch (error) {
+      console.error('Failed to save prompt log:', error.message);
     }
   }
 

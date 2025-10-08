@@ -33,6 +33,35 @@ router.delete('/clear-posts', authenticateToken, (req, res) => {
 });
 
 /**
+ * Debug endpoint to trigger proactive message for a character
+ */
+router.post('/trigger-proactive/:characterId', authenticateToken, async (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+
+    console.log(`🐛 Debug: Triggering proactive message for character ${characterId}`);
+
+    // Get proactive message service
+    const proactiveMessageService = (await import('../services/proactiveMessageService.js')).default;
+
+    // Get IO instance from app
+    const io = req.app.get('io');
+
+    // Trigger proactive check for this specific character
+    await proactiveMessageService.checkAndSend(io, characterId);
+
+    res.json({
+      success: true,
+      message: 'Proactive message check triggered'
+    });
+  } catch (error) {
+    console.error('Debug trigger proactive error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Debug endpoint to generate an image for a character
  */
 router.post('/generate-image/:characterId', authenticateToken, async (req, res) => {

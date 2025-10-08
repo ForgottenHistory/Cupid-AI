@@ -260,6 +260,7 @@ const Chat = () => {
         <ChatHeader
           character={character}
           characterStatus={characterStatus}
+          messages={messages}
           onBack={() => navigate('/')}
           onUnmatch={handleUnmatch}
         />

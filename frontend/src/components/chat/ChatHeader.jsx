@@ -3,8 +3,15 @@ import { useState } from 'react';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, onBack, onUnmatch }) => {
+const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch }) => {
   const [showMenu, setShowMenu] = useState(false);
+
+  // Calculate approximate token count (1 token ≈ 4 characters)
+  const calculateTokens = () => {
+    if (!messages || messages.length === 0) return 0;
+    const totalChars = messages.reduce((sum, msg) => sum + msg.content.length, 0);
+    return Math.ceil(totalChars / 4);
+  };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -41,10 +48,10 @@ const ChatHeader = ({ character, characterStatus, onBack, onUnmatch }) => {
         </button>
 
         {/* Menu Button */}
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 z-30">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
+            className="relative z-30 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -58,13 +65,24 @@ const ChatHeader = ({ character, characterStatus, onBack, onUnmatch }) => {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-14 bg-white/95 backdrop-blur-md border border-purple-100/50 rounded-xl shadow-xl py-1 min-w-[160px] z-20">
+              <div className="absolute right-0 top-14 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-1 min-w-[180px] z-20">
+                <div className="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-sm border-b border-purple-100/50 dark:border-purple-900/50">
+                  <div className="flex items-center gap-2 font-medium">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Conversation</span>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    ~{calculateTokens().toLocaleString()} tokens
+                  </div>
+                </div>
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     onUnmatch();
                   }}
-                  className="w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-all font-medium flex items-center gap-2"
+                  className="w-full text-left px-4 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all font-medium flex items-center gap-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
                     <path

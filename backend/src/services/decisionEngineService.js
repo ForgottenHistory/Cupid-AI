@@ -155,31 +155,36 @@ Time since last message: ${gapHours.toFixed(1)} hours
 Recent conversation:
 ${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
 
-Analyze:
-1. Did the conversation naturally end or trail off?
-2. Is there an open question or unresolved topic?
-3. Did the user make any timing requests? ("text me later", "talk at 5", "message me after [time]")
-4. Would it feel natural and respectful for the character to reach out now?
-5. Consider how long it's been vs. any timing expectations set
+IMPORTANT: The default should be YES - characters WANT to talk to people they're interested in. Only say NO if there's a specific reason not to reach out.
+
+Check for these specific NO conditions:
+1. Did EITHER person set a specific time to talk? ("text me at 5", "I'll message you tomorrow", "talk later tonight")
+2. Did EITHER person say they're busy and will reach out when free? ("I'll text you later", "I'll message you when I'm done")
+3. Is there an unresolved timing expectation from EITHER side that hasn't been met yet?
+
+If NONE of these apply → Say YES (the character wants to reach out!)
 
 Output your decision in this EXACT format:
 
 Should Send: [yes/no]
 Message Type: [resume/fresh/callback]
+Reason: [brief explanation in one sentence]
 
 Guidelines:
 - "Should Send":
-  * YES if character would naturally reach out AND enough time has passed
-  * NO if conversation ended cleanly
-  * NO if user requested to be contacted at a specific time that hasn't arrived yet
-  * NO if user said "text me later" and it's only been a short time
-  * Consider the user's explicit wishes and respect their timing
+  * YES by default - characters like talking to matches
+  * NO ONLY if either person set a specific timing expectation that hasn't been met
+  * NO ONLY if either person said they'll reach out first and not enough time has passed
+  * Don't overthink it - if there's no explicit reason to wait, say YES
 - "Message Type":
   * "resume" - Continue the previous topic (if conversation was mid-flow)
   * "fresh" - Start a new conversation (if enough time has passed or topic ended)
   * "callback" - Reference something from earlier (if there was an interesting point to revisit)
+- "Reason":
+  * Explain why you decided to send or not send
+  * Keep it brief (one sentence)
 
-Output ONLY the two lines in the exact format shown above, nothing else.`;
+Output ONLY the three lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Proactive Decision Engine Request:', {
         model: decisionSettings.model,
@@ -270,7 +275,8 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
     const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const decision = {
       shouldSend: false,
-      messageType: 'fresh'
+      messageType: 'fresh',
+      reason: 'No reason provided'
     };
 
     for (const line of lines) {
@@ -282,6 +288,8 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
         if (['resume', 'fresh', 'callback'].includes(value)) {
           decision.messageType = value;
         }
+      } else if (line.startsWith('Reason:')) {
+        decision.reason = line.substring('Reason:'.length).trim();
       }
     }
 
@@ -307,7 +315,8 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
   getDefaultProactiveDecision() {
     return {
       shouldSend: false,
-      messageType: 'fresh'
+      messageType: 'fresh',
+      reason: 'Decision engine error - defaulting to not sending'
     };
   }
 }

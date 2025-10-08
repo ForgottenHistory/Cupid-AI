@@ -93,9 +93,39 @@ export async function clearAllPosts() {
   }
 }
 
+/**
+ * Debug function to trigger proactive message for current character
+ * Usage: triggerProactive('character-id')
+ */
+export async function triggerProactive(characterId) {
+  try {
+    if (!characterId) {
+      // Try to get character ID from current URL
+      const match = window.location.pathname.match(/\/chat\/([^/]+)/);
+      if (match) {
+        characterId = match[1];
+      } else {
+        console.error('❌ No character ID provided and not in a chat');
+        return;
+      }
+    }
+
+    console.log(`📬 Triggering proactive message for character ${characterId}...`);
+
+    const response = await api.post(`/debug/trigger-proactive/${characterId}`);
+
+    console.log(`✅ Proactive message check triggered`);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Failed to trigger proactive message:', error);
+    throw error;
+  }
+}
+
 // For debugging: call these from browser console
 if (typeof window !== 'undefined') {
   window.syncAllCharacters = syncAllCharacters;
   window.syncCharacterImages = syncCharacterImages;
   window.clearAllPosts = clearAllPosts;
+  window.triggerProactive = triggerProactive;
 }

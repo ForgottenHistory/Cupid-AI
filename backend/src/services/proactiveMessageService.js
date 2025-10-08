@@ -135,7 +135,7 @@ class ProactiveMessageService {
   /**
    * Process a single candidate for proactive messaging
    */
-  async processCandidate(candidate, io) {
+  async processCandidate(candidate, io, debugMode = false) {
     try {
       const { userId, characterId, conversationId, gapHours, characterData, personality, schedule } = candidate;
 
@@ -143,11 +143,18 @@ class ProactiveMessageService {
       const probability = this.calculateSendProbability(gapHours, personality);
       const roll = Math.random() * 100;
 
-      console.log(`🎲 Proactive check: ${characterData.name} (gap: ${gapHours.toFixed(1)}h, prob: ${probability.toFixed(1)}%, roll: ${roll.toFixed(1)}%)`);
+      // Extract character name (handle v2 card format)
+      const characterName = characterData.data?.name || characterData.name || 'Character';
 
-      // Random roll
-      if (roll > probability) {
-        return false; // Don't send
+      if (debugMode) {
+        console.log(`🐛 Debug mode: Bypassing probability check for ${characterName}`);
+      } else {
+        console.log(`🎲 Proactive check: ${characterName} (gap: ${gapHours.toFixed(1)}h, prob: ${probability.toFixed(1)}%, roll: ${roll.toFixed(1)}%)`);
+
+        // Random roll
+        if (roll > probability) {
+          return false; // Don't send
+        }
       }
 
       // Get conversation history
@@ -161,15 +168,16 @@ class ProactiveMessageService {
         userId: userId
       });
 
-      console.log('🎯 Proactive decision:', decision);
+      console.log(`🎯 Proactive decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} (${decision.messageType}) - ${decision.reason}`);
 
       // If decision says don't send, respect it
       if (!decision.shouldSend) {
         return false;
       }
 
-      // Get user bio
-      const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
+      // Get user data
+      const user = db.prepare('SELECT display_name, bio FROM users WHERE id = ?').get(userId);
+      const userName = user?.display_name || 'User';
       const userBio = user?.bio || null;
 
       // Get current status
@@ -180,6 +188,7 @@ class ProactiveMessageService {
         messages: messages,
         characterData: characterData,
         userId: userId,
+        userName: userName,
         currentStatus: currentStatusInfo,
         userBio: userBio,
         schedule: schedule,
@@ -223,7 +232,8 @@ class ProactiveMessageService {
       console.log(`✅ Sent proactive message from ${characterData.name} to user ${userId}`);
       return true;
     } catch (error) {
-      console.error('Process proactive candidate error:', error);
+      console.error('❌ Process proactive candidate error:', error.message);
+      console.error('Stack:', error.stack);
       return false;
     }
   }
@@ -231,19 +241,30 @@ class ProactiveMessageService {
   /**
    * Run the proactive message checker
    * Called every 5 minutes by interval in server.js
+   * @param {Object} io - Socket.io instance
+   * @param {String} debugCharacterId - Optional: Character ID for debug mode (bypasses probability)
    */
-  async checkAndSend(io) {
+  async checkAndSend(io, debugCharacterId = null) {
     try {
       console.log('🔍 Checking for proactive message candidates...');
 
       const candidates = this.findCandidates();
       console.log(`📋 Found ${candidates.length} candidates`);
 
+      // Filter to specific character if debug mode
+      let targetCandidates = candidates;
+      if (debugCharacterId) {
+        targetCandidates = candidates.filter(c => c.characterId === debugCharacterId);
+        if (targetCandidates.length === 0) {
+          console.log(`⚠️ Debug: Character ${debugCharacterId} not found in candidates`);
+          return;
+        }
+      }
+
       // Process each candidate
-      // Note: No global cap - the "1 in a row" per-character limit prevents spam
       let sent = 0;
-      for (const candidate of candidates) {
-        const didSend = await this.processCandidate(candidate, io);
+      for (const candidate of targetCandidates) {
+        const didSend = await this.processCandidate(candidate, io, !!debugCharacterId);
         if (didSend) {
           sent++;
         }

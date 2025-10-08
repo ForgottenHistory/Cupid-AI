@@ -138,13 +138,6 @@ httpServer.listen(PORT, () => {
       console.error('Post generation service error:', error);
     });
   }, 60 * 60 * 1000); // 60 minutes
-
-  // Generate initial posts after 5 seconds (to avoid startup spam)
-  setTimeout(() => {
-    postGenerationService.generatePosts().catch(error => {
-      console.error('Initial post generation error:', error);
-    });
-  }, 5000);
 });
 
 export default app;
