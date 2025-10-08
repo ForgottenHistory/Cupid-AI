@@ -157,7 +157,7 @@ const MainLayout = ({ children }) => {
         </div>
 
         {/* Matches List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           <div className="p-5">
             <div className="mb-5 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-blue-500/10 backdrop-blur-md border border-purple-200/30 dark:border-purple-700/30">
               <h2 className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 uppercase tracking-wider">

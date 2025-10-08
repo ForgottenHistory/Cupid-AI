@@ -110,7 +110,7 @@ const Profile = () => {
   const profileImageUrl = imagePreview || getImageUrl(user?.profile_image);
 
   return (
-    <div className="h-full overflow-y-auto bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+    <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
       <div className="max-w-3xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="mb-8">

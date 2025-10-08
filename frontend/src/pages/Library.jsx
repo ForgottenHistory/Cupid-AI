@@ -101,7 +101,7 @@ const Library = () => {
   });
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto custom-scrollbar">
       <div className="max-w-7xl mx-auto px-8 py-8">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">

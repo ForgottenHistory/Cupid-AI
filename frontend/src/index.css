@@ -38,6 +38,19 @@
   background: linear-gradient(to bottom, #db2777, #7e22ce);
 }
 
+/* Dark mode scrollbar */
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ec4899, #9333ea);
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #db2777, #7e22ce);
+}
+
 /* Match Animation */
 @keyframes fade-in {
   from {

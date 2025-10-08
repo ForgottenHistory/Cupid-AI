@@ -66,7 +66,7 @@ const LLMSettings = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-14rem)]">
+        <div className="overflow-y-auto max-h-[calc(90vh-14rem)] custom-scrollbar">
           <LLMSettingsForm
             type={activeTab}
             settings={currentSettings.settings}
