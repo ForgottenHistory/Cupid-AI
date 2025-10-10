@@ -28,7 +28,7 @@ export const useChat = (characterId, user) => {
     };
   }, [characterId, user?.id]);
 
-  // Poll character status every minute
+  // Poll character status every 10 seconds for real-time updates
   useEffect(() => {
     if (!character || !character.cardData?.data?.schedule) return;
 
@@ -36,6 +36,10 @@ export const useChat = (characterId, user) => {
       try {
         const status = await characterService.getCharacterStatus(characterId, character.cardData.data.schedule);
         if (isMountedRef.current) {
+          // Only log if status actually changed
+          if (status.status !== characterStatus.status || status.activity !== characterStatus.activity) {
+            console.log(`📊 Status updated: ${status.status}${status.activity ? ` - ${status.activity}` : ''}`);
+          }
           setCharacterStatus(status);
         }
       } catch (err) {
@@ -43,7 +47,9 @@ export const useChat = (characterId, user) => {
       }
     };
 
-    const interval = setInterval(pollStatus, 60000); // Poll every 60 seconds
+    // Poll immediately on mount, then every 10 seconds
+    pollStatus();
+    const interval = setInterval(pollStatus, 10000); // Poll every 10 seconds
 
     return () => clearInterval(interval);
   }, [character, characterId]);

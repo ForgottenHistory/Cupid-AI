@@ -118,7 +118,10 @@ export async function performDailyAutoMatch(req, res) {
     const { libraryCharacters } = req.body; // Array of character objects from IndexedDB
     const userId = req.user.id;
 
+    console.log(`📅 Daily auto-match check for user ${userId}`);
+
     if (!libraryCharacters || libraryCharacters.length === 0) {
+      console.log('  ⏭️ No characters in library');
       return res.json({ autoMatched: false, reason: 'No characters in library' });
     }
 
@@ -126,27 +129,23 @@ export async function performDailyAutoMatch(req, res) {
     const user = db.prepare('SELECT last_auto_match_date FROM users WHERE id = ?').get(userId);
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
+    console.log(`  📆 Last auto-match: ${user.last_auto_match_date}, Today: ${today}`);
+
     if (user.last_auto_match_date === today) {
+      console.log('  ⏭️ Already matched today');
       return res.json({ autoMatched: false, reason: 'Already matched today' });
     }
 
-    // Get all already matched character IDs for this user
-    const matchedCharacterIds = db.prepare(`
-      SELECT id FROM characters WHERE user_id = ?
-    `).all(userId).map(c => c.id);
+    console.log(`  📚 Unmatched characters received: ${libraryCharacters.length}`);
 
-    // Filter out already matched characters
-    const unmatchedCharacters = libraryCharacters.filter(
-      char => !matchedCharacterIds.includes(char.id)
-    );
-
-    if (unmatchedCharacters.length === 0) {
-      return res.json({ autoMatched: false, reason: 'All characters already matched' });
+    if (libraryCharacters.length === 0) {
+      console.log('  ⏭️ No unmatched characters available');
+      return res.json({ autoMatched: false, reason: 'No unmatched characters available' });
     }
 
-    // Pick a random unmatched character
-    const randomIndex = Math.floor(Math.random() * unmatchedCharacters.length);
-    const selectedCharacter = unmatchedCharacters[randomIndex];
+    // Pick a random unmatched character (frontend already filtered to only unmatched)
+    const randomIndex = Math.floor(Math.random() * libraryCharacters.length);
+    const selectedCharacter = libraryCharacters[randomIndex];
     const characterData = selectedCharacter.cardData?.data || selectedCharacter.data;
 
     if (!characterData) {

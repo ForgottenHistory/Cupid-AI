@@ -25,6 +25,17 @@ router.post('/:characterId/like', authenticateToken, characterInteraction.likeCh
 
 // ===== Daily Auto-Match Route =====
 router.post('/daily-auto-match', authenticateToken, characterInteraction.performDailyAutoMatch);
+router.post('/reset-daily-match', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    db.prepare('UPDATE users SET last_auto_match_date = NULL WHERE id = ?').run(userId);
+    console.log(`🔄 Reset daily auto-match for user ${userId}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to reset daily match:', error);
+    res.status(500).json({ error: 'Failed to reset daily match' });
+  }
+});
 
 // ===== Voice Assignment Route =====
 router.put('/:characterId/voice', authenticateToken, (req, res) => {

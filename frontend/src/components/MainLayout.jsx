@@ -40,24 +40,51 @@ const MainLayout = ({ children }) => {
   // Check for daily auto-match on mount
   useEffect(() => {
     const checkDailyAutoMatch = async () => {
-      if (!user?.id) return;
+      if (!user?.id) {
+        console.log('⏭️ Daily auto-match: Skipping (no user)');
+        return;
+      }
 
       try {
         // Get all characters from library
         const allCharacters = await characterService.getAllCharacters(user.id);
 
-        if (allCharacters.length === 0) return;
+        console.log('📚 Daily auto-match: Library check', {
+          totalCharacters: allCharacters.length,
+          characterNames: allCharacters.map(c => c.name)
+        });
+
+        if (allCharacters.length === 0) {
+          console.log('⏭️ Daily auto-match: Skipping (no characters in library)');
+          return;
+        }
+
+        // Filter to only unmatched (not liked) characters before sending
+        const unmatchedCharacters = allCharacters.filter(c => !c.isLiked);
+
+        console.log('🔍 Daily auto-match: Filtering', {
+          total: allCharacters.length,
+          liked: allCharacters.filter(c => c.isLiked).length,
+          unmatched: unmatchedCharacters.length
+        });
 
         // Call backend to check and perform auto-match
         const response = await api.post('/characters/daily-auto-match', {
-          libraryCharacters: allCharacters
+          libraryCharacters: unmatchedCharacters
         });
+
+        console.log('🎲 Daily auto-match: Backend response', response.data);
 
         if (response.data.autoMatched) {
           // Find the matched character in IndexedDB to get the full character object
           const matchedChar = allCharacters.find(c => c.id === response.data.character.id);
 
           if (matchedChar) {
+            console.log('✨ Daily auto-match: Showing modal for', matchedChar.name);
+
+            // Mark character as liked in IndexedDB
+            await characterService.likeCharacter(matchedChar.id);
+
             // Pass the full character object, just like SuperLikeModal
             setDailyMatchCharacter(matchedChar);
             setShowDailyMatchModal(true);
@@ -65,9 +92,11 @@ const MainLayout = ({ children }) => {
             loadMatches();
             loadConversations();
           }
+        } else {
+          console.log('⏭️ Daily auto-match: Not matched', response.data.reason);
         }
       } catch (error) {
-        console.error('Failed to check daily auto-match:', error);
+        console.error('❌ Daily auto-match error:', error);
       }
     };
 
@@ -107,10 +136,20 @@ const MainLayout = ({ children }) => {
           console.error('Debug daily match error:', error);
         }
       };
+
+      window.resetDailyMatch = async () => {
+        try {
+          await api.post('/characters/reset-daily-match');
+          console.log('🔄 Daily match timer reset! Refresh the page to get a new match.');
+        } catch (error) {
+          console.error('Failed to reset daily match:', error);
+        }
+      };
     }
 
     return () => {
       delete window.debugDailyMatch;
+      delete window.resetDailyMatch;
     };
   }, [user?.id, matches]);
 
