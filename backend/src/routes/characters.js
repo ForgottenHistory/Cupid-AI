@@ -23,6 +23,9 @@ router.get('/swipe-limit', authenticateToken, characterInteraction.getSwipeLimit
 router.post('/swipe', authenticateToken, characterInteraction.recordSwipe);
 router.post('/:characterId/like', authenticateToken, characterInteraction.likeCharacter);
 
+// ===== Daily Auto-Match Route =====
+router.post('/daily-auto-match', authenticateToken, characterInteraction.performDailyAutoMatch);
+
 // ===== Voice Assignment Route =====
 router.put('/:characterId/voice', authenticateToken, (req, res) => {
   try {

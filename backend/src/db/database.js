@@ -292,6 +292,12 @@ function runMigrations() {
     // Create index for posts
     db.exec(`CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC);`);
     db.exec(`CREATE INDEX IF NOT EXISTS idx_posts_character ON posts(character_id);`);
+
+    // Migration: Add auto-match tracking to users table
+    if (!userColumnNames.includes('last_auto_match_date')) {
+      db.exec(`ALTER TABLE users ADD COLUMN last_auto_match_date TEXT;`);
+      console.log('✅ last_auto_match_date column added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

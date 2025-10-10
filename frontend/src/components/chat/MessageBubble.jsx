@@ -98,7 +98,7 @@ const MessageBubble = ({
 
       {/* Message Bubble */}
       <div
-        className={`relative max-w-[70%] rounded-2xl px-5 py-3 ${
+        className={`relative ${message.message_type === 'image' ? 'w-fit' : 'max-w-[70%]'} rounded-2xl px-5 py-3 ${
           message.role === 'user'
             ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-200/50 dark:shadow-pink-900/30'
             : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
@@ -113,16 +113,16 @@ const MessageBubble = ({
             role={message.role}
           />
         ) : message.message_type === 'image' && message.image_url ? (
-          <div className="space-y-2">
+          <div className="space-y-2 w-[200px]">
             <img
               src={`http://localhost:3000${message.image_url}`}
               alt={message.role === 'user' ? "User uploaded image" : "AI-generated character image"}
-              className="rounded-lg max-w-[200px] h-auto cursor-pointer hover:opacity-90 hover:scale-105 transition-all shadow-md"
+              className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 hover:scale-105 transition-all shadow-md"
               onClick={() => setShowImageModal(true)}
               title="Click to view full size"
             />
             {message.content && (
-              <p className={`text-xs ${message.role === 'user' ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'} italic`}>
+              <p className={`text-xs ${message.role === 'user' ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'} italic break-words`}>
                 {message.content}
               </p>
             )}

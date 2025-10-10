@@ -9,6 +9,8 @@ import SDSettings from './SDSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { syncAllCharacters, clearAllPosts } from '../utils/syncCharacterImages';
 import io from 'socket.io-client';
+import DailyMatchModal from './DailyMatchModal';
+import api from '../services/api';
 
 const MainLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -22,6 +24,8 @@ const MainLayout = ({ children }) => {
   const [showSDSettings, setShowSDSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
   const socketRef = useRef(null);
+  const [dailyMatchCharacter, setDailyMatchCharacter] = useState(null);
+  const [showDailyMatchModal, setShowDailyMatchModal] = useState(false);
 
   // Sync all characters from IndexedDB to backend on mount
   // This ensures all characters are available for post generation
@@ -32,6 +36,83 @@ const MainLayout = ({ children }) => {
       });
     }
   }, [user?.id]);
+
+  // Check for daily auto-match on mount
+  useEffect(() => {
+    const checkDailyAutoMatch = async () => {
+      if (!user?.id) return;
+
+      try {
+        // Get all characters from library
+        const allCharacters = await characterService.getAllCharacters(user.id);
+
+        if (allCharacters.length === 0) return;
+
+        // Call backend to check and perform auto-match
+        const response = await api.post('/characters/daily-auto-match', {
+          libraryCharacters: allCharacters
+        });
+
+        if (response.data.autoMatched) {
+          // Find the matched character in IndexedDB to get the full character object
+          const matchedChar = allCharacters.find(c => c.id === response.data.character.id);
+
+          if (matchedChar) {
+            // Pass the full character object, just like SuperLikeModal
+            setDailyMatchCharacter(matchedChar);
+            setShowDailyMatchModal(true);
+            // Reload matches to show the new one
+            loadMatches();
+            loadConversations();
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check daily auto-match:', error);
+      }
+    };
+
+    checkDailyAutoMatch();
+  }, [user?.id]);
+
+  // Debug function for testing daily match modal
+  useEffect(() => {
+    if (user?.id) {
+      window.debugDailyMatch = async () => {
+        try {
+          const allCharacters = await characterService.getAllCharacters(user.id);
+          const matchedCharacterIds = matches.map(m => m.id);
+          const unmatchedCharacters = allCharacters.filter(
+            char => !matchedCharacterIds.includes(char.id)
+          );
+
+          if (unmatchedCharacters.length === 0) {
+            console.log('❌ All characters already matched');
+            return;
+          }
+
+          const randomChar = unmatchedCharacters[Math.floor(Math.random() * unmatchedCharacters.length)];
+
+          console.log('🔍 Debug - Passing full character object:', {
+            id: randomChar.id,
+            name: randomChar.name,
+            hasImageUrl: !!randomChar.imageUrl,
+            hasCardData: !!randomChar.cardData
+          });
+
+          // Pass the full character object, just like SuperLikeModal
+          setDailyMatchCharacter(randomChar);
+          setShowDailyMatchModal(true);
+          console.log('✨ Daily match modal triggered for:', randomChar.name);
+        } catch (error) {
+          console.error('Debug daily match error:', error);
+        }
+      };
+    }
+
+    return () => {
+      delete window.debugDailyMatch;
+    };
+  }, [user?.id, matches]);
 
   useEffect(() => {
     loadMatches();
@@ -505,6 +586,17 @@ const MainLayout = ({ children }) => {
       {/* SD Settings Modal */}
       {showSDSettings && (
         <SDSettings onClose={() => setShowSDSettings(false)} />
+      )}
+
+      {/* Daily Match Modal */}
+      {showDailyMatchModal && dailyMatchCharacter && (
+        <DailyMatchModal
+          character={dailyMatchCharacter}
+          onClose={() => {
+            setShowDailyMatchModal(false);
+            setDailyMatchCharacter(null);
+          }}
+        />
       )}
     </div>
   );

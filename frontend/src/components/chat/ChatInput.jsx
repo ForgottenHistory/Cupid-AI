@@ -136,6 +136,12 @@ const ChatInput = ({
                 type="text"
                 value={imageDescription}
                 onChange={(e) => setImageDescription(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && imageDescription.trim()) {
+                    e.preventDefault();
+                    onSend(e);
+                  }
+                }}
                 placeholder="e.g., I am holding a red apple"
                 className="w-full px-3 py-2 bg-white dark:bg-gray-600 border border-purple-200/30 dark:border-gray-500/30 rounded-lg focus:ring-2 focus:ring-purple-400 focus:border-purple-400 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-sm"
               />
