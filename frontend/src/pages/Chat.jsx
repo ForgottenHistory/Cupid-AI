@@ -107,6 +107,7 @@ const Chat = () => {
     // Don't reset showTypingIndicator - let WebSocket hook manage it based on actual state
     setShowTypingIndicatorInternal(false);
     clearDisplayTimeouts();
+    // Note: input text is managed by useMessageActions hook (per-chat caching)
     // Reset image upload state
     setSelectedImage(null);
     setImageDescription('');

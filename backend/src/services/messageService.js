@@ -61,9 +61,7 @@ class MessageService {
           // Insert session gap marker as a system message
           result.push({
             role: 'system',
-            content: `[TIME GAP: ${gapHours} hours - NEW CONVERSATION SESSION]
-
-The previous conversation ended naturally. This is a fresh interaction - acknowledge the time gap if appropriate.`
+            content: `[TIME GAP: ${gapHours} hours - NEW CONVERSATION SESSION]`
           });
         }
       }

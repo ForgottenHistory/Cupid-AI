@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
@@ -8,7 +8,6 @@ import LLMSettings from './LLMSettings';
 import SDSettings from './SDSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { syncAllCharacters, clearAllPosts } from '../utils/syncCharacterImages';
-import io from 'socket.io-client';
 import DailyMatchModal from './DailyMatchModal';
 import api from '../services/api';
 
@@ -23,7 +22,6 @@ const MainLayout = ({ children }) => {
   const [showLLMSettings, setShowLLMSettings] = useState(false);
   const [showSDSettings, setShowSDSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
-  const socketRef = useRef(null);
   const [dailyMatchCharacter, setDailyMatchCharacter] = useState(null);
   const [showDailyMatchModal, setShowDailyMatchModal] = useState(false);
 
@@ -190,38 +188,9 @@ const MainLayout = ({ children }) => {
     return () => clearInterval(interval);
   }, [matches.length]);
 
-  // WebSocket connection for real-time unread count updates
-  useEffect(() => {
-    if (!user?.id) return;
-
-    // Connect to WebSocket server
-    const socket = io('http://localhost:3000', {
-      transports: ['websocket'],
-      reconnection: true,
-    });
-
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('🔌 MainLayout: WebSocket connected');
-      socket.emit('join', user.id);
-    });
-
-    socket.on('disconnect', () => {
-      console.log('🔌 MainLayout: WebSocket disconnected');
-    });
-
-    // Listen for new messages to update unread counts
-    socket.on('new_message', (data) => {
-      console.log('💬 MainLayout: New message received, reloading conversations');
-      loadConversations();
-    });
-
-    return () => {
-      console.log('🔌 MainLayout: Cleaning up WebSocket');
-      socket.disconnect();
-    };
-  }, [user?.id]);
+  // NOTE: WebSocket message handling is done in useChatWebSocket.js
+  // That hook dispatches 'characterUpdated' events which we listen to below
+  // No need for separate socket connection here
 
   const loadMatches = async () => {
     if (!user?.id) return;

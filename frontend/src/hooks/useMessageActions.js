@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import chatService from '../services/chatService';
 import { extractActualMessageId, splitMessageIntoParts } from '../utils/messageUtils';
 
@@ -29,6 +29,29 @@ export const useMessageActions = ({
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const [showTypingIndicatorInternal, setShowTypingIndicatorInternal] = useState(false);
+
+  // Cache input text per character
+  const inputCacheRef = useRef({});
+  const previousCharacterIdRef = useRef(characterId);
+
+  // Save/restore input text when switching characters
+  useEffect(() => {
+    const prevCharId = previousCharacterIdRef.current;
+
+    // Save current input to cache before switching
+    if (prevCharId && prevCharId !== characterId) {
+      inputCacheRef.current[prevCharId] = input;
+      console.log(`💾 Saved input for ${prevCharId}:`, input);
+    }
+
+    // Restore input from cache for new character
+    const cachedInput = inputCacheRef.current[characterId] || '';
+    setInput(cachedInput);
+    console.log(`📥 Restored input for ${characterId}:`, cachedInput);
+
+    // Update previous character ID
+    previousCharacterIdRef.current = characterId;
+  }, [characterId]);
 
   /**
    * Send a new message
