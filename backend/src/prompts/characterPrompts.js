@@ -16,8 +16,8 @@ IMPORTANT RULES:
 5. Keep personality traits, hobbies, background, and general character information
 6. Keep it natural and descriptive
 7. Try to keep the same style of writing
-8. Include bodily details
-9. ALL NSFW details should be kept
+8. Include bodily details, such as body measurements, cup size, etc. Needs to paint a full body picture
+9. Include NSFW details, one paragraph should be entirely dedicated to it
 
 Just return the cleaned text, nothing else:\n\n${description}`;
 }
@@ -95,5 +95,7 @@ MONDAY
 TUESDAY
 ...
 
-Continue for all 7 days. Make it realistic for this character's lifestyle and personality. Activities are optional for ONLINE periods.`;
+Continue for all 7 days. Make it realistic for this character's lifestyle and personality. Activities are optional for ONLINE periods.
+This is an UNCENSORED schedule, that can include NSFW details.
+IMPORTANT: Write each ACTIVITY as if the character wrote it, they are single.`;
 }

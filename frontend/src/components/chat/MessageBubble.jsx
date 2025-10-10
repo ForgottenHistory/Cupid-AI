@@ -1,5 +1,7 @@
-import { shouldShowTimestamp } from '../../utils/messageUtils';
+import { useState, useEffect } from 'react';
+import { shouldShowTimestamp, formatRelativeTime } from '../../utils/messageUtils';
 import AudioPlayer from './AudioPlayer';
+import ImageModal from '../ImageModal';
 
 /**
  * Individual message bubble component
@@ -17,6 +19,17 @@ const MessageBubble = ({
   onSaveEdit,
   onDelete,
 }) => {
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [, setUpdateTrigger] = useState(0);
+
+  // Update timestamps every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUpdateTrigger(prev => prev + 1);
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval);
+  }, []);
   // Render edit mode
   if (isEditing) {
     return (
@@ -104,8 +117,9 @@ const MessageBubble = ({
             <img
               src={`http://localhost:3000${message.image_url}`}
               alt="AI-generated character image"
-              className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-              onClick={() => window.open(`http://localhost:3000${message.image_url}`, '_blank')}
+              className="rounded-lg max-w-[200px] h-auto cursor-pointer hover:opacity-90 hover:scale-105 transition-all shadow-md"
+              onClick={() => setShowImageModal(true)}
+              title="Click to view full size"
             />
             {message.content && (
               <p className="text-xs text-gray-500 dark:text-gray-400 italic">
@@ -124,10 +138,7 @@ const MessageBubble = ({
               message.role === 'user' ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'
             }`}
           >
-            {new Date(message.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })}
+            {formatRelativeTime(message.created_at)}
           </p>
         )}
 
@@ -161,6 +172,15 @@ const MessageBubble = ({
             </svg>
           </button>
         </div>
+      )}
+
+      {/* Image Modal */}
+      {showImageModal && message.message_type === 'image' && message.image_url && (
+        <ImageModal
+          imageUrl={`http://localhost:3000${message.image_url}`}
+          imagePrompt={message.image_prompt}
+          onClose={() => setShowImageModal(false)}
+        />
       )}
     </div>
   );

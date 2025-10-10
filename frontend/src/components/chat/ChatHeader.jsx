@@ -27,6 +27,15 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
     }
   };
 
+  const formatEndTime = (timeString) => {
+    if (!timeString) return null;
+    // timeString is in 24-hour format (HH:MM)
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `until ${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+  };
+
   return (
     <div className="relative flex-shrink-0">
       {/* Banner Image */}
@@ -121,6 +130,7 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
               <span className="text-xs font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20">
                 {characterStatus.status}
                 {characterStatus.activity && ` • ${characterStatus.activity}`}
+                {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
               </span>
             </div>
           </div>
@@ -154,6 +164,7 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
                   <span className="text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
                     {characterStatus.status}
                     {characterStatus.activity && ` • ${characterStatus.activity}`}
+                    {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
                   </span>
                 </div>
               </div>

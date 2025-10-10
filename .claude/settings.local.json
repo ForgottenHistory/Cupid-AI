@@ -4,7 +4,8 @@
       "Bash(find:*)",
       "Bash(git commit:*)",
       "Bash(python:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []

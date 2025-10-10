@@ -132,12 +132,13 @@ httpServer.listen(PORT, () => {
   }, 5 * 60 * 1000); // 5 minutes
 
   // Start post generation service (runs every 60 minutes)
-  console.log('📝 Post generation service started (checks every 60 minutes)');
-  setInterval(() => {
-    postGenerationService.generatePosts().catch(error => {
-      console.error('Post generation service error:', error);
-    });
-  }, 60 * 60 * 1000); // 60 minutes
+  // DISABLED - Feed feature disabled
+  // console.log('📝 Post generation service started (checks every 60 minutes)');
+  // setInterval(() => {
+  //   postGenerationService.generatePosts().catch(error => {
+  //     console.error('Post generation service error:', error);
+  //   });
+  // }, 60 * 60 * 1000); // 60 minutes
 });
 
 export default app;

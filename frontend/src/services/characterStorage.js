@@ -11,6 +11,11 @@ class CharacterStorage {
     // Convert image blob to base64 for storage
     const imageUrl = await this.blobToBase64(imageBlob);
 
+    // Store original description if not already stored
+    if (cardData.data.description && !cardData.data.originalDescription) {
+      cardData.data.originalDescription = cardData.data.description;
+    }
+
     const character = {
       id: uuidv4(),
       userId,

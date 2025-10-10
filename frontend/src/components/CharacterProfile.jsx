@@ -196,6 +196,76 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     }
   };
 
+  const handleEditDescription = async (newDescription) => {
+    if (!newDescription || newDescription.trim() === '') {
+      setError('Description cannot be empty');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Update character in IndexedDB
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          description: newDescription
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Edit description error:', err);
+      setError(err.response?.data?.error || 'Failed to update description');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRevertDescription = async () => {
+    if (!data.originalDescription) {
+      setError('No original description found');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Update character in IndexedDB - restore original description
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          description: data.originalDescription
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Revert description error:', err);
+      setError(err.response?.data?.error || 'Failed to revert description');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -327,6 +397,8 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 data={data}
                 loading={loading}
                 onCleanup={handleCleanupDescription}
+                onEdit={handleEditDescription}
+                onRevert={handleRevertDescription}
               />
             )}
           </div>

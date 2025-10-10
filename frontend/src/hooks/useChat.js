@@ -28,6 +28,26 @@ export const useChat = (characterId, user) => {
     };
   }, [characterId, user?.id]);
 
+  // Poll character status every minute
+  useEffect(() => {
+    if (!character || !character.cardData?.data?.schedule) return;
+
+    const pollStatus = async () => {
+      try {
+        const status = await characterService.getCharacterStatus(characterId, character.cardData.data.schedule);
+        if (isMountedRef.current) {
+          setCharacterStatus(status);
+        }
+      } catch (err) {
+        console.error('Failed to poll status:', err);
+      }
+    };
+
+    const interval = setInterval(pollStatus, 60000); // Poll every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [character, characterId]);
+
   const loadCharacterAndChat = async () => {
     if (!user?.id || !characterId) return;
 

@@ -21,13 +21,15 @@ export function getCurrentStatusFromSchedule(schedule) {
     if (currentTime >= block.start && currentTime < block.end) {
       return {
         status: block.status,
-        activity: block.activity || null
+        activity: block.activity || null,
+        start: block.start,
+        end: block.end
       };
     }
   }
 
   // If no block found, assume offline
-  return { status: 'offline', activity: null };
+  return { status: 'offline', activity: null, start: null, end: null };
 }
 
 /**

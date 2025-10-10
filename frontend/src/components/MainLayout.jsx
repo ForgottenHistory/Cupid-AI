@@ -57,6 +57,17 @@ const MainLayout = ({ children }) => {
     }
   }, [matches.length]);
 
+  useEffect(() => {
+    // Poll character statuses every minute
+    if (matches.length === 0) return;
+
+    const interval = setInterval(() => {
+      loadCharacterStatuses();
+    }, 60000); // Poll every 60 seconds
+
+    return () => clearInterval(interval);
+  }, [matches.length]);
+
   const loadMatches = async () => {
     if (!user?.id) return;
     try {

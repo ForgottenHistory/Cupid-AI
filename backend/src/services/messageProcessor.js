@@ -189,6 +189,7 @@ class MessageProcessor {
         let messageType = 'text';
         let audioUrl = null;
         let imageUrl = null;
+        let imagePrompt = null;
 
         // Generate voice message if decision says so (and feature is enabled)
         const voiceMessagesEnabled = process.env.VOICE_MESSAGES_ENABLED === 'true';
@@ -281,8 +282,10 @@ class MessageProcessor {
 
               messageType = 'image';
               imageUrl = `/uploads/images/${filename}`;
+              imagePrompt = imageResult.prompt; // Store the full prompt
 
               console.log(`✅ Image saved: ${imageUrl}`);
+              console.log(`📝 Prompt: ${imagePrompt}`);
             } else {
               console.warn(`⚠️  Image generation failed, falling back to text: ${imageResult.error}`);
             }
@@ -300,7 +303,9 @@ class MessageProcessor {
           messageType,
           audioUrl,
           imageUrl,
-          aiResponse.imageTags || null
+          aiResponse.imageTags || null,
+          false, // isProactive
+          imagePrompt // imagePrompt
         );
 
         // Handle departure

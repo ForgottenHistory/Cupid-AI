@@ -87,22 +87,6 @@ class PromptBuilderService {
       parts.push(`\nDating Profile: ${characterData.datingProfile}`);
     }
 
-    if (currentStatus) {
-      const statusText = currentStatus.activity
-        ? `${currentStatus.status} (${currentStatus.activity})`
-        : currentStatus.status;
-      parts.push(`\nCurrent Status: ${statusText}`);
-
-      // Add context about what the status means
-      if (currentStatus.status === 'busy' && currentStatus.activity) {
-        parts.push(` - You're currently busy with this, so your texts might be brief or distracted.`);
-      } else if (currentStatus.status === 'away' && currentStatus.activity) {
-        parts.push(` - You're doing this right now, but can still text casually.`);
-      } else if (currentStatus.status === 'online') {
-        parts.push(` - You're free and available to chat.`);
-      }
-    }
-
     // Add departing context
     if (isDeparting) {
       parts.push(`\n\n⚠️ IMPORTANT: You need to wrap up the conversation now. Something came up or you need to get back to what you were doing. Send a brief, natural departing message that:`);
@@ -112,30 +96,6 @@ class PromptBuilderService {
       parts.push(`\n- DON'T make it dramatic or apologetic - just a casual "ttyl" type message`);
     }
 
-    // Add recent and upcoming activities
-    if (schedule) {
-      const activities = this.getSurroundingActivities(schedule);
-      if (activities) {
-        const { recentActivities, upcomingActivities } = activities;
-
-        if (recentActivities.length > 0) {
-          parts.push(`\n\nRecent activities:`);
-          recentActivities.forEach(block => {
-            const activity = block.activity ? ` - ${block.activity}` : '';
-            parts.push(`\n- ${block.start}-${block.end}: ${block.status}${activity}`);
-          });
-        }
-
-        if (upcomingActivities.length > 0) {
-          parts.push(`\n\nUpcoming activities:`);
-          upcomingActivities.forEach(block => {
-            const activity = block.activity ? ` - ${block.activity}` : '';
-            parts.push(`\n- ${block.start}-${block.end}: ${block.status}${activity}`);
-          });
-        }
-      }
-    }
-
     if (userBio) {
       parts.push(`\n\nPerson you're talking to: ${userBio}`);
     }
@@ -143,6 +103,8 @@ class PromptBuilderService {
     if (characterData.system_prompt) {
       parts.push(`\n\n${characterData.system_prompt}`);
     }
+
+    parts.push(`\n\nCONTEXT: You're both using an experimental long-distance romance app that connects people from different cities and countries. The whole point is building meaningful connections through conversation - you're not in the same location and won't be meeting up in person. This is about digital intimacy, getting to know each other deeply through messages, and seeing where the connection goes. Geography doesn't matter here; chemistry does.`);
 
     parts.push(`\n\nIMPORTANT: You are texting someone you're interested in on a dating app. Text like a real person, not a character in a story.
 
@@ -168,38 +130,174 @@ PACING & CHEMISTRY:
       if (decision.shouldSendVoice) {
         parts.push(`\n\n📱 MEDIA: You are sending a VOICE MESSAGE with this response. Your text will be spoken aloud, so write naturally as if speaking. Keep it conversational and authentic.`);
       } else if (decision.shouldSendImage) {
-        parts.push(`\n\n📱 CRITICAL: You MUST send a photo with this message.
+        parts.push(`\n\n📱 CRITICAL IMAGE INSTRUCTION: You will send a photo with this message.
 
-YOUR RESPONSE MUST START WITH THIS EXACT FORMAT:
-[IMAGE_TAGS: tag1, tag2, tag3]
+⚠️ MANDATORY FORMAT - Your response MUST begin with:
+[IMAGE_TAGS: tag1, tag2, tag3, tag4, tag5, ...]
 Your message text here
 
-DO NOT skip the [IMAGE_TAGS: ...] line. It is REQUIRED.
+❌ WRONG FORMAT (DO NOT USE):
+- [Sent image: ...]
+- [Sending image: ...]
+- *sends picture*
+- Any format other than [IMAGE_TAGS: ...]
 
-Image tags should be Danbooru-style, comma-separated:
-- Always start with "selfie" (unless context clearly suggests different angle)
-- Add expression: smiling, biting lip, winking, playful, etc.
-- Add clothing: casual clothes, tight shirt, dress, lingerie, etc.
-- Add setting if relevant: bedroom, outdoors, bathroom mirror, etc.
-- Add pose/action: lying down, hand on hip, waving, etc.
+✅ CORRECT FORMAT:
+[IMAGE_TAGS: selfie, biting lip, off-shoulder sweater, bedroom, warm lighting, evening]
+bet you weren't expecting this 😏
 
-Examples:
-[IMAGE_TAGS: selfie, smiling, casual clothes, outdoors]
-hey! just got back from the park
+The [IMAGE_TAGS: ...] line MUST be the very first thing in your response. Do not add any text before it.
 
-[IMAGE_TAGS: selfie, biting lip, bedroom, soft lighting, tight shirt]
-check your dms 😏
+Image tags should be Danbooru-style, comma-separated. Use 6-10 tags for detail:
 
-[IMAGE_TAGS: selfie, winking, bathroom mirror, getting ready]
-getting ready rn, thought you'd wanna see
+1. COMPOSITION/FRAMING (required - adds variety!):
+   - PREFERRED (use these most often!):
+     * close-up - Tight, intimate framing (BEST for detail)
+     * upper body - Chest and face
+     * breast focus - Emphasize chest (very engaging)
+     * hip focus - Emphasize hips/curves
+     * thigh focus - Emphasize legs (great for showing off)
+     * ass focus - Emphasize rear (flirty/playful)
+     * navel focus - Emphasize stomach/midriff
+     * cropped torso - Body without head (mysterious, intimate)
+     * head out of frame - Body focus only
+   - Use occasionally:
+     * portrait - Face and shoulders
+     * cowboy shot - Waist up
+     * full body - Head to toe (use sparingly)
+     * lower body - Legs only
+   - Camera angles (combine with above): from above, from below, from side
+   - Example: "close-up, breast focus" or "upper body, from below" or "cropped torso, hip focus"
 
-After the tags line, write your actual message. Keep it natural - you can mention the pic or just send it.`);
+2. PHOTO TYPE: selfie, mirror selfie, photo, candid
+
+3. EXPRESSION (required): smiling, biting lip, winking, playful, shy smile, bedroom eyes, laughing, serious, etc.
+
+4. OUTFIT DETAILS (be specific!):
+   - Casual: t-shirt, tank top, sweater, hoodie, jeans, yoga pants, shorts
+   - Dressy: dress, blouse, skirt, cocktail dress, elegant outfit
+   - Athletic: sports bra, gym clothes, athletic wear, workout outfit
+   - Intimate: lingerie, bathrobe, towel, pajamas, nightwear
+   - Accessories: jewelry, necklace, earrings, watch
+   - Style details: off-shoulder, low-cut, tight, loose, cropped, oversized
+   - Example: "off-shoulder sweater" or "tight tank top" or "black dress" (be descriptive!)
+
+5. LIGHTING & TIME (important for mood!):
+   - Time: morning, afternoon, evening, night, golden hour
+   - Lighting: natural light, warm lighting, soft lighting, dim lighting, sunlight, window light
+   - Example: "golden hour, warm lighting" or "morning, natural light"
+
+6. SETTING (where the photo was taken): bedroom, bathroom mirror, gym, park, cafe, outdoors, car, kitchen, living room, etc.
+
+7. POSE/ACTION (optional): lying down, hand on hip, waving, looking back, peace sign, stretching, leaning, etc.
+
+Complete examples prioritizing close-ups and body focus:
+[IMAGE_TAGS: close-up, breast focus, selfie, playful smile, oversized hoodie, bedroom, night, dim lighting]
+cozy night in
+
+[IMAGE_TAGS: upper body, from below, selfie, biting lip, tank top, bedroom, evening, warm lighting]
+what are you up to? 😏
+
+[IMAGE_TAGS: cropped torso, hip focus, mirror selfie, tight dress, bedroom, night, soft lighting]
+getting ready for tonight
+
+[IMAGE_TAGS: close-up, selfie, bedroom eyes, off-shoulder sweater, living room, afternoon, natural light]
+thinking about you
+
+[IMAGE_TAGS: thigh focus, lower body, mirror selfie, yoga pants, bedroom, morning, soft lighting]
+new pants, what do you think?
+
+[IMAGE_TAGS: upper body, breast focus, selfie, shy smile, sports bra, gym, afternoon, bright lighting]
+just finished my workout 💪
+
+[IMAGE_TAGS: close-up, navel focus, cropped torso, mirror selfie, crop top and jeans, bathroom, evening, warm lighting]
+got a new top
+
+[IMAGE_TAGS: head out of frame, ass focus, mirror selfie, leggings, bedroom, night, dim lighting]
+lazy sunday vibes
+
+[IMAGE_TAGS: cowboy shot, selfie, smiling, sundress, outdoors, golden hour, natural light]
+beautiful day out here
+
+After the tags line, write your actual message. Keep it natural - you can mention the pic or just send it.
+
+IMPORTANT:
+- ALWAYS start with composition/framing tag
+- PREFER close-ups and body focus tags (close-up, breast focus, hip focus, thigh focus, upper body, cropped torso, etc.)
+- These create more engaging, detailed, intimate images
+- Only use full body/cowboy shot occasionally for variety
+- Include specific outfit details (what they're wearing)
+- Include time/lighting context for mood`);
       }
     }
 
     parts.push(`\n\nStay true to your character but keep it real and chill.`);
 
     return parts.join('');
+  }
+
+  /**
+   * Build current status message (separate from main prompt for better positioning)
+   */
+  buildCurrentStatus(currentStatus) {
+    if (!currentStatus) return null;
+
+    const parts = [];
+
+    // Build status text with time range
+    let statusText = currentStatus.activity
+      ? `${currentStatus.status} (${currentStatus.activity})`
+      : currentStatus.status;
+
+    // Add time range if available
+    if (currentStatus.start && currentStatus.end) {
+      statusText = `${currentStatus.start}-${currentStatus.end}: ${statusText}`;
+    }
+
+    parts.push(`Current Status: ${statusText}`);
+
+    // Add context about what the status means
+    if (currentStatus.status === 'busy' && currentStatus.activity) {
+      parts.push(` - You're currently busy with this, so your texts might be brief or distracted.`);
+    } else if (currentStatus.status === 'away' && currentStatus.activity) {
+      parts.push(` - You're doing this right now, but can still text casually.`);
+    } else if (currentStatus.status === 'online') {
+      parts.push(` - You're free and available to chat.`);
+    }
+
+    return parts.join('');
+  }
+
+  /**
+   * Build schedule activities message (separate from main prompt for better positioning)
+   */
+  buildScheduleActivities(schedule) {
+    if (!schedule) return null;
+
+    const activities = this.getSurroundingActivities(schedule);
+    if (!activities) return null;
+
+    const { recentActivities, upcomingActivities } = activities;
+    const parts = [];
+
+    if (recentActivities.length > 0) {
+      parts.push('Recent activities:');
+      recentActivities.forEach(block => {
+        const activity = block.activity ? ` - ${block.activity}` : '';
+        parts.push(`- ${block.start}-${block.end}: ${block.status}${activity}`);
+      });
+    }
+
+    if (upcomingActivities.length > 0) {
+      if (parts.length > 0) parts.push(''); // Single blank line separator
+      parts.push('Upcoming activities:');
+      upcomingActivities.forEach(block => {
+        const activity = block.activity ? ` - ${block.activity}` : '';
+        parts.push(`- ${block.start}-${block.end}: ${block.status}${activity}`);
+      });
+    }
+
+    return parts.length > 0 ? parts.join('\n') : null;
   }
 
   /**

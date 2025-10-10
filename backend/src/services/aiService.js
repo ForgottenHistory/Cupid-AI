@@ -79,12 +79,24 @@ class AIService {
         finalMessages.push({ role: 'system', content: proactiveInstructions });
       }
 
-      // Append decision context at the VERY END (maximum recency bias)
+      // Append decision context (before schedule for importance)
       if (decision) {
         const decisionParts = ['DECISION:'];
 
         if (decision.shouldSendImage) {
-          decisionParts.push('IMAGE: YES (use [IMAGE_TAGS: ...] format)');
+          decisionParts.push('IMAGE: YES');
+          decisionParts.push('');
+          decisionParts.push('⚠️ MANDATORY FORMAT - Start your response with:');
+          decisionParts.push('[IMAGE_TAGS: tag1, tag2, tag3, tag4, tag5, tag6, ...]');
+          decisionParts.push('Your message text here');
+          decisionParts.push('');
+          decisionParts.push('❌ DO NOT USE: [Sent image: ...] or *sends picture* or any other format');
+          decisionParts.push('✅ USE: [IMAGE_TAGS: cowboy shot, selfie, smiling, tank top and jeans, bedroom, evening, warm lighting]');
+          decisionParts.push('');
+          decisionParts.push('Tags (6-10 total): COMPOSITION/FRAMING, photo type, expression, OUTFIT DETAILS, setting, TIME, LIGHTING');
+          decisionParts.push('Composition - PREFER THESE: close-up, breast focus, hip focus, thigh focus, upper body, cropped torso, navel focus, ass focus, head out of frame');
+          decisionParts.push('Use occasionally: portrait, cowboy shot, full body');
+          decisionParts.push('ALWAYS start with composition! Close-ups and body focus create better, more engaging images!');
         } else {
           decisionParts.push('IMAGE: NO (do not mention pics)');
         }
@@ -104,6 +116,28 @@ class AIService {
         }
 
         finalMessages.push({ role: 'system', content: decisionParts.join('\n') });
+      }
+
+      // Append current status and schedule activities at the VERY END (maximum recency bias)
+      // Combine into single message for better context
+      const contextParts = [];
+
+      if (currentStatus) {
+        const currentStatusMessage = promptBuilderService.buildCurrentStatus(currentStatus);
+        if (currentStatusMessage) {
+          contextParts.push(currentStatusMessage);
+        }
+      }
+
+      if (schedule) {
+        const scheduleActivities = promptBuilderService.buildScheduleActivities(schedule);
+        if (scheduleActivities) {
+          contextParts.push(scheduleActivities);
+        }
+      }
+
+      if (contextParts.length > 0) {
+        finalMessages.push({ role: 'system', content: contextParts.join('\n\n') });
       }
 
       // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
@@ -139,11 +173,18 @@ class AIService {
       let content = rawContent;
       let imageTags = null;
 
-      const imageTagsMatch = rawContent.match(/^\[IMAGE_TAGS:\s*([^\]]+)\]/i);
+      // Try to match image tags (allowing leading whitespace/newlines)
+      const imageTagsMatch = rawContent.match(/^\s*\[IMAGE_TAGS:\s*([^\]]+)\]/i);
       if (imageTagsMatch) {
         imageTags = imageTagsMatch[1].trim();
         // Remove the tags from the content
         content = rawContent.substring(imageTagsMatch[0].length).trim();
+        console.log('🎨 Parsed image tags from LLM response:', imageTags);
+      } else {
+        // Debug: log first 200 chars if image was expected but not found
+        if (decision?.shouldSendImage) {
+          console.warn('⚠️  Expected image tags but none found. Raw content start:', rawContent.substring(0, 200));
+        }
       }
 
       console.log('✅ OpenRouter Response:', {
