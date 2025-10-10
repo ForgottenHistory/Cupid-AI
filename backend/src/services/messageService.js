@@ -46,9 +46,15 @@ class MessageService {
     return messages.map(msg => {
       let content = msg.content;
 
-      // If message has image, prepend tags to content for AI context
-      if (msg.message_type === 'image' && msg.image_tags) {
-        content = `[Sent image: ${msg.image_tags}]\n${content}`;
+      // If message has image, prepend context for AI
+      if (msg.message_type === 'image') {
+        if (msg.role === 'user') {
+          // User image: Convert to [Image: description] format
+          content = `[Image: ${msg.content}]`;
+        } else if (msg.image_tags) {
+          // AI image: Prepend image tags to content
+          content = `[Sent image: ${msg.image_tags}]\n${content}`;
+        }
       }
 
       return {

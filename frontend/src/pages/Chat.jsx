@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import chatService from '../services/chatService';
@@ -21,6 +21,10 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const inputRef = useRef(null);
+
+  // Image upload state
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imageDescription, setImageDescription] = useState('');
 
   // Core chat state
   const {
@@ -76,6 +80,10 @@ const Chat = () => {
     setDisplayingMessages,
     addDisplayTimeout,
     inputRef,
+    selectedImage,
+    setSelectedImage,
+    imageDescription,
+    setImageDescription,
   });
 
   // WebSocket real-time messaging
@@ -99,6 +107,9 @@ const Chat = () => {
     // Don't reset showTypingIndicator - let WebSocket hook manage it based on actual state
     setShowTypingIndicatorInternal(false);
     clearDisplayTimeouts();
+    // Reset image upload state
+    setSelectedImage(null);
+    setImageDescription('');
   }, [characterId]);
 
   // Debug function for testing unmatch modal
@@ -304,6 +315,10 @@ const Chat = () => {
         inputRef={inputRef}
         onSend={handleSend}
         onRegenerate={handleRegenerateLast}
+        selectedImage={selectedImage}
+        setSelectedImage={setSelectedImage}
+        imageDescription={imageDescription}
+        setImageDescription={setImageDescription}
       />
 
       {/* Unmatch Modal */}

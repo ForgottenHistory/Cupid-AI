@@ -84,7 +84,31 @@ class PromptBuilderService {
     }
 
     if (characterData.datingProfile) {
-      parts.push(`\nDating Profile: ${characterData.datingProfile}`);
+      // Handle dating profile object or string
+      if (typeof characterData.datingProfile === 'object') {
+        const profile = characterData.datingProfile;
+        const profileParts = [];
+
+        if (profile.bio) profileParts.push(`Bio: ${profile.bio}`);
+        if (profile.age) profileParts.push(`Age: ${profile.age}`);
+        if (profile.occupation) profileParts.push(`Occupation: ${profile.occupation}`);
+        if (profile.height) profileParts.push(`Height: ${profile.height}`);
+        if (profile.bodyType) profileParts.push(`Body Type: ${profile.bodyType}`);
+        if (profile.measurements) profileParts.push(`Measurements: ${profile.measurements}`);
+        if (profile.interests && profile.interests.length > 0) {
+          profileParts.push(`Interests: ${profile.interests.join(', ')}`);
+        }
+        if (profile.funFacts && profile.funFacts.length > 0) {
+          profileParts.push(`Fun Facts: ${profile.funFacts.join(', ')}`);
+        }
+        if (profile.lookingFor) profileParts.push(`Looking For: ${profile.lookingFor}`);
+
+        if (profileParts.length > 0) {
+          parts.push(`\nDating Profile:\n${profileParts.join('\n')}`);
+        }
+      } else {
+        parts.push(`\nDating Profile: ${characterData.datingProfile}`);
+      }
     }
 
     // Add departing context

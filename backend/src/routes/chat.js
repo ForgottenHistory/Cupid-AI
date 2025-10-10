@@ -1,4 +1,8 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { authenticateToken } from '../middleware/auth.js';
 import aiService from '../services/aiService.js';
 import conversationService from '../services/conversationService.js';
@@ -8,7 +12,42 @@ import superLikeService from '../services/superLikeService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 import db from '../db/database.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const router = express.Router();
+
+// Configure multer for user image uploads
+const userImageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'user_images');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const filename = `user_${req.user.id}_${Date.now()}${ext}`;
+    cb(null, filename);
+  }
+});
+
+const uploadUserImage = multer({
+  storage: userImageStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 /**
  * GET /api/chat/conversations
@@ -50,7 +89,7 @@ router.get('/conversations/:characterId', authenticateToken, (req, res) => {
 router.post('/conversations/:characterId/messages', authenticateToken, async (req, res) => {
   try {
     const { characterId } = req.params;
-    const { message, characterData } = req.body;
+    const { message, characterData, imageUrl, imageDescription } = req.body;
     const userId = req.user.id;
 
     if (!characterData) {
@@ -66,8 +105,21 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
 
     let savedUserMessage = null;
 
-    // Only save user message if it's not empty
-    if (message && message.trim()) {
+    // Save user message with image if present
+    if (imageUrl && imageDescription) {
+      // User sent an image with description
+      savedUserMessage = messageService.saveMessage(
+        conversation.id,
+        'user',
+        imageDescription, // Store description as content
+        null, // No reaction
+        'image', // messageType
+        null, // audioUrl
+        imageUrl, // imageUrl
+        null // imageTags
+      );
+    } else if (message && message.trim()) {
+      // Regular text message
       savedUserMessage = messageService.saveMessage(conversation.id, 'user', message);
     }
 
@@ -477,6 +529,26 @@ Output ONLY the suggested reply text, nothing else.`;
   } catch (error) {
     console.error('Suggest reply error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate suggestion' });
+  }
+});
+
+/**
+ * POST /api/chat/upload-user-image
+ * Upload a user image for sending in chat
+ */
+router.post('/upload-user-image', authenticateToken, uploadUserImage.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    const imageUrl = `/uploads/user_images/${req.file.filename}`;
+    console.log(`✅ User image uploaded: ${imageUrl}`);
+
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error('Upload user image error:', error);
+    res.status(500).json({ error: error.message || 'Failed to upload image' });
   }
 });
 

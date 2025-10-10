@@ -116,13 +116,13 @@ const MessageBubble = ({
           <div className="space-y-2">
             <img
               src={`http://localhost:3000${message.image_url}`}
-              alt="AI-generated character image"
+              alt={message.role === 'user' ? "User uploaded image" : "AI-generated character image"}
               className="rounded-lg max-w-[200px] h-auto cursor-pointer hover:opacity-90 hover:scale-105 transition-all shadow-md"
               onClick={() => setShowImageModal(true)}
               title="Click to view full size"
             />
             {message.content && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+              <p className={`text-xs ${message.role === 'user' ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'} italic`}>
                 {message.content}
               </p>
             )}

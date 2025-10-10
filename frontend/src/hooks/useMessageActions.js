@@ -19,6 +19,10 @@ export const useMessageActions = ({
   setDisplayingMessages,
   addDisplayTimeout,
   inputRef,
+  selectedImage,
+  setSelectedImage,
+  imageDescription,
+  setImageDescription,
 }) => {
   const [sending, setSending] = useState(false);
   const [input, setInput] = useState('');
@@ -35,13 +39,15 @@ export const useMessageActions = ({
     if (sending) return;
 
     const userMessage = input.trim();
+    const hasImage = selectedImage && imageDescription.trim();
     const currentCharacterId = characterId; // Capture current character ID
+
     setInput('');
     setSending(true);
     setError('');
 
-    // If empty message, skip adding user message and just prompt AI to continue
-    if (!userMessage) {
+    // If no message and no image, skip adding user message and just prompt AI to continue
+    if (!userMessage && !hasImage) {
       try {
         // Just trigger AI response without user message
         await chatService.sendMessage(
@@ -60,12 +66,46 @@ export const useMessageActions = ({
       return;
     }
 
+    // Handle image upload if present
+    let uploadedImageUrl = null;
+    if (hasImage) {
+      try {
+        // Upload image first
+        const formData = new FormData();
+        formData.append('image', selectedImage);
+
+        const token = localStorage.getItem('token');
+        const uploadResponse = await fetch('http://localhost:3000/api/chat/upload-user-image', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image');
+        }
+
+        const uploadData = await uploadResponse.json();
+        uploadedImageUrl = uploadData.imageUrl;
+        console.log('✅ Image uploaded:', uploadedImageUrl);
+      } catch (err) {
+        console.error('Image upload error:', err);
+        setError('Failed to upload image');
+        setSending(false);
+        return;
+      }
+    }
+
     // Optimistically add user message
     const tempUserMsg = {
       id: `temp-${Date.now()}`,
       role: 'user',
-      content: userMessage,
+      content: hasImage ? imageDescription.trim() : userMessage,
       created_at: new Date().toISOString(),
+      message_type: hasImage ? 'image' : 'text',
+      image_url: uploadedImageUrl,
     };
 
     markMessageAsNew(tempUserMsg.id);
@@ -75,9 +115,17 @@ export const useMessageActions = ({
       // Send message to backend (returns immediately)
       const response = await chatService.sendMessage(
         currentCharacterId,
-        userMessage,
-        character.cardData.data
+        hasImage ? '' : userMessage, // Send empty message if sending image
+        character.cardData.data,
+        uploadedImageUrl, // imageUrl
+        hasImage ? imageDescription.trim() : null // imageDescription
       );
+
+      // Clear image state after successful send
+      if (hasImage) {
+        setSelectedImage(null);
+        setImageDescription('');
+      }
 
       // Update with saved user message
       if (isMountedRef.current && currentCharacterId === characterId && response.message) {

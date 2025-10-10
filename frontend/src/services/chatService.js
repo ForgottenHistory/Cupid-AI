@@ -20,10 +20,12 @@ class ChatService {
   /**
    * Send message and get AI response
    */
-  async sendMessage(characterId, message, characterData) {
+  async sendMessage(characterId, message, characterData, imageUrl = null, imageDescription = null) {
     const response = await api.post(`/chat/conversations/${characterId}/messages`, {
       message,
       characterData,
+      imageUrl,
+      imageDescription,
     });
     return response.data;
   }
