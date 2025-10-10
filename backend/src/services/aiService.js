@@ -336,19 +336,19 @@ class AIService {
           parts.push(`[SYSTEM MESSAGE ${index > 0 ? index : ''}]:`);
           parts.push(msg.content);
           parts.push('');
+        } else if (msg.prefix) {
+          // Skip priming prefix - it's just an API artifact to prompt the AI
+          // The actual AI response isn't part of the logged conversation yet
         } else {
-          // Check if this is the priming prefix (already has character name)
-          if (msg.prefix && msg.content.startsWith(characterName + ': ')) {
-            // Don't add name again, content already has it
-            parts.push(msg.content);
-          } else {
-            const name = msg.role === 'user' ? userName : characterName;
-            parts.push(`${name}: ${msg.content}`);
-          }
+          const name = msg.role === 'user' ? userName : characterName;
+          parts.push(`${name}: ${msg.content}`);
         }
       });
 
-      const logContent = parts.join('\n');
+      let logContent = parts.join('\n');
+
+      // Clean up time gap markers - remove the [SYSTEM MESSAGE N]: label so they appear inline
+      logContent = logContent.replace(/\[SYSTEM MESSAGE \d*\]:\n(\[TIME GAP:)/g, '\n\n$1');
 
       // Write to file
       fs.writeFileSync(filepath, logContent, 'utf8');

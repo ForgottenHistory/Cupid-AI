@@ -34,16 +34,41 @@ class MessageService {
   }
 
   /**
-   * Get conversation history as AI messages
+   * Get conversation history as AI messages with session gap markers
    */
   getConversationHistory(conversationId) {
     const messages = db.prepare(`
-      SELECT role, content, message_type, image_tags FROM messages
+      SELECT role, content, message_type, image_tags, created_at FROM messages
       WHERE conversation_id = ?
       ORDER BY created_at ASC
     `).all(conversationId);
 
-    return messages.map(msg => {
+    const result = [];
+    const SESSION_GAP_THRESHOLD = 30 * 60 * 1000; // 1 hour in milliseconds
+
+    messages.forEach((msg, index) => {
+      // Check for time gap with previous message
+      if (index > 0) {
+        const prevMsg = messages[index - 1];
+        const prevTime = new Date(prevMsg.created_at).getTime();
+        const currentTime = new Date(msg.created_at).getTime();
+        const gapMs = currentTime - prevTime;
+
+        // If gap is significant (1+ hours), insert session marker
+        if (gapMs >= SESSION_GAP_THRESHOLD) {
+          const gapHours = (gapMs / (1000 * 60 * 60)).toFixed(1);
+
+          // Insert session gap marker as a system message
+          result.push({
+            role: 'system',
+            content: `[TIME GAP: ${gapHours} hours - NEW CONVERSATION SESSION]
+
+The previous conversation ended naturally. This is a fresh interaction - acknowledge the time gap if appropriate.`
+          });
+        }
+      }
+
+      // Process message content
       let content = msg.content;
 
       // If message has image, prepend context for AI
@@ -57,11 +82,13 @@ class MessageService {
         }
       }
 
-      return {
+      result.push({
         role: msg.role,
         content: content
-      };
+      });
     });
+
+    return result;
   }
 
   /**
