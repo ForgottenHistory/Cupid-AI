@@ -161,6 +161,17 @@ function runMigrations() {
       console.log('✅ is_super_like column added to characters table');
     }
 
+    // Migration: Add proactive message rate limiting columns
+    if (!userColumnNames.includes('last_global_proactive_at')) {
+      db.exec(`ALTER TABLE users ADD COLUMN last_global_proactive_at TIMESTAMP;`);
+      console.log('✅ last_global_proactive_at column added to users table');
+    }
+
+    if (!charactersColumnNames.includes('last_proactive_at')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN last_proactive_at TIMESTAMP;`);
+      console.log('✅ last_proactive_at column added to characters table');
+    }
+
     // Migration: Add swipe limit tracking to users table
     if (!userColumnNames.includes('swipes_today')) {
       db.exec(`

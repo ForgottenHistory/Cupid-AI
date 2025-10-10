@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
@@ -8,6 +8,7 @@ import LLMSettings from './LLMSettings';
 import SDSettings from './SDSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { syncAllCharacters, clearAllPosts } from '../utils/syncCharacterImages';
+import io from 'socket.io-client';
 
 const MainLayout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -20,6 +21,7 @@ const MainLayout = ({ children }) => {
   const [showLLMSettings, setShowLLMSettings] = useState(false);
   const [showSDSettings, setShowSDSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
+  const socketRef = useRef(null);
 
   // Sync all characters from IndexedDB to backend on mount
   // This ensures all characters are available for post generation
@@ -67,6 +69,39 @@ const MainLayout = ({ children }) => {
 
     return () => clearInterval(interval);
   }, [matches.length]);
+
+  // WebSocket connection for real-time unread count updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Connect to WebSocket server
+    const socket = io('http://localhost:3000', {
+      transports: ['websocket'],
+      reconnection: true,
+    });
+
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      console.log('🔌 MainLayout: WebSocket connected');
+      socket.emit('join', user.id);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('🔌 MainLayout: WebSocket disconnected');
+    });
+
+    // Listen for new messages to update unread counts
+    socket.on('new_message', (data) => {
+      console.log('💬 MainLayout: New message received, reloading conversations');
+      loadConversations();
+    });
+
+    return () => {
+      console.log('🔌 MainLayout: Cleaning up WebSocket');
+      socket.disconnect();
+    };
+  }, [user?.id]);
 
   const loadMatches = async () => {
     if (!user?.id) return;
@@ -167,6 +202,28 @@ const MainLayout = ({ children }) => {
     return text.length > 40 ? text.substring(0, 40) + '...' : text;
   };
 
+  // Get sorted matches by most recent activity
+  const getSortedMatches = () => {
+    return [...matches].sort((a, b) => {
+      const convA = conversations.find(c => c.character_id === a.id);
+      const convB = conversations.find(c => c.character_id === b.id);
+
+      // If both have conversations, sort by last message time
+      if (convA?.last_message_at && convB?.last_message_at) {
+        return new Date(convB.last_message_at) - new Date(convA.last_message_at);
+      }
+
+      // If only A has conversation, A comes first
+      if (convA?.last_message_at) return -1;
+
+      // If only B has conversation, B comes first
+      if (convB?.last_message_at) return 1;
+
+      // If neither has conversation, maintain original order
+      return 0;
+    });
+  };
+
   return (
     <div className="flex h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Left Sidebar */}
@@ -199,7 +256,7 @@ const MainLayout = ({ children }) => {
               </div>
             ) : (
               <div className="space-y-2">
-                {matches.map((match) => {
+                {getSortedMatches().map((match) => {
                   const unreadCount = getUnreadCount(match.id);
                   return (
                     <div

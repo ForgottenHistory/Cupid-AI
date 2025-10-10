@@ -32,13 +32,33 @@ export const useMessageActions = ({
   const handleSend = async (e) => {
     e.preventDefault();
 
-    if (!input.trim() || sending) return;
+    if (sending) return;
 
     const userMessage = input.trim();
     const currentCharacterId = characterId; // Capture current character ID
     setInput('');
     setSending(true);
     setError('');
+
+    // If empty message, skip adding user message and just prompt AI to continue
+    if (!userMessage) {
+      try {
+        // Just trigger AI response without user message
+        await chatService.sendMessage(
+          currentCharacterId,
+          '', // Empty message triggers AI to continue
+          character.cardData.data
+        );
+        // WebSocket will handle the AI response
+      } catch (err) {
+        console.error('Send empty message error:', err);
+        if (currentCharacterId === characterId) {
+          setError(err.response?.data?.error || 'Failed to prompt AI');
+          setSending(false);
+        }
+      }
+      return;
+    }
 
     // Optimistically add user message
     const tempUserMsg = {

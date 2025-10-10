@@ -32,6 +32,18 @@ export const useChatWebSocket = ({
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [unmatchData, setUnmatchData] = useState(null);
 
+  // Check if character is currently typing when characterId changes
+  useEffect(() => {
+    console.log('🔄 Character changed to:', characterId);
+    const isTyping = characterId && socketService.isTyping(characterId);
+    setShowTypingIndicator(isTyping);
+    console.log(`🔄 Set typing indicator to: ${isTyping} for character ${characterId}`);
+
+    if (isTyping) {
+      console.log('⌨️  Restoring typing indicator for character:', characterId);
+    }
+  }, [characterId]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -40,10 +52,13 @@ export const useChatWebSocket = ({
 
     // Listen for new messages
     const handleNewMessage = (data) => {
+      // Clear typing state globally for ANY character (not just current one)
+      socketService.clearTyping(data.characterId);
+
+      // Only update UI if this is the current character
       if (data.characterId !== characterId) return;
 
       console.log('📨 Received new message via WebSocket:', data);
-
       setShowTypingIndicator(false);
       const lastMessage = data.message;
 
@@ -103,20 +118,33 @@ export const useChatWebSocket = ({
     const handleCharacterTyping = (data) => {
       if (data.characterId !== characterId) return;
       console.log('⌨️  Character is typing...');
+
+      // Store typing state globally
+      socketService.setTyping(data.characterId, true);
       setShowTypingIndicator(true);
     };
 
     const handleCharacterOffline = (data) => {
+      // Clear typing state globally for ANY character (not just current one)
+      socketService.clearTyping(data.characterId);
+
+      // Only update UI if this is the current character
       if (data.characterId !== characterId) return;
       console.log('💤 Character is offline');
+
       setShowTypingIndicator(false);
       setSending(false);
       setError('Character is currently offline');
     };
 
     const handleAIResponseError = (data) => {
+      // Clear typing state globally for ANY character (not just current one)
+      socketService.clearTyping(data.characterId);
+
+      // Only update UI if this is the current character
       if (data.characterId !== characterId) return;
       console.error('❌ AI response error:', data.error);
+
       setShowTypingIndicator(false);
       setSending(false);
       setError(data.error || 'Failed to generate response');

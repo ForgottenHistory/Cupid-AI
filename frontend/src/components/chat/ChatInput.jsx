@@ -111,7 +111,7 @@ const ChatInput = ({
         )}
         <button
           type="submit"
-          disabled={!input.trim() || sending}
+          disabled={sending}
           className="px-7 py-3.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full hover:from-pink-600 hover:to-purple-700 hover:scale-105 active:scale-95 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl disabled:shadow-md"
         >
           {sending ? (

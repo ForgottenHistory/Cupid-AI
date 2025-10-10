@@ -4,6 +4,7 @@ class SocketService {
   constructor() {
     this.socket = null;
     this.listeners = new Map();
+    this.typingStates = new Map(); // Track which characters are typing
   }
 
   connect(userId) {
@@ -80,6 +81,28 @@ class SocketService {
     }
 
     this.socket.emit(event, data);
+  }
+
+  // Typing state management
+  setTyping(characterId, isTyping) {
+    if (isTyping) {
+      this.typingStates.set(characterId, true);
+      console.log(`🔄 Global typing state SET for ${characterId}. Active typing:`, Array.from(this.typingStates.keys()));
+    } else {
+      this.typingStates.delete(characterId);
+      console.log(`🔄 Global typing state CLEARED for ${characterId}. Active typing:`, Array.from(this.typingStates.keys()));
+    }
+  }
+
+  isTyping(characterId) {
+    const typing = this.typingStates.has(characterId);
+    console.log(`🔍 Checking typing state for ${characterId}: ${typing}. Active typing:`, Array.from(this.typingStates.keys()));
+    return typing;
+  }
+
+  clearTyping(characterId) {
+    this.typingStates.delete(characterId);
+    console.log(`🔄 Global typing state CLEARED for ${characterId}. Active typing:`, Array.from(this.typingStates.keys()));
   }
 }
 

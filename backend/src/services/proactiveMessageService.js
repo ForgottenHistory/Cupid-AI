@@ -32,10 +32,22 @@ class ProactiveMessageService {
   findCandidates() {
     const candidates = [];
 
-    // Get all users
-    const users = db.prepare('SELECT id FROM users').all();
+    // Get all users with their last global proactive timestamp
+    const users = db.prepare('SELECT id, last_global_proactive_at FROM users').all();
 
     for (const user of users) {
+      // Check global rate limit: 30 minutes between ANY proactive messages
+      if (user.last_global_proactive_at) {
+        const lastGlobalTime = new Date(user.last_global_proactive_at);
+        const now = new Date();
+        const minutesSinceGlobal = (now - lastGlobalTime) / (1000 * 60);
+
+        if (minutesSinceGlobal < 30) {
+          console.log(`⏱️  User ${user.id} on global cooldown (${(30 - minutesSinceGlobal).toFixed(1)} min remaining)`);
+          continue; // Skip this user entirely - too soon since last proactive
+        }
+      }
+
       // Get all matched characters for this user
       const characters = db.prepare(`
         SELECT c.*, conv.id as conversation_id
@@ -46,6 +58,25 @@ class ProactiveMessageService {
 
       for (const character of characters) {
         if (!character.conversation_id) continue;
+
+        // Check per-character rate limit: 1 hour between proactive messages from same character
+        if (character.last_proactive_at) {
+          const lastCharacterTime = new Date(character.last_proactive_at);
+          const now = new Date();
+          const minutesSinceCharacter = (now - lastCharacterTime) / (1000 * 60);
+
+          if (minutesSinceCharacter < 60) {
+            // Parse character name for logging
+            let characterName = 'Character';
+            try {
+              const cardData = JSON.parse(character.card_data);
+              characterName = cardData.data?.name || cardData.name || 'Character';
+            } catch (e) {}
+
+            console.log(`⏱️  ${characterName} on character cooldown (${(60 - minutesSinceCharacter).toFixed(1)} min remaining)`);
+            continue; // Skip this character - too soon since last proactive
+          }
+        }
 
         // Get last message
         const lastMessage = db.prepare(`
@@ -215,6 +246,12 @@ class ProactiveMessageService {
 
       // Update conversation and increment unread count
       conversationService.incrementUnreadCount(conversationId);
+
+      // Update rate limit timestamps
+      const now = new Date().toISOString();
+      db.prepare('UPDATE users SET last_global_proactive_at = ? WHERE id = ?').run(now, userId);
+      db.prepare('UPDATE characters SET last_proactive_at = ? WHERE id = ? AND user_id = ?').run(now, characterId, userId);
+      console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (60 min) started`);
 
       // Emit to frontend via WebSocket
       io.to(`user:${userId}`).emit('new_message', {

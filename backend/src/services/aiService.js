@@ -140,8 +140,17 @@ class AIService {
         finalMessages.push({ role: 'system', content: contextParts.join('\n\n') });
       }
 
-      // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
+      // Add roleplay reminder to keep AI on track
+      finalMessages.push({
+        role: 'system',
+        content: '⚠️ RESUME ROLEPLAY: Stay in character. Write as the character would naturally text in this dating app conversation. No narration, no actions in asterisks, just authentic messages.'
+      });
+
+      // Add character name prompt at the very end to prime the response
       const characterName = characterData.data?.name || characterData.name || 'Character';
+      finalMessages.push({ role: 'assistant', content: `${characterName}: `, prefix: true });
+
+      // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
       const logUserName = userName || 'User';
       const messageType = isProactive ? `proactive-${proactiveType}` : 'chat';
       this.savePromptLog(finalMessages, messageType, characterName, logUserName);
@@ -167,7 +176,14 @@ class AIService {
         }
       );
 
-      const rawContent = response.data.choices[0].message.content;
+      let rawContent = response.data.choices[0].message.content;
+
+      // Strip any leading "Name: " pattern (AI priming artifact)
+      // Example: "Jane Doe: message" -> "message"
+      // Keep stripping until there's no more "Something: " at the start
+      while (rawContent.match(/^[^:]+:\s*/)) {
+        rawContent = rawContent.replace(/^[^:]+:\s*/, '');
+      }
 
       // Parse image tags if present
       let content = rawContent;
@@ -321,8 +337,14 @@ class AIService {
           parts.push(msg.content);
           parts.push('');
         } else {
-          const name = msg.role === 'user' ? userName : characterName;
-          parts.push(`${name}: ${msg.content}`);
+          // Check if this is the priming prefix (already has character name)
+          if (msg.prefix && msg.content.startsWith(characterName + ': ')) {
+            // Don't add name again, content already has it
+            parts.push(msg.content);
+          } else {
+            const name = msg.role === 'user' ? userName : characterName;
+            parts.push(`${name}: ${msg.content}`);
+          }
         }
       });
 

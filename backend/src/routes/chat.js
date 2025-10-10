@@ -53,10 +53,6 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
     const { message, characterData } = req.body;
     const userId = req.user.id;
 
-    if (!message || !message.trim()) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
     if (!characterData) {
       return res.status(400).json({ error: 'Character data is required' });
     }
@@ -68,17 +64,21 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
       characterData.name || 'Character'
     );
 
-    // Save user message
-    const savedUserMessage = messageService.saveMessage(conversation.id, 'user', message);
+    let savedUserMessage = null;
 
-    // Return immediately with saved user message
+    // Only save user message if it's not empty
+    if (message && message.trim()) {
+      savedUserMessage = messageService.saveMessage(conversation.id, 'user', message);
+    }
+
+    // Return immediately with saved user message (or null if empty)
     res.json({
       success: true,
       message: savedUserMessage,
       conversation
     });
 
-    // Process AI response asynchronously
+    // Process AI response asynchronously (works even with empty user message)
     const io = req.app.get('io');
     messageProcessor.processMessage(io, userId, characterId, conversation.id, characterData).catch(error => {
       console.error('Async AI response error:', error);

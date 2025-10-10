@@ -96,7 +96,7 @@ const Chat = () => {
   useEffect(() => {
     setSending(false);
     setDisplayingMessages(false);
-    setShowTypingIndicator(false);
+    // Don't reset showTypingIndicator - let WebSocket hook manage it based on actual state
     setShowTypingIndicatorInternal(false);
     clearDisplayTimeouts();
   }, [characterId]);
