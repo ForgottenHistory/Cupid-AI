@@ -33,9 +33,41 @@ class ProactiveMessageService {
     const candidates = [];
 
     // Get all users with their last global proactive timestamp and behavior settings
-    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_away_chance, proactive_busy_chance FROM users').all();
+    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_away_chance, proactive_busy_chance, proactive_messages_today, last_proactive_date, proactive_check_interval, last_proactive_check_at FROM users').all();
 
     for (const user of users) {
+      // Check if enough time has passed since last check for this user
+      const checkInterval = user.proactive_check_interval || 5; // Minutes, default 5
+      if (user.last_proactive_check_at) {
+        const lastCheckTime = new Date(user.last_proactive_check_at);
+        const now = new Date();
+        const minutesSinceCheck = (now - lastCheckTime) / (1000 * 60);
+
+        if (minutesSinceCheck < checkInterval) {
+          continue; // Skip this user - not time to check yet
+        }
+      }
+
+      // Update last check time for this user
+      db.prepare('UPDATE users SET last_proactive_check_at = CURRENT_TIMESTAMP WHERE id = ?').run(user.id);
+
+      // Check daily limit: Has user hit their daily proactive message cap?
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const dailyLimit = user.daily_proactive_limit || 5;
+
+      // Reset counter if it's a new day
+      if (user.last_proactive_date !== today) {
+        db.prepare('UPDATE users SET proactive_messages_today = 0, last_proactive_date = ? WHERE id = ?').run(today, user.id);
+        user.proactive_messages_today = 0;
+        console.log(`📅 Reset daily proactive counter for user ${user.id}`);
+      }
+
+      // Check if user has hit daily limit
+      if (user.proactive_messages_today >= dailyLimit) {
+        console.log(`🚫 User ${user.id} has reached daily proactive limit (${user.proactive_messages_today}/${dailyLimit})`);
+        continue; // Skip this user - daily limit reached
+      }
+
       // Check global rate limit: 30 minutes between ANY proactive messages
       if (user.last_global_proactive_at) {
         const lastGlobalTime = new Date(user.last_global_proactive_at);
@@ -275,11 +307,15 @@ class ProactiveMessageService {
       // Update conversation and increment unread count
       conversationService.incrementUnreadCount(conversationId);
 
-      // Update rate limit timestamps
+      // Update rate limit timestamps and increment daily counter
       const now = new Date().toISOString();
-      db.prepare('UPDATE users SET last_global_proactive_at = ? WHERE id = ?').run(now, userId);
+      db.prepare('UPDATE users SET last_global_proactive_at = ?, proactive_messages_today = proactive_messages_today + 1 WHERE id = ?').run(now, userId);
       db.prepare('UPDATE characters SET last_proactive_at = ? WHERE id = ? AND user_id = ?').run(now, characterId, userId);
+
+      // Get updated count for logging
+      const userCount = db.prepare('SELECT proactive_messages_today, daily_proactive_limit FROM users WHERE id = ?').get(userId);
       console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (60 min) started`);
+      console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
 
       // Emit to frontend via WebSocket
       io.to(`user:${userId}`).emit('new_message', {

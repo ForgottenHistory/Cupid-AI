@@ -180,9 +180,10 @@ class AIService {
 
       // Strip any leading "Name: " pattern (AI priming artifact)
       // Example: "Jane Doe: message" -> "message"
-      // Keep stripping until there's no more "Something: " at the start
-      while (rawContent.match(/^[^:]+:\s*/)) {
-        rawContent = rawContent.replace(/^[^:]+:\s*/, '');
+      // Only matches names (letters, spaces, hyphens, apostrophes), NOT brackets or special chars
+      // Keep stripping until there's no more name pattern at the start
+      while (rawContent.match(/^[A-Za-z\s'-]+:\s*/)) {
+        rawContent = rawContent.replace(/^[A-Za-z\s'-]+:\s*/, '');
       }
 
       // Parse image tags if present
@@ -336,8 +337,9 @@ class AIService {
           parts.push(`[SYSTEM MESSAGE ${index > 0 ? index : ''}]:`);
           parts.push(msg.content);
         } else if (msg.prefix) {
-          // Skip priming prefix - it's just an API artifact to prompt the AI
-          // The actual AI response isn't part of the logged conversation yet
+          // Log the actual priming content (e.g., "Nicole: ")
+          parts.push('');
+          parts.push(msg.content);
         } else {
           const name = msg.role === 'user' ? userName : characterName;
           parts.push(`${name}: ${msg.content}`);

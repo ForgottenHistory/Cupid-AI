@@ -131,6 +131,12 @@ function runMigrations() {
       console.log('✅ engagement_started_at and departed_status columns added to character_states table');
     }
 
+    // Migration: Add last_mood_change column to character_states table
+    if (!characterStatesColumnNames.includes('last_mood_change')) {
+      db.exec(`ALTER TABLE character_states ADD COLUMN last_mood_change TIMESTAMP;`);
+      console.log('✅ last_mood_change column added to character_states table');
+    }
+
     // Migration: Add personality_data column to characters table
     if (!charactersColumnNames.includes('personality_data')) {
       db.exec(`ALTER TABLE characters ADD COLUMN personality_data TEXT;`);
@@ -317,6 +323,15 @@ function runMigrations() {
         ALTER TABLE users ADD COLUMN proactive_busy_chance INTEGER DEFAULT 10;
       `);
       console.log('✅ Proactive away/busy chance columns added to users table');
+    }
+
+    // Migration: Add proactive check interval columns to users table
+    if (!userColumnNames.includes('proactive_check_interval')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN proactive_check_interval INTEGER DEFAULT 5;
+        ALTER TABLE users ADD COLUMN last_proactive_check_at TIMESTAMP;
+      `);
+      console.log('✅ Proactive check interval columns added to users table');
     }
 
     // Migration: Update messages table to allow 'system' role

@@ -60,6 +60,9 @@ class SDService {
       console.log(`Prompt: ${fullPrompt}`);
       console.log(`User settings:`, userSettings);
 
+      // Track generation time
+      const startTime = Date.now();
+
       // Build base payload
       const payload = {
         prompt: fullPrompt,
@@ -258,18 +261,165 @@ class SDService {
       // Get base64 image
       const base64Image = response.data.images[0];
 
+      const generationTime = Date.now() - startTime;
+
+      // Log prompt to file
+      const logFilename = this.saveImagePromptLog({
+        prompt: fullPrompt,
+        negativePrompt: fullNegative,
+        characterTags,
+        contextTags,
+        settings
+      });
+
       return {
         success: true,
         imageBuffer: Buffer.from(base64Image, 'base64'),
         prompt: fullPrompt,
-        negativePrompt: fullNegative
+        negativePrompt: fullNegative,
+        logFilename,
+        generationTime
       };
     } catch (error) {
       console.error('SD generation error:', error.message);
+
+      // Still try to log the failure
+      const logFilename = this.saveImagePromptLog({
+        prompt: fullPrompt || 'N/A',
+        negativePrompt: fullNegative || 'N/A',
+        characterTags: characterTags || '',
+        contextTags: contextTags || '',
+        settings: settings || {}
+      });
+
+      if (logFilename) {
+        this.appendImageResult({
+          logFilename,
+          success: false,
+          error: error.message
+        });
+      }
+
       return {
         success: false,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Save image generation prompt to log file
+   */
+  saveImagePromptLog({ prompt, negativePrompt, characterTags, contextTags, settings }) {
+    try {
+      const logsDir = path.join(__dirname, '../../logs/prompts');
+
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+
+      // Generate filename with timestamp
+      const now = new Date();
+      const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `image-${timestamp}.txt`;
+      const filepath = path.join(logsDir, filename);
+
+      // Build log content
+      const logContent = `IMAGE GENERATION PROMPT LOG
+Timestamp: ${now.toISOString()}
+
+=== FULL PROMPT ===
+${prompt}
+
+=== NEGATIVE PROMPT ===
+${negativePrompt}
+
+=== BREAKDOWN ===
+Main Prompt: ${settings.sd_main_prompt || 'masterpiece, best quality, amazing quality, 1girl, solo'}
+Character Tags: ${characterTags || 'none'}
+Context Tags: ${contextTags || 'none'}
+
+=== SETTINGS ===
+Model: ${settings.sd_model || 'default'}
+Steps: ${settings.sd_steps}
+CFG Scale: ${settings.sd_cfg_scale}
+Sampler: ${settings.sd_sampler}
+Scheduler: ${settings.sd_scheduler}
+Highres Fix: ${Boolean(settings.sd_enable_hr) ? 'enabled' : 'disabled'}${Boolean(settings.sd_enable_hr) ? `
+  - Scale: ${settings.sd_hr_scale}x
+  - Upscaler: ${settings.sd_hr_upscaler}
+  - Steps: ${settings.sd_hr_steps}
+  - CFG: ${settings.sd_hr_cfg}
+  - Denoising: ${settings.sd_denoising_strength}` : ''}
+ADetailer: ${Boolean(settings.sd_enable_adetailer) ? `enabled (${settings.sd_adetailer_model})` : 'disabled'}
+
+=== RESULT ===
+Status: Pending...
+`;
+
+      // Write to file
+      fs.writeFileSync(filepath, logContent, 'utf8');
+
+      // Keep only last 10 image prompt logs
+      const files = fs.readdirSync(logsDir)
+        .filter(f => f.startsWith('image-'))
+        .map(f => ({
+          name: f,
+          path: path.join(logsDir, f),
+          mtime: fs.statSync(path.join(logsDir, f)).mtime
+        }))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      // Delete old files (keep only 10 newest)
+      if (files.length > 10) {
+        files.slice(10).forEach(file => {
+          fs.unlinkSync(file.path);
+          console.log(`🗑️  Deleted old image prompt log: ${file.name}`);
+        });
+      }
+
+      console.log(`📝 Saved image prompt log: ${filename}`);
+      return filename; // Return filename so result can be appended
+    } catch (error) {
+      console.error('Failed to save image prompt log:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Append result to the most recent image prompt log
+   */
+  appendImageResult({ logFilename, success, imagePath, error, generationTime }) {
+    try {
+      if (!logFilename) return;
+
+      const logsDir = path.join(__dirname, '../../logs/prompts');
+      const filepath = path.join(logsDir, logFilename);
+
+      if (!fs.existsSync(filepath)) {
+        console.warn(`⚠️  Log file not found: ${logFilename}`);
+        return;
+      }
+
+      // Read existing content
+      let content = fs.readFileSync(filepath, 'utf8');
+
+      // Replace the pending result section
+      const resultSection = `=== RESULT ===
+Status: ${success ? '✅ SUCCESS' : '❌ FAILED'}${success ? `
+Image Path: ${imagePath}
+Generation Time: ${generationTime}ms` : ''}${error ? `
+Error: ${error}` : ''}
+`;
+
+      content = content.replace(/=== RESULT ===\nStatus: Pending\.\.\./, resultSection.trim());
+
+      // Write updated content
+      fs.writeFileSync(filepath, content, 'utf8');
+      console.log(`📝 Updated image prompt log with result: ${logFilename}`);
+    } catch (error) {
+      console.error('Failed to append image result:', error.message);
     }
   }
 

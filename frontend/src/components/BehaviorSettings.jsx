@@ -8,6 +8,7 @@ const BehaviorSettings = ({ onClose }) => {
     dailyProactiveLimit: 5,
     proactiveAwayChance: 50,
     proactiveBusyChance: 10,
+    proactiveCheckInterval: 5,
     pacingStyle: 'balanced'
   });
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,7 @@ const BehaviorSettings = ({ onClose }) => {
       dailyProactiveLimit: 5,
       proactiveAwayChance: 50,
       proactiveBusyChance: 10,
+      proactiveCheckInterval: 5,
       pacingStyle: 'balanced'
     });
     setSuccess('');
@@ -180,6 +182,28 @@ const BehaviorSettings = ({ onClose }) => {
                 <span>20</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Maximum proactive messages across all characters per day</p>
+            </div>
+
+            {/* Proactive Check Interval */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Proactive Check Interval</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveCheckInterval} minutes</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="60"
+                step="1"
+                value={settings.proactiveCheckInterval}
+                onChange={(e) => updateSetting('proactiveCheckInterval', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>1 min</span>
+                <span>60 min</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">How often the system checks if characters should send proactive messages</p>
             </div>
 
             {/* Proactive Away Chance */}

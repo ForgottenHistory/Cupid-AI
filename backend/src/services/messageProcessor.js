@@ -125,8 +125,9 @@ class MessageProcessor {
         }
       }
 
-      // Call Decision LLM (pass current engagement state, voice, and image availability)
+      // Call Decision LLM (pass current engagement state, voice, image availability, and last mood change)
       const currentlyEngaged = engagementState?.engagement_state === 'engaged';
+      const lastMoodChange = engagementState?.last_mood_change || null;
       const decision = await aiService.makeDecision({
         messages: aiMessages,
         characterData: characterData,
@@ -134,7 +135,8 @@ class MessageProcessor {
         userId: userId,
         isEngaged: currentlyEngaged,
         hasVoice: hasVoice,
-        hasImage: hasImage
+        hasImage: hasImage,
+        lastMoodChange: lastMoodChange
       });
 
       console.log('🎯 Decision made:', decision);
@@ -165,6 +167,16 @@ class MessageProcessor {
         });
 
         console.log(`🎨 Background effect inserted: ${characterName} → ${decision.mood}`);
+
+        // Update last_mood_change timestamp in character_states
+        if (engagementState) {
+          db.prepare(`
+            UPDATE character_states
+            SET last_mood_change = CURRENT_TIMESTAMP
+            WHERE user_id = ? AND character_id = ?
+          `).run(userId, characterId);
+          console.log(`✅ Updated last_mood_change timestamp for character ${characterId}`);
+        }
 
         // Emit mood change to frontend
         io.to(`user:${userId}`).emit('mood_change', {
@@ -320,6 +332,16 @@ class MessageProcessor {
               messageType = 'image';
               imageUrl = `/uploads/images/${filename}`;
               imagePrompt = imageResult.prompt; // Store the full prompt
+
+              // Log result to prompt log file
+              if (imageResult.logFilename) {
+                sdService.appendImageResult({
+                  logFilename: imageResult.logFilename,
+                  success: true,
+                  imagePath: imageUrl,
+                  generationTime: imageResult.generationTime
+                });
+              }
 
               console.log(`✅ Image saved: ${imageUrl}`);
               console.log(`📝 Prompt: ${imagePrompt}`);

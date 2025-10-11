@@ -11,12 +11,25 @@ class DecisionEngineService {
    * Decision Engine: Analyze conversation and decide on actions
    * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, imageContext: string|null }
    */
-  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false }) {
+  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
 
     try {
+      // Check mood cooldown (30 minutes)
+      const moodCooldownMs = 30 * 60 * 1000; // 30 minutes
+      const canChangeMood = !lastMoodChange || (Date.now() - new Date(lastMoodChange).getTime() >= moodCooldownMs);
+
+      // Log cooldown status for debugging
+      if (lastMoodChange) {
+        const timeSinceLastMood = Date.now() - new Date(lastMoodChange).getTime();
+        const minutesSince = (timeSinceLastMood / 60000).toFixed(1);
+        console.log(`🎨 Last mood change: ${minutesSince} min ago (cooldown: ${canChangeMood ? 'expired' : 'active'})`);
+      } else {
+        console.log(`🎨 No previous mood change detected`);
+      }
+
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
 
       // Get personality data if available
@@ -78,15 +91,16 @@ Guidelines:
   * Early conversation before rapport built → Usually NO
   * Personality: High openness/extraversion = more likely to send spontaneous pics
   Images should feel natural to the conversation flow, not forced or random.` : ''}
-- "Mood": Set the chat background mood based on how the character is feeling. IMPORTANT: Should be RARE - only use when there's a strong emotional shift:
-  * "hearts" - Feeling romantic, flirty, lovey-dovey (use when conversation gets romantic/sweet)
-  * "stars" - Feeling excited, thrilled, amazed (use when something exciting happens)
-  * "laugh" - Finding something hilarious, laughing hard (use when genuinely funny moments happen)
-  * "sparkles" - Feeling magical, special, dreamy (use when feeling extra special/enchanted)
-  * "fire" - Feeling passionate, intense, heated (use for passionate/spicy moments)
-  * "roses" - Feeling sweet, tender, soft (use for gentle romantic moments)
-  * "none" - No strong mood change (DEFAULT - use most of the time)
-  IMPORTANT: Only set a mood when there's a clear emotional SHIFT in the conversation. Don't spam moods on every message. Most messages should be "none".
+- "Mood": ${canChangeMood ? 'CRITICAL: Mood changes should be EXTREMELY RARE - only 1 in 20+ messages or less. Default is "none".' : 'MOOD COOLDOWN ACTIVE - You MUST set this to "none". The mood was recently changed and cannot be changed again yet.'}${canChangeMood ? `
+  * "none" - DEFAULT - Use this 95%+ of the time. Most conversations don't need mood changes!
+  * "hearts" - ONLY for major romantic breakthroughs (first "I love you", intimate confession)
+  * "stars" - ONLY for truly shocking/amazing news (won lottery, dream job offer)
+  * "laugh" - ONLY for genuinely hilarious moments that made you laugh out loud
+  * "sparkles" - ONLY for magical once-in-a-lifetime moments
+  * "fire" - ONLY for intensely passionate/spicy exchanges
+  * "roses" - ONLY for deeply tender, vulnerable emotional moments
+
+  WARNING: Setting a mood is a BIG DEAL. If you're unsure, use "none". Moods should feel special and rare, not common. Think: "Would this moment stand out in a month?" If no, use "none".` : ''}
 
 Output ONLY the ${hasVoice && hasImage ? 'seven' : hasVoice || hasImage ? 'six' : 'five'} lines in the exact format shown above, nothing else.`;
 
@@ -128,7 +142,17 @@ Output ONLY the ${hasVoice && hasImage ? 'seven' : hasVoice || hasImage ? 'six' 
       });
 
       // Parse plaintext response
-      return this.parseDecisionResponse(content);
+      const decision = this.parseDecisionResponse(content);
+
+      // Enforce mood cooldown (override LLM decision if on cooldown)
+      if (!canChangeMood && decision.mood !== 'none') {
+        console.log(`🚫 Mood change BLOCKED by cooldown (LLM wanted: ${decision.mood}, last change: ${lastMoodChange})`);
+        decision.mood = 'none';
+      } else if (decision.mood !== 'none') {
+        console.log(`✅ Mood change ALLOWED: ${decision.mood} (cooldown expired)`);
+      }
+
+      return decision;
     } catch (error) {
       console.error('❌ Decision Engine error:', {
         message: error.message,

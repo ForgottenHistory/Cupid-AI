@@ -32,6 +32,11 @@ const Chat = () => {
   // Character image visibility state (default visible)
   const [showCharacterImage, setShowCharacterImage] = useState(true);
 
+  // Auto-scroll mode for character images
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const autoScrollIntervalRef = useRef(null);
+
   // Mood context (persistent per character)
   const { setMoodEffect, clearMoodEffect, closeMoodModal, getMoodForCharacter } = useMood();
 
@@ -112,6 +117,11 @@ const Chat = () => {
     inputRef,
   });
 
+  // Extract received images from character messages
+  const receivedImages = messages
+    .filter(m => m.role === 'assistant' && m.message_type === 'image' && m.image_url)
+    .map(m => `http://localhost:3000${m.image_url}`);
+
   // Reset states when switching characters
   useEffect(() => {
     setSending(false);
@@ -123,7 +133,44 @@ const Chat = () => {
     // Reset image upload state
     setSelectedImage(null);
     setImageDescription('');
+    // Reset auto-scroll state
+    setAutoScrollEnabled(false);
+    setCurrentImageIndex(0);
   }, [characterId]);
+
+  // Auto-scroll timer for cycling through received images
+  useEffect(() => {
+    // Clear any existing interval
+    if (autoScrollIntervalRef.current) {
+      clearInterval(autoScrollIntervalRef.current);
+      autoScrollIntervalRef.current = null;
+    }
+
+    // Only start interval if auto-scroll is enabled and there are images to scroll through
+    if (autoScrollEnabled && receivedImages.length > 0) {
+      console.log(`🔄 Auto-scroll enabled with ${receivedImages.length} images`);
+
+      // Cycle every 5 seconds
+      autoScrollIntervalRef.current = setInterval(() => {
+        setCurrentImageIndex(prevIndex => (prevIndex + 1) % receivedImages.length);
+      }, 60000);
+    }
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (autoScrollIntervalRef.current) {
+        clearInterval(autoScrollIntervalRef.current);
+        autoScrollIntervalRef.current = null;
+      }
+    };
+  }, [autoScrollEnabled, receivedImages.length]);
+
+  // Reset image index when toggling auto-scroll or when images change
+  useEffect(() => {
+    if (!autoScrollEnabled) {
+      setCurrentImageIndex(0);
+    }
+  }, [autoScrollEnabled]);
 
   // Check for 30-minute time gap when chat first loads and restore mood effects
   useEffect(() => {
@@ -436,9 +483,9 @@ const Chat = () => {
             {/* Image with gradient overlays for depth */}
             <div className="absolute inset-0">
               <img
-                src={character.imageUrl}
+                src={autoScrollEnabled && receivedImages.length > 0 ? receivedImages[currentImageIndex] : character.imageUrl}
                 alt={character.name}
-                className="w-full h-full object-cover object-center"
+                className="w-full h-full object-cover object-center transition-opacity duration-500"
                 style={{
                   imageRendering: 'auto',
                   transform: 'translateZ(0)',
@@ -456,21 +503,50 @@ const Chat = () => {
               }}></div>
             </div>
 
-            {/* Hide Image Button - Top Right */}
-            <button
-              onClick={() => setShowCharacterImage(false)}
-              className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg transition-all opacity-0 group-hover:opacity-100 shadow-lg"
-              title="Hide character image"
-            >
-              <svg
-                className="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            {/* Control Buttons - Top Right */}
+            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+              {/* Auto-scroll Toggle Button */}
+              {receivedImages.length > 0 && (
+                <button
+                  onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
+                  className={`p-2 backdrop-blur-sm rounded-lg transition-all shadow-lg ${
+                    autoScrollEnabled
+                      ? 'bg-purple-500/80 hover:bg-purple-600/80'
+                      : 'bg-black/40 hover:bg-black/60'
+                  }`}
+                  title={autoScrollEnabled ? `Auto-scroll ON (${receivedImages.length} images)` : `Enable auto-scroll (${receivedImages.length} images)`}
+                >
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    {autoScrollEnabled ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    )}
+                  </svg>
+                </button>
+              )}
+
+              {/* Hide Image Button */}
+              <button
+                onClick={() => setShowCharacterImage(false)}
+                className="p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg transition-all shadow-lg"
+                title="Hide character image"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-              </svg>
-            </button>
+                <svg
+                  className="w-5 h-5 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
+            </div>
 
             {/* Character name overlay at bottom - multiple layers for smooth blur fade */}
             <div className="absolute bottom-0 left-0 right-0 h-32">
@@ -484,6 +560,18 @@ const Chat = () => {
               {/* Text */}
               <div className="absolute bottom-5 left-5 right-5">
                 <h2 className="text-xl font-bold text-white drop-shadow-lg">{character.name}</h2>
+                {/* Auto-scroll indicator */}
+                {autoScrollEnabled && receivedImages.length > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/80 backdrop-blur-sm rounded-full text-xs font-medium text-white shadow-lg">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                        <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
+                      </svg>
+                      <span>{currentImageIndex + 1} / {receivedImages.length}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

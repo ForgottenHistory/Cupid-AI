@@ -348,6 +348,12 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     const hasVoice = backendCharacter?.voice_id ? true : false;
     const hasImage = backendCharacter?.image_tags ? true : false;
 
+    // Get last mood change timestamp
+    const engagementState = db.prepare(`
+      SELECT last_mood_change FROM character_states WHERE user_id = ? AND character_id = ?
+    `).get(userId, characterId);
+    const lastMoodChange = engagementState?.last_mood_change || null;
+
     // Call Decision LLM first
     const userMessage = aiMessages[aiMessages.length - 1]?.content || '';
     const decision = await aiService.makeDecision({
@@ -357,7 +363,8 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       userId: userId,
       isEngaged: true, // Assume engaged for regenerate
       hasVoice: hasVoice,
-      hasImage: hasImage
+      hasImage: hasImage,
+      lastMoodChange: lastMoodChange
     });
 
     console.log('🎯 Decision made (regenerate):', decision);
@@ -427,6 +434,17 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
           messageType = 'image';
           imageUrl = `/uploads/images/${filename}`;
 
+          // Log result to prompt log file
+          if (imageResult.logFilename) {
+            const sdService = (await import('../services/sdService.js')).default;
+            sdService.appendImageResult({
+              logFilename: imageResult.logFilename,
+              success: true,
+              imagePath: imageUrl,
+              generationTime: imageResult.generationTime
+            });
+          }
+
           console.log(`✅ Image saved: ${imageUrl}`);
         } else {
           console.warn(`⚠️  Image generation failed, falling back to text: ${imageResult.error}`);
@@ -435,6 +453,16 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
         console.error(`❌ Image generation error:`, error);
         console.warn(`⚠️  Falling back to text message`);
       }
+    }
+
+    // Update last_mood_change timestamp if mood was set
+    if (decision.mood && decision.mood !== 'none') {
+      db.prepare(`
+        UPDATE character_states
+        SET last_mood_change = CURRENT_TIMESTAMP
+        WHERE user_id = ? AND character_id = ?
+      `).run(userId, characterId);
+      console.log(`✅ Updated last_mood_change timestamp for character ${characterId} (regenerate)`);
     }
 
     // Save AI response with reaction
@@ -588,6 +616,13 @@ router.post('/conversations/:characterId/debug-mood', authenticateToken, (req, r
     );
 
     console.log(`🎨 [DEBUG] Background effect inserted: ${charName} → ${mood}`);
+
+    // Update last_mood_change timestamp in character_states
+    db.prepare(`
+      UPDATE character_states
+      SET last_mood_change = CURRENT_TIMESTAMP
+      WHERE user_id = ? AND character_id = ?
+    `).run(userId, characterId);
 
     // Emit mood change to frontend
     const io = req.app.get('io');
