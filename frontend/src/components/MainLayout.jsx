@@ -6,6 +6,7 @@ import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
 import LLMSettings from './LLMSettings';
 import SDSettings from './SDSettings';
+import BehaviorSettings from './BehaviorSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { syncAllCharacters, clearAllPosts } from '../utils/syncCharacterImages';
 import DailyMatchModal from './DailyMatchModal';
@@ -21,6 +22,7 @@ const MainLayout = ({ children }) => {
   const [conversations, setConversations] = useState([]);
   const [showLLMSettings, setShowLLMSettings] = useState(false);
   const [showSDSettings, setShowSDSettings] = useState(false);
+  const [showBehaviorSettings, setShowBehaviorSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
   const [dailyMatchCharacter, setDailyMatchCharacter] = useState(null);
   const [showDailyMatchModal, setShowDailyMatchModal] = useState(false);
@@ -488,6 +490,15 @@ const MainLayout = ({ children }) => {
               </svg>
             </button>
             <button
+              onClick={() => setShowBehaviorSettings(true)}
+              className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
+              title="Behavior Settings"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </button>
+            <button
               onClick={handleLogout}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
               title="Logout"
@@ -594,6 +605,11 @@ const MainLayout = ({ children }) => {
       {/* SD Settings Modal */}
       {showSDSettings && (
         <SDSettings onClose={() => setShowSDSettings(false)} />
+      )}
+
+      {/* Behavior Settings Modal */}
+      {showBehaviorSettings && (
+        <BehaviorSettings onClose={() => setShowBehaviorSettings(false)} />
       )}
 
       {/* Daily Match Modal */}

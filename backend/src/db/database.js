@@ -298,6 +298,17 @@ function runMigrations() {
       db.exec(`ALTER TABLE users ADD COLUMN last_auto_match_date TEXT;`);
       console.log('✅ last_auto_match_date column added to users table');
     }
+
+    // Migration: Add behavior settings columns to users table
+    if (!userColumnNames.includes('max_emojis_per_message')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN max_emojis_per_message INTEGER DEFAULT 2;
+        ALTER TABLE users ADD COLUMN proactive_message_hours INTEGER DEFAULT 4;
+        ALTER TABLE users ADD COLUMN daily_proactive_limit INTEGER DEFAULT 5;
+        ALTER TABLE users ADD COLUMN pacing_style TEXT DEFAULT 'balanced';
+      `);
+      console.log('✅ Behavior settings columns added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

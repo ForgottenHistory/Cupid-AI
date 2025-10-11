@@ -1,0 +1,235 @@
+import { useState, useEffect } from 'react';
+import api from '../services/api';
+
+const BehaviorSettings = ({ onClose }) => {
+  const [settings, setSettings] = useState({
+    maxEmojisPerMessage: 2,
+    proactiveMessageHours: 4,
+    dailyProactiveLimit: 5,
+    pacingStyle: 'balanced'
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/users/behavior-settings');
+      setSettings(response.data);
+    } catch (err) {
+      console.error('Failed to load behavior settings:', err);
+      setError('Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateSetting = (key, value) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+    setError('');
+    setSuccess('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      setError('');
+      setSuccess('');
+
+      await api.put('/users/behavior-settings', settings);
+
+      setSuccess('Settings saved successfully!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      console.error('Failed to save behavior settings:', err);
+      setError(err.response?.data?.error || 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetToDefaults = () => {
+    setSettings({
+      maxEmojisPerMessage: 2,
+      proactiveMessageHours: 4,
+      dailyProactiveLimit: 5,
+      pacingStyle: 'balanced'
+    });
+    setSuccess('');
+    setError('');
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl p-8">
+          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        {/* Header */}
+        <div className="p-6 border-b bg-gradient-to-r from-pink-500 to-purple-600">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-white">Behavior Settings</h2>
+              <p className="text-white/80 text-sm mt-1">Configure character behavior and messaging</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-white hover:bg-white/20 p-2 rounded-full transition"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Content */}
+        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-14rem)] custom-scrollbar">
+          <div className="p-6 space-y-6">
+            {/* Error/Success Messages */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                {success}
+              </div>
+            )}
+
+            {/* Emoji Usage */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900">Max Emojis Per Message</label>
+                <span className="text-sm font-medium text-purple-600">{settings.maxEmojisPerMessage}</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="5"
+                step="1"
+                value={settings.maxEmojisPerMessage}
+                onChange={(e) => updateSetting('maxEmojisPerMessage', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>None</span>
+                <span>Lots</span>
+              </div>
+              <p className="text-sm text-gray-600">How many emojis characters can use in each message</p>
+            </div>
+
+            {/* Proactive Message Timing */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900">Proactive Message Timing</label>
+                <span className="text-sm font-medium text-purple-600">{settings.proactiveMessageHours} hours</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="24"
+                step="1"
+                value={settings.proactiveMessageHours}
+                onChange={(e) => updateSetting('proactiveMessageHours', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>1h</span>
+                <span>24h</span>
+              </div>
+              <p className="text-sm text-gray-600">Minimum hours before characters send proactive messages</p>
+            </div>
+
+            {/* Daily Proactive Limit */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900">Daily Proactive Message Limit</label>
+                <span className="text-sm font-medium text-purple-600">{settings.dailyProactiveLimit} per day</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="20"
+                step="1"
+                value={settings.dailyProactiveLimit}
+                onChange={(e) => updateSetting('dailyProactiveLimit', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>1</span>
+                <span>20</span>
+              </div>
+              <p className="text-sm text-gray-600">Maximum proactive messages across all characters per day</p>
+            </div>
+
+            {/* Pacing Style */}
+            <div className="space-y-2">
+              <label className="font-semibold text-gray-900">Pacing & Chemistry Style</label>
+              <select
+                value={settings.pacingStyle}
+                onChange={(e) => updateSetting('pacingStyle', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="slow">Slow - Takes time to develop chemistry, more resistant</option>
+                <option value="balanced">Balanced - Natural progression, matches energy</option>
+                <option value="forward">Forward - More direct and receptive from the start</option>
+              </select>
+              <p className="text-sm text-gray-600">How characters pace romantic/intimate development</p>
+            </div>
+
+            <div className="pt-4 border-t">
+              <p className="text-xs text-gray-500">
+                💡 <strong>Tip:</strong> These settings affect all characters. Changes take effect immediately.
+              </p>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="p-6 border-t bg-gray-50 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={resetToDefaults}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition font-medium"
+            >
+              Reset to Defaults
+            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default BehaviorSettings;

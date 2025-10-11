@@ -474,4 +474,103 @@ router.put('/sd-settings', authenticateToken, (req, res) => {
   }
 });
 
+/**
+ * GET /api/users/behavior-settings
+ * Get user's behavior settings
+ */
+router.get('/behavior-settings', authenticateToken, (req, res) => {
+  try {
+    const settings = db.prepare(`
+      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit, pacing_style
+      FROM users WHERE id = ?
+    `).get(req.user.id);
+
+    if (!settings) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      maxEmojisPerMessage: settings.max_emojis_per_message,
+      proactiveMessageHours: settings.proactive_message_hours,
+      dailyProactiveLimit: settings.daily_proactive_limit,
+      pacingStyle: settings.pacing_style
+    });
+  } catch (error) {
+    console.error('Get behavior settings error:', error);
+    res.status(500).json({ error: 'Failed to get behavior settings' });
+  }
+});
+
+/**
+ * PUT /api/users/behavior-settings
+ * Update user's behavior settings
+ */
+router.put('/behavior-settings', authenticateToken, (req, res) => {
+  try {
+    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, pacingStyle } = req.body;
+    const userId = req.user.id;
+
+    // Validate parameters
+    if (maxEmojisPerMessage !== undefined && (maxEmojisPerMessage < 0 || maxEmojisPerMessage > 5)) {
+      return res.status(400).json({ error: 'Max emojis per message must be between 0 and 5' });
+    }
+    if (proactiveMessageHours !== undefined && (proactiveMessageHours < 1 || proactiveMessageHours > 24)) {
+      return res.status(400).json({ error: 'Proactive message hours must be between 1 and 24' });
+    }
+    if (dailyProactiveLimit !== undefined && (dailyProactiveLimit < 1 || dailyProactiveLimit > 20)) {
+      return res.status(400).json({ error: 'Daily proactive limit must be between 1 and 20' });
+    }
+    if (pacingStyle !== undefined && !['slow', 'balanced', 'forward'].includes(pacingStyle)) {
+      return res.status(400).json({ error: 'Pacing style must be slow, balanced, or forward' });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (maxEmojisPerMessage !== undefined) {
+      updates.push('max_emojis_per_message = ?');
+      values.push(maxEmojisPerMessage);
+    }
+    if (proactiveMessageHours !== undefined) {
+      updates.push('proactive_message_hours = ?');
+      values.push(proactiveMessageHours);
+    }
+    if (dailyProactiveLimit !== undefined) {
+      updates.push('daily_proactive_limit = ?');
+      values.push(dailyProactiveLimit);
+    }
+    if (pacingStyle !== undefined) {
+      updates.push('pacing_style = ?');
+      values.push(pacingStyle);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    if (updates.length === 1) { // Only updated_at
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+    db.prepare(query).run(...values);
+
+    // Get updated settings
+    const settings = db.prepare(`
+      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit, pacing_style
+      FROM users WHERE id = ?
+    `).get(userId);
+
+    res.json({
+      maxEmojisPerMessage: settings.max_emojis_per_message,
+      proactiveMessageHours: settings.proactive_message_hours,
+      dailyProactiveLimit: settings.daily_proactive_limit,
+      pacingStyle: settings.pacing_style
+    });
+  } catch (error) {
+    console.error('Update behavior settings error:', error);
+    res.status(500).json({ error: 'Failed to update behavior settings' });
+  }
+});
+
 export default router;

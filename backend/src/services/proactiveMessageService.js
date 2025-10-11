@@ -27,13 +27,13 @@ class ProactiveMessageService {
 
   /**
    * Find candidates for proactive messages
-   * Returns array of { userId, characterId, conversationId, gapHours, characterData, personality }
+   * Returns array of { userId, characterId, conversationId, gapHours, characterData, personality, userSettings }
    */
   findCandidates() {
     const candidates = [];
 
-    // Get all users with their last global proactive timestamp
-    const users = db.prepare('SELECT id, last_global_proactive_at FROM users').all();
+    // Get all users with their last global proactive timestamp and behavior settings
+    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit FROM users').all();
 
     for (const user of users) {
       // Check global rate limit: 30 minutes between ANY proactive messages
@@ -113,8 +113,9 @@ class ProactiveMessageService {
         const now = new Date();
         const gapHours = (now - lastUserMessageTime) / (1000 * 60 * 60);
 
-        // Skip if user sent a message within the last 4 hours
-        if (gapHours < 4) {
+        // Skip if user sent a message within the configured proactive message hours (default: 4)
+        const minHours = user.proactive_message_hours || 4;
+        if (gapHours < minHours) {
           continue;
         }
 
@@ -147,7 +148,7 @@ class ProactiveMessageService {
           }
         }
 
-        // Add to candidates
+        // Add to candidates with user settings
         candidates.push({
           userId: user.id,
           characterId: character.id,
@@ -155,7 +156,10 @@ class ProactiveMessageService {
           gapHours: gapHours,
           characterData: characterData,
           personality: personality,
-          schedule: schedule
+          schedule: schedule,
+          userSettings: {
+            dailyProactiveLimit: user.daily_proactive_limit || 5
+          }
         });
       }
     }
