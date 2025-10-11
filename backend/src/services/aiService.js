@@ -223,19 +223,28 @@ class AIService {
       const temperature = options.temperature ?? 0.8;
       const max_tokens = options.max_tokens ?? 300;
 
+      const requestBody = {
+        model: model,
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        temperature: temperature,
+        max_tokens: max_tokens,
+        top_p: options.top_p ?? 1.0,
+        frequency_penalty: options.frequency_penalty ?? 0.0,
+        presence_penalty: options.presence_penalty ?? 0.0,
+      };
+
+      // Add reasoning if provided (for DeepSeek reasoning mode)
+      if (options.reasoning_effort) {
+        requestBody.reasoning = {
+          effort: options.reasoning_effort
+        };
+      }
+
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
-        {
-          model: model,
-          messages: [
-            { role: 'user', content: prompt }
-          ],
-          temperature: temperature,
-          max_tokens: max_tokens,
-          top_p: options.top_p ?? 1.0,
-          frequency_penalty: options.frequency_penalty ?? 0.0,
-          presence_penalty: options.presence_penalty ?? 0.0,
-        },
+        requestBody,
         {
           headers: {
             'Authorization': `Bearer ${this.apiKey}`,
@@ -246,12 +255,22 @@ class AIService {
         }
       );
 
-      const content = response.data.choices[0].message.content;
+      const message = response.data.choices[0].message;
+      const content = message.content;
+
+      // Log raw response for debugging reasoning mode
+      if (options.reasoning_effort) {
+        console.log('🧠 RAW MESSAGE:', JSON.stringify(message, null, 2));
+        if (message.reasoning) {
+          console.log('🧠 REASONING:', message.reasoning);
+        }
+      }
 
       return {
         content: content,
         model: response.data.model,
         usage: response.data.usage,
+        reasoning: message.reasoning || null, // Include reasoning if available
       };
     } catch (error) {
       console.error('❌ Basic completion error:', error.message);

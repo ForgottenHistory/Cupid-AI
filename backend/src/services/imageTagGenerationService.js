@@ -55,15 +55,19 @@ class ImageTagGenerationService {
       // Build prompt for LLM with previous image tags
       const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags);
 
-      // Call LLM to generate tags using basic completion (no character context needed)
+      // Call LLM to generate tags using DeepSeek with reasoning enabled
       const response = await aiService.createBasicCompletion(prompt, {
-        model: userSettings.llm_model,
-        temperature: userSettings.llm_temperature,
-        max_tokens: userSettings.llm_max_tokens || 300,
-        top_p: userSettings.llm_top_p,
-        frequency_penalty: userSettings.llm_frequency_penalty,
-        presence_penalty: userSettings.llm_presence_penalty
+        model: 'x-ai/grok-4-fast',
+        temperature: 0.7, // Slightly creative but focused
+        max_tokens: 5000, // Enough for reasoning + tags
+        top_p: 1.0,
+        frequency_penalty: 0.0,
+        presence_penalty: 0.0,
+        reasoning_effort: 'low' // Low reasoning effort (~20% of tokens)
       });
+
+      // Log full response to see reasoning output
+      console.log('🧠 DeepSeek FULL RESPONSE:', JSON.stringify(response, null, 2));
 
       const generatedTags = response.content.trim();
       console.log('🤖 LLM generated tags:', generatedTags);
@@ -123,7 +127,13 @@ Guidelines:
 - Choose 5-10 tags that best match the conversation context AND current status
 - **DEFAULT to "selfie" as photo type** (90% of the time - this is standard for dating app pics)
 - **ALWAYS include a focus/composition tag** (close-up, upper body, breast focus, cowboy shot, etc.)
-- Focus on: expression, pose, activity, clothing, location, lighting
+- **CLOTHING MUST BE HIGHLY SPECIFIC** - This is critical!
+  * ALWAYS add color + clothing type: "white t-shirt", "black tank top", "blue denim jacket", "red sundress"
+  * Add style details: "off-shoulder white shirt", "tight black tank top", "oversized grey hoodie"
+  * Add cut details: "cleavage_cutout", "midriff", "low-cut", "crop top", "v-neck"
+  * NEVER use vague terms: "casual clothes", "outfit", "clothing", "dress" (too vague - specify color/style!)
+  * Examples: "white crop top", "blue denim shorts", "black off-shoulder dress", "grey oversized hoodie", "red sports bra"
+- Focus on: expression, pose, activity, clothing (COLOR + TYPE + DETAILS), location, lighting
 - Match the location/activity to the character's current status (e.g., if at gym, use gym-related tags)
 - Only use tags from the library above or the character-specific tags
 - Output ONLY comma-separated tags, no explanations
@@ -139,18 +149,28 @@ Guidelines:
 
 ${previousImageTags.map((tags, index) => `Image ${index + 1}: ${tags}`).join('\n')}
 
-**MAINTAIN VISUAL CONSISTENCY**: These are images the character has ALREADY sent in this conversation.
-Use similar/matching tags for clothing style, hair, and general aesthetic to ensure the character looks consistent across photos.
-You can vary: expression, pose, location, lighting, activities - but keep the character's appearance recognizable.
+**MAINTAIN VISUAL CONSISTENCY - SAME CHARACTER, SAME OUTFIT**: These are images the character has ALREADY sent in this conversation.
 
-Examples of what to keep consistent: hair color/style, general clothing style, body type, accessories
-Examples of what can vary: specific outfit, expression, location, pose, activity`;
+MUST KEEP IDENTICAL:
+- Hair (exact color, style, length)
+- Outfit (exact same clothing items and colors - if previous image had "white crop top", use "white crop top")
+- Body type
+- Any visible accessories
+
+CAN VARY:
+- Expression (smiling, serious, playful, etc.)
+- Pose (sitting, standing, lying down, etc.)
+- Location (bedroom, park, gym, etc.)
+- Lighting (soft lighting, natural light, etc.)
+- Camera angle (close-up, upper body, full body, etc.)
+
+Think of it like the same person taking multiple selfies in the same outfit - the outfit stays identical, only the pose/expression/location changes.`;
     }
 
     prompt += `
 
 Example output format:
-upper body, selfie, smiling, casual clothes, bedroom, soft lighting, looking at viewer
+upper body, selfie, smiling, white crop top, denim shorts, bedroom, soft lighting, looking at viewer
 
 Your selected tags:`;
 
@@ -163,6 +183,25 @@ Your selected tags:`;
    * @returns {string} Comma-separated validated tags
    */
   validateTags(generatedTags) {
+    // Common colors that can be prefixed to clothing items
+    const validColors = [
+      'white', 'black', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
+      'pink', 'brown', 'grey', 'gray', 'beige', 'navy', 'teal', 'cyan',
+      'magenta', 'maroon', 'olive', 'lime', 'indigo', 'violet', 'turquoise',
+      'gold', 'silver', 'bronze', 'cream', 'khaki', 'tan', 'denim'
+    ];
+
+    // Common style descriptors that can be prefixed to clothing items
+    const validDescriptors = [
+      'off-shoulder', 'tight', 'loose', 'oversized', 'fitted', 'baggy',
+      'pleated', 'ripped', 'torn', 'distressed', 'faded', 'vintage',
+      'cropped', 'short', 'long', 'midi', 'maxi', 'mini',
+      'sleeveless', 'strapless', 'backless', 'halter', 'v-neck', 'crew-neck',
+      'high-waisted', 'low-cut', 'low-rise', 'high-rise',
+      'skinny', 'slim', 'straight', 'wide-leg', 'flared', 'bootcut',
+      'sports', 'athletic', 'casual', 'formal', 'summer', 'winter'
+    ];
+
     // Parse generated tags
     const tags = generatedTags
       .split(',')
@@ -183,9 +222,39 @@ Your selected tags:`;
 
     for (const tag of tags) {
       const normalizedTag = tag.toLowerCase();
+
+      // Check if tag exists directly in library
       if (validTagsSet.has(normalizedTag)) {
         validTags.push(tag);
-      } else {
+        continue;
+      }
+
+      // Check if it's a color/style + clothing combination (e.g., "white crop top", "off-shoulder blouse", "blue denim shorts")
+      // Combine colors and descriptors into one valid modifier list
+      const validModifiers = [...validColors, ...validDescriptors];
+
+      let isValidCombo = false;
+      const words = normalizedTag.split(' ');
+
+      // Try progressively removing modifier words from the front
+      for (let i = 0; i < words.length - 1; i++) {
+        const potentialBase = words.slice(i + 1).join(' ');
+
+        // Check if remaining words form a valid tag
+        if (validTagsSet.has(potentialBase)) {
+          // Verify all removed words are valid colors/descriptors
+          const removedWords = words.slice(0, i + 1);
+          const allModifiersValid = removedWords.every(word => validModifiers.includes(word));
+
+          if (allModifiersValid) {
+            validTags.push(tag);
+            isValidCombo = true;
+            break;
+          }
+        }
+      }
+
+      if (!isValidCombo) {
         invalidTags.push(tag);
       }
     }

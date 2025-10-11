@@ -2,6 +2,38 @@
 
 > Current implementation details and architecture. See PLAN.md for planned features.
 
+## CRITICAL: How to Work on This Codebase
+
+### Core Principles
+1. **READ CAREFULLY**: When the user gives instructions, read EVERY word. Don't skim. Don't assume. Don't fill in blanks.
+2. **LITERAL INTERPRETATION**: If user says "remove the less common stuff", that means REMOVE, not ADD.
+3. **ASK WHEN UNCLEAR**: If an instruction is ambiguous, ASK before doing anything. Better to clarify than to waste time.
+4. **CHECK YOUR WORK**: Before using tools, mentally verify that what you're about to do matches what was asked.
+5. **NO ASSUMPTIONS**: Don't assume you know better. Don't "improve" things that weren't asked to be improved.
+6. **FOLLOW THROUGH**: If you start a task, complete it fully. Don't leave things half-done.
+7. **CONTEXT MATTERS**: When user says "cut down on all the excess tags", the word "all" and "excess" are key. This is a broad request, not a narrow one.
+
+### Common Failure Patterns to AVOID
+- **Opposite Actions**: User says "remove", you add. User says "simplify", you complicate.
+- **Scope Creep**: User asks for X, you do X + Y + Z without permission.
+- **Selective Reading**: Reading the first few words of an instruction and missing critical qualifiers.
+- **Overconfidence**: Assuming you understand without verification.
+- **Tunnel Vision**: Focusing on one small detail and missing the bigger picture.
+
+### When Making Changes
+1. **Read the request 2-3 times** before touching any code
+2. **Identify the core verb**: Remove? Add? Change? Simplify? Fix?
+3. **Identify the scope**: One file? Multiple files? A system? Everything?
+4. **Identify constraints**: "Don't commit", "for now", "just", "all"
+5. **Plan the changes** mentally before using tools
+6. **Verify alignment**: Does my plan match what was asked?
+7. **Execute carefully**: Do exactly what was planned, nothing more
+
+### Git Commits
+- **NEVER commit without explicit permission** from the user
+- If user says "don't commit without my permission", take that seriously for the ENTIRE SESSION
+- Even if changes seem complete, ASK before committing
+
 ## Architecture Overview
 
 **Stack**: React + Vite frontend, Node.js + Express backend, SQLite database
