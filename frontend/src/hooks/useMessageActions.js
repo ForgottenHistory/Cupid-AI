@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import chatService from '../services/chatService';
-import { extractActualMessageId, splitMessageIntoParts } from '../utils/messageUtils';
+import { extractActualMessageId } from '../utils/messageUtils';
 import { useMood } from '../context/MoodContext';
 
 /**
@@ -250,48 +250,18 @@ export const useMessageActions = ({
 
       if (isMountedRef.current && currentCharacterId === characterId) {
         const newMessages = response.messages;
-        const lastMessage = newMessages[newMessages.length - 1];
 
-        if (lastMessage && lastMessage.role === 'assistant') {
-          const messageParts = splitMessageIntoParts(lastMessage.content);
+        // Messages are already split on the backend - just display them
+        setShowTypingIndicatorInternal(false);
 
-          if (messageParts.length > 1) {
-            setDisplayingMessages(true);
-            messageDisplayDelay = messageParts.length * 800;
-            setShowTypingIndicatorInternal(false);
-
-            const messagesWithoutLast = newMessages.slice(0, -1);
-            setMessages(messagesWithoutLast);
-
-            messageParts.forEach((part, index) => {
-              const timeout = setTimeout(() => {
-                if (isMountedRef.current && currentCharacterId === characterId) {
-                  const partMessageId = `${lastMessage.id}-part-${index}`;
-                  markMessageAsNew(partMessageId);
-                  setMessages(prev => [...prev, {
-                    ...lastMessage,
-                    id: partMessageId,
-                    content: part,
-                    isLastPart: index === messageParts.length - 1
-                  }]);
-
-                  if (index === messageParts.length - 1) {
-                    setDisplayingMessages(false);
-                  }
-                }
-              }, index * 800);
-
-              addDisplayTimeout(timeout);
-            });
-          } else {
-            setShowTypingIndicatorInternal(false);
-            markMessageAsNew(lastMessage.id);
-            setMessages(newMessages);
+        // Mark all new assistant messages as new for animation
+        newMessages.forEach(msg => {
+          if (msg.role === 'assistant') {
+            markMessageAsNew(msg.id);
           }
-        } else {
-          setMessages(newMessages);
-        }
+        });
 
+        setMessages(newMessages);
         setConversation(response.conversation);
         await chatService.markAsRead(currentCharacterId);
       }
