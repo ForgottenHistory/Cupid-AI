@@ -8,7 +8,6 @@ import aiService from '../services/aiService.js';
 import conversationService from '../services/conversationService.js';
 import messageService from '../services/messageService.js';
 import messageProcessor from '../services/messageProcessor.js';
-import superLikeService from '../services/superLikeService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 import db from '../db/database.js';
 
@@ -167,15 +166,8 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
     const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
     const userBio = user?.bio || null;
 
-    // Check if this is a super like
-    const isSuperLike = superLikeService.isSuperLike(userId, characterId);
-
     // Generate AI first message with dating app context
-    let prompt = `You just matched with someone on a dating app! Send them a fun, flirty, and engaging first message. Make it natural and conversational - like you're genuinely excited about the match. Keep it short (1-2 sentences). Use your personality and interests to make it unique and memorable. Don't be too formal or generic.`;
-
-    if (isSuperLike) {
-      prompt = `You just matched with someone on a dating app, and YOU SUPER LIKED THEM! This means you're EXTRA interested and excited about this match. Send them a first message that shows you're genuinely enthusiastic about connecting. Make it fun, flirty, and engaging - maybe reference something from their profile that caught your eye. Keep it short (1-2 sentences) but make your extra interest clear without being overwhelming. Be natural and conversational.`;
-    }
+    const prompt = `You just matched with someone on a dating app! Send them a fun, flirty, and engaging first message. Make it natural and conversational - like you're genuinely excited about the match. Keep it short (1-2 sentences). Use your personality and interests to make it unique and memorable. Don't be too formal or generic.`;
 
     const messages = [
       {

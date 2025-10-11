@@ -1,5 +1,4 @@
 import db from '../db/database.js';
-import superLikeService from '../services/superLikeService.js';
 import swipeLimitService from '../services/swipeLimitService.js';
 import { calculateCurrentStatus } from '../utils/characterHelpers.js';
 
@@ -49,7 +48,7 @@ export function recordSwipe(req, res) {
 
 /**
  * POST /api/characters/:characterId/like
- * Like a character and check if it's a super like
+ * Like a character (match)
  */
 export async function likeCharacter(req, res) {
   try {
@@ -67,12 +66,6 @@ export async function likeCharacter(req, res) {
       const statusInfo = calculateCurrentStatus(characterData.schedule);
       currentStatus = statusInfo.status;
     }
-
-    // Get personality data if available
-    const personality = characterData.personalityTraits || null;
-
-    // Check if this should be a super like (based on extraversion)
-    const isSuperLike = superLikeService.shouldSuperLike(userId, currentStatus, personality);
 
     // Extract image tags and image URL if available
     const imageTags = characterData.imageTags || null;
@@ -93,14 +86,8 @@ export async function likeCharacter(req, res) {
       imageTags
     );
 
-    // If super like, mark it
-    if (isSuperLike) {
-      superLikeService.markAsSuperLike(userId, characterId);
-    }
-
     res.json({
       success: true,
-      isSuperLike: isSuperLike,
       characterStatus: currentStatus
     });
   } catch (error) {

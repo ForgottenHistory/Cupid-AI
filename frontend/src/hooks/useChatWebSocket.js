@@ -57,10 +57,15 @@ export const useChatWebSocket = ({
       // Clear typing state globally for ANY character (not just current one)
       socketService.clearTyping(data.characterId);
 
-      // Only update UI if this is the current character
-      if (data.characterId !== characterId) return;
-
       console.log('📨 Received new message via WebSocket:', data);
+
+      // If message is from a DIFFERENT character, refresh sidebar immediately
+      if (data.characterId !== characterId) {
+        window.dispatchEvent(new Event('characterUpdated'));
+        return;
+      }
+
+      // If we're here, this is the current character
       setShowTypingIndicator(false);
       const lastMessage = data.message;
 

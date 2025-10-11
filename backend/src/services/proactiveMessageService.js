@@ -110,6 +110,15 @@ class ProactiveMessageService {
           }
         }
 
+        // Get conversation details
+        const conversation = db.prepare(`
+          SELECT created_at FROM conversations WHERE id = ?
+        `).get(character.conversation_id);
+
+        if (!conversation) {
+          continue;
+        }
+
         // Get last message
         const lastMessage = db.prepare(`
           SELECT * FROM messages
@@ -118,13 +127,9 @@ class ProactiveMessageService {
           LIMIT 1
         `).get(character.conversation_id);
 
-        if (!lastMessage) {
-          continue;
-        }
-
         // Block if last message was a proactive message from assistant
         // This enforces "no two proactive messages in a row"
-        if (lastMessage.role === 'assistant' && lastMessage.is_proactive) {
+        if (lastMessage && lastMessage.role === 'assistant' && lastMessage.is_proactive) {
           continue;
         }
 
@@ -136,16 +141,24 @@ class ProactiveMessageService {
           LIMIT 1
         `).get(character.conversation_id);
 
-        if (!lastUserMessage) {
-          continue;
+        // Calculate time gap: either from user's last message OR from match time (if no messages)
+        let gapHours;
+        let isFirstMessage = false;
+
+        if (lastUserMessage) {
+          // Normal case: Calculate from user's last message
+          const lastUserMessageTime = new Date(lastUserMessage.created_at);
+          const now = new Date();
+          gapHours = (now - lastUserMessageTime) / (1000 * 60 * 60);
+        } else {
+          // Empty conversation: Calculate from match time (conversation created_at)
+          const matchTime = new Date(conversation.created_at);
+          const now = new Date();
+          gapHours = (now - matchTime) / (1000 * 60 * 60);
+          isFirstMessage = true;
         }
 
-        // Calculate time gap from user's last message (in hours)
-        const lastUserMessageTime = new Date(lastUserMessage.created_at);
-        const now = new Date();
-        const gapHours = (now - lastUserMessageTime) / (1000 * 60 * 60);
-
-        // Skip if user sent a message within the configured proactive message hours (default: 4)
+        // Skip if not enough time has passed (default: 4 hours)
         const minHours = user.proactive_message_hours || 4;
         if (gapHours < minHours) {
           continue;
@@ -211,6 +224,7 @@ class ProactiveMessageService {
           characterData: characterData,
           personality: personality,
           schedule: schedule,
+          isFirstMessage: isFirstMessage,
           userSettings: {
             dailyProactiveLimit: user.daily_proactive_limit || 5,
             proactiveAwayChance: user.proactive_away_chance || 50,
@@ -228,7 +242,7 @@ class ProactiveMessageService {
    */
   async processCandidate(candidate, io, debugMode = false) {
     try {
-      const { userId, characterId, conversationId, gapHours, characterData, personality, schedule } = candidate;
+      const { userId, characterId, conversationId, gapHours, characterData, personality, schedule, isFirstMessage } = candidate;
 
       // Calculate send probability
       const probability = this.calculateSendProbability(gapHours, personality);
@@ -240,7 +254,8 @@ class ProactiveMessageService {
       if (debugMode) {
         console.log(`🐛 Debug mode: Bypassing probability check for ${characterName}`);
       } else {
-        console.log(`🎲 Proactive check: ${characterName} (gap: ${gapHours.toFixed(1)}h, prob: ${probability.toFixed(1)}%, roll: ${roll.toFixed(1)}%)`);
+        const messageType = isFirstMessage ? 'FIRST MESSAGE' : 'continuation';
+        console.log(`🎲 Proactive check: ${characterName} (${messageType}, gap: ${gapHours.toFixed(1)}h, prob: ${probability.toFixed(1)}%, roll: ${roll.toFixed(1)}%)`);
 
         // Random roll
         if (roll > probability) {
@@ -251,19 +266,25 @@ class ProactiveMessageService {
       // Get conversation history
       const messages = messageService.getConversationHistory(conversationId);
 
-      // Call Decision Engine in proactive mode
-      const decision = await aiService.makeProactiveDecision({
-        messages: messages,
-        characterData: characterData,
-        gapHours: gapHours,
-        userId: userId
-      });
+      // For first messages, skip Decision Engine (no context to analyze)
+      let decision = null;
+      if (isFirstMessage) {
+        console.log(`🎯 First message: AUTO-SEND (icebreaker)`);
+      } else {
+        // Call Decision Engine in proactive mode
+        decision = await aiService.makeProactiveDecision({
+          messages: messages,
+          characterData: characterData,
+          gapHours: gapHours,
+          userId: userId
+        });
 
-      console.log(`🎯 Proactive decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} (${decision.messageType}) - ${decision.reason}`);
+        console.log(`🎯 Proactive decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} (${decision.messageType}) - ${decision.reason}`);
 
-      // If decision says don't send, respect it
-      if (!decision.shouldSend) {
-        return false;
+        // If decision says don't send, respect it
+        if (!decision.shouldSend) {
+          return false;
+        }
       }
 
       // Get user data
@@ -284,8 +305,9 @@ class ProactiveMessageService {
         userBio: userBio,
         schedule: schedule,
         isProactive: true,
-        proactiveType: decision.messageType,
-        gapHours: gapHours
+        proactiveType: decision?.messageType || 'icebreaker',
+        gapHours: gapHours,
+        isFirstMessage: isFirstMessage
       });
 
       // Clean up em dashes (replace with periods)

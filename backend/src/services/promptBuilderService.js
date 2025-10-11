@@ -330,9 +330,26 @@ IMPORTANT:
   /**
    * Build proactive message instructions (appended AFTER message history)
    */
-  buildProactiveInstructions(proactiveType, gapHours) {
+  buildProactiveInstructions(proactiveType, gapHours, isFirstMessage = false) {
     const parts = [];
 
+    // Special handling for first messages (icebreakers)
+    if (isFirstMessage) {
+      const timeSinceMatch = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since you matched.` : ' You matched recently.';
+      parts.push(`💬 FIRST MESSAGE: You're reaching out for the first time!${timeSinceMatch}`);
+      parts.push(`\n\n✨ ICEBREAKER: You want to break the ice and start a conversation. This is your first message to them, so make it count!
+
+- Reference something from their profile if it caught your attention
+- Ask a question that's easy to answer and engaging
+- Show genuine interest and personality
+- Keep it light, friendly, and authentic
+- Don't be generic - "hey" is boring!
+- 1-2 sentences is perfect for a first message`);
+
+      return parts.join('');
+    }
+
+    // Normal proactive message handling (continuing conversation)
     const timeGapText = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since their last message.` : ' Some time has passed.';
     parts.push(`💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
 

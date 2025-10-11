@@ -24,7 +24,7 @@ class AIService {
   /**
    * Send a chat completion request to OpenRouter
    */
-  async createChatCompletion({ messages, characterData, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null }) {
+  async createChatCompletion({ messages, characterData, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -75,7 +75,7 @@ class AIService {
 
       // For proactive messages, append instructions AFTER message history
       if (isProactive && proactiveType) {
-        const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours);
+        const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage);
         finalMessages.push({ role: 'system', content: proactiveInstructions });
       }
 
@@ -152,7 +152,7 @@ class AIService {
 
       // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
       const logUserName = userName || 'User';
-      const messageType = isProactive ? `proactive-${proactiveType}` : 'chat';
+      const messageType = isProactive ? `proactive-${proactiveType}${isFirstMessage ? '-first' : ''}` : 'chat';
       this.savePromptLog(finalMessages, messageType, characterName, logUserName);
 
       const response = await axios.post(
