@@ -5,6 +5,7 @@ import conversationService from './conversationService.js';
 import messageService from './messageService.js';
 import ttsService from './ttsService.js';
 import sdService from './sdService.js';
+import imageTagGenerationService from './imageTagGenerationService.js';
 import { getCurrentStatusFromSchedule, sleep } from '../utils/chatHelpers.js';
 
 class MessageProcessor {
@@ -51,6 +52,7 @@ class MessageProcessor {
       // Check if character has image tags configured
       const hasImage = backendCharacter?.image_tags ? true : false;
       const imageTags = backendCharacter?.image_tags || null;
+      const contextualTags = backendCharacter?.contextual_tags || null;
 
       // Step 3: Get or create engagement state
       const engagementState = engagementService.getEngagementState(userId, characterId);
@@ -215,7 +217,110 @@ class MessageProcessor {
       const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
       const userBio = user?.bio || null;
 
-      // Get AI response (if shouldRespond is true)
+      // GENERATE IMAGE FIRST (if decision says so) so Content LLM knows what image was generated
+      let imageUrl = null;
+      let imagePrompt = null;
+      let generatedContextTags = null;
+
+      const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
+      if (imageMessagesEnabled && decision.shouldSendImage && hasImage && imageTags) {
+        console.log(`🎨 Generating image for character ${characterId}`);
+
+        try {
+          // Get recent messages for context (last 10)
+          const recentMessages = imageTagGenerationService.getRecentMessages(conversationId, db);
+
+          // Fetch user's Content LLM settings for tag generation
+          const userSettings = db.prepare(`
+            SELECT llm_model,
+                   llm_temperature,
+                   llm_max_tokens,
+                   llm_top_p,
+                   llm_frequency_penalty,
+                   llm_presence_penalty,
+                   llm_context_window
+            FROM users WHERE id = ?
+          `).get(userId);
+
+          // Generate context-aware tags using new service
+          generatedContextTags = await imageTagGenerationService.generateTags({
+            recentMessages,
+            contextualTags: contextualTags || '',
+            currentStatus: currentStatusInfo,
+            userSettings
+          });
+
+          console.log(`📍 Current Status: ${currentStatusInfo.status}${currentStatusInfo.activity ? ` (${currentStatusInfo.activity})` : ''}`);
+          console.log(`📝 Always Needed Tags: ${imageTags}`);
+          console.log(`🤖 AI-Generated Context Tags: ${generatedContextTags}`);
+
+          // Fetch user's SD settings for image generation
+          const sdSettings = db.prepare(`
+            SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
+                   sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
+                   sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model,
+                   sd_main_prompt, sd_negative_prompt, sd_model
+            FROM users WHERE id = ?
+          `).get(userId);
+
+          const imageResult = await sdService.generateImage({
+            characterTags: imageTags,
+            contextTags: generatedContextTags,
+            userSettings: sdSettings
+          });
+
+          if (imageResult.success) {
+            // Save image file
+            const fs = await import('fs');
+            const path = await import('path');
+            const { fileURLToPath } = await import('url');
+
+            const __filename = fileURLToPath(import.meta.url);
+            const __dirname = path.dirname(__filename);
+
+            const imageDir = path.join(__dirname, '..', '..', 'uploads', 'images');
+            if (!fs.existsSync(imageDir)) {
+              fs.mkdirSync(imageDir, { recursive: true });
+            }
+
+            const timestamp = Date.now();
+            const filename = `image_${characterId}_${timestamp}.png`;
+            const filepath = path.join(imageDir, filename);
+
+            fs.writeFileSync(filepath, imageResult.imageBuffer);
+
+            imageUrl = `/uploads/images/${filename}`;
+            imagePrompt = imageResult.prompt; // Store the full prompt
+
+            // Add generated tags to decision so Content LLM knows what was generated
+            decision.imageTags = `${imageTags}, ${generatedContextTags}`;
+
+            // Log result to prompt log file
+            if (imageResult.logFilename) {
+              sdService.appendImageResult({
+                logFilename: imageResult.logFilename,
+                success: true,
+                imagePath: imageUrl,
+                generationTime: imageResult.generationTime
+              });
+            }
+
+            console.log(`✅ Image saved: ${imageUrl}`);
+            console.log(`📝 Prompt: ${imagePrompt}`);
+          } else {
+            console.warn(`⚠️  Image generation failed, falling back to text: ${imageResult.error}`);
+            // Clear the decision flag if generation failed
+            decision.shouldSendImage = false;
+          }
+        } catch (error) {
+          console.error(`❌ Image generation error:`, error);
+          console.warn(`⚠️  Falling back to text message`);
+          // Clear the decision flag if generation failed
+          decision.shouldSendImage = false;
+        }
+      }
+
+      // NOW generate AI response (if shouldRespond is true) - it will know what image was generated
       let aiResponse = null;
       if (decision.shouldRespond) {
         aiResponse = await aiService.createChatCompletion({
@@ -226,7 +331,7 @@ class MessageProcessor {
           userBio: userBio,
           schedule: schedule,
           isDeparting: isDeparting,
-          decision: decision  // Pass decision so Content LLM knows about media
+          decision: decision  // Pass decision with image tags
         });
       }
 
@@ -237,8 +342,11 @@ class MessageProcessor {
 
         let messageType = 'text';
         let audioUrl = null;
-        let imageUrl = null;
-        let imagePrompt = null;
+
+        // If image was generated, set message type
+        if (imageUrl) {
+          messageType = 'image';
+        }
 
         // Generate voice message if decision says so (and feature is enabled)
         const voiceMessagesEnabled = process.env.VOICE_MESSAGES_ENABLED === 'true';
@@ -286,86 +394,45 @@ class MessageProcessor {
           }
         }
 
-        // Generate image if decision says so (and feature is enabled)
-        const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
-        if (imageMessagesEnabled && decision.shouldSendImage && hasImage && imageTags && aiResponse.imageTags) {
-          console.log(`🎨 Generating image for character ${characterId}`);
-          console.log(`Character tags: ${imageTags}`);
-          console.log(`Context tags (from Content LLM): ${aiResponse.imageTags}`);
+        // Store generated context tags if image was generated
+        const imageTagsToStore = (messageType === 'image' && generatedContextTags) ? generatedContextTags : null;
 
-          try {
-            // Fetch user's SD settings
-            const userSettings = db.prepare(`
-              SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
-                     sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
-                     sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model,
-                     sd_main_prompt, sd_negative_prompt, sd_model
-              FROM users WHERE id = ?
-            `).get(userId);
+        // Split content by newlines to create separate messages
+        const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
 
-            const imageResult = await sdService.generateImage({
-              characterTags: imageTags,
-              contextTags: aiResponse.imageTags,
-              userSettings: userSettings
-            });
-
-            if (imageResult.success) {
-              // Save image file
-              const fs = await import('fs');
-              const path = await import('path');
-              const { fileURLToPath } = await import('url');
-
-              const __filename = fileURLToPath(import.meta.url);
-              const __dirname = path.dirname(__filename);
-
-              const imageDir = path.join(__dirname, '..', '..', 'uploads', 'images');
-              if (!fs.existsSync(imageDir)) {
-                fs.mkdirSync(imageDir, { recursive: true });
-              }
-
-              const timestamp = Date.now();
-              const filename = `image_${characterId}_${timestamp}.png`;
-              const filepath = path.join(imageDir, filename);
-
-              fs.writeFileSync(filepath, imageResult.imageBuffer);
-
-              messageType = 'image';
-              imageUrl = `/uploads/images/${filename}`;
-              imagePrompt = imageResult.prompt; // Store the full prompt
-
-              // Log result to prompt log file
-              if (imageResult.logFilename) {
-                sdService.appendImageResult({
-                  logFilename: imageResult.logFilename,
-                  success: true,
-                  imagePath: imageUrl,
-                  generationTime: imageResult.generationTime
-                });
-              }
-
-              console.log(`✅ Image saved: ${imageUrl}`);
-              console.log(`📝 Prompt: ${imagePrompt}`);
-            } else {
-              console.warn(`⚠️  Image generation failed, falling back to text: ${imageResult.error}`);
-            }
-          } catch (error) {
-            console.error(`❌ Image generation error:`, error);
-            console.warn(`⚠️  Falling back to text message`);
-          }
-        }
-
+        // Save first part as media message (image/voice/text with all metadata)
+        const firstPart = contentParts[0] || '';
         const savedMessage = messageService.saveMessage(
           conversationId,
           'assistant',
-          cleanedContent,
+          firstPart,
           decision.reaction,
           messageType,
           audioUrl,
           imageUrl,
-          aiResponse.imageTags || null,
+          imageTagsToStore,
           false, // isProactive
           imagePrompt // imagePrompt
         );
+
+        const allSavedMessages = [savedMessage];
+
+        // Save subsequent parts as separate text messages
+        for (let i = 1; i < contentParts.length; i++) {
+          const additionalMessage = messageService.saveMessage(
+            conversationId,
+            'assistant',
+            contentParts[i],
+            null, // no reaction on subsequent messages
+            'text', // always text
+            null, // no audio
+            null, // no image
+            null, // no image tags
+            false, // not proactive
+            null // no image prompt
+          );
+          allSavedMessages.push(additionalMessage);
+        }
 
         // Handle departure
         if (isDeparting && engagementState) {
@@ -375,22 +442,24 @@ class MessageProcessor {
         // Update conversation timestamp and increment unread count
         conversationService.incrementUnreadCount(conversationId);
 
-        // Emit new message to frontend via WebSocket
-        io.to(`user:${userId}`).emit('new_message', {
-          characterId,
-          conversationId,
-          message: savedMessage,
-          aiResponse: {
-            content: cleanedContent,
-            model: aiResponse.model,
-            reaction: decision.reaction,
-            messageType: messageType,
-            audioUrl: audioUrl,
-            imageUrl: imageUrl
-          }
+        // Emit all messages to frontend via WebSocket
+        allSavedMessages.forEach(msg => {
+          io.to(`user:${userId}`).emit('new_message', {
+            characterId,
+            conversationId,
+            message: msg,
+            aiResponse: {
+              content: msg.content,
+              model: aiResponse.model,
+              reaction: msg.reaction,
+              messageType: msg.message_type,
+              audioUrl: msg.audio_url,
+              imageUrl: msg.image_url
+            }
+          });
         });
 
-        console.log(`✅ Sent AI response to user ${userId} (type: ${messageType})`);
+        console.log(`✅ Sent ${allSavedMessages.length} message(s) to user ${userId} (type: ${messageType})`);
       }
     } catch (error) {
       console.error('Process AI response async error:', error);

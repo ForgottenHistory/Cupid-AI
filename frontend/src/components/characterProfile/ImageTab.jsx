@@ -4,6 +4,7 @@ import characterService from '../../services/characterService';
 
 const ImageTab = ({ character, onUpdate }) => {
   const [imageTags, setImageTags] = useState('');
+  const [contextualTags, setContextualTags] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -27,13 +28,16 @@ const ImageTab = ({ character, onUpdate }) => {
       const response = await api.get(`/characters/${character.id}`);
       console.log('✅ Backend response:', response.data);
       console.log('📝 Image tags from backend:', response.data.image_tags);
+      console.log('📝 Contextual tags from backend:', response.data.contextual_tags);
       setImageTags(response.data.image_tags || '');
+      setContextualTags(response.data.contextual_tags || '');
       setError(null);
     } catch (err) {
       // If 404 (character not synced to backend yet), try loading from local cardData
       if (err.response?.status === 404 && character.cardData?.data?.imageTags) {
         console.log('⚠️ Character not in backend (404), loading from cardData:', character.cardData.data.imageTags);
         setImageTags(character.cardData.data.imageTags);
+        setContextualTags(character.cardData.data.contextualTags || '');
         setError(null);
       } else {
         console.error('❌ Failed to load image tags:', err);
@@ -50,18 +54,23 @@ const ImageTab = ({ character, onUpdate }) => {
       setError(null);
 
       console.log(`💾 Saving image tags for character ${character.id}:`, imageTags.trim());
+      console.log(`💾 Saving contextual tags for character ${character.id}:`, contextualTags.trim());
       const response = await api.put(`/characters/${character.id}/image-tags`, {
-        image_tags: imageTags.trim() || null
+        image_tags: imageTags.trim() || null,
+        contextual_tags: contextualTags.trim() || null
       });
       console.log('✅ Save response:', response.data);
+
+      setSuccess('Tags saved successfully!');
+      setTimeout(() => setSuccess(null), 3000);
 
       if (onUpdate) {
         onUpdate();
       }
     } catch (err) {
-      console.error('❌ Failed to save image tags:', err);
+      console.error('❌ Failed to save tags:', err);
       console.error('Error response:', err.response?.data);
-      setError(err.response?.data?.error || 'Failed to save image tags');
+      setError(err.response?.data?.error || 'Failed to save tags');
     } finally {
       setSaving(false);
     }
@@ -353,44 +362,68 @@ const ImageTab = ({ character, onUpdate }) => {
         </div>
       )}
 
-      {/* Image Tags Input */}
+      {/* Always Needed Tags Input */}
       <div className="space-y-3">
         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-          Character Image Tags (Danbooru Format)
+          Always Needed Tags (Character Appearance)
         </label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          These tags are ALWAYS included in every generated image (e.g., hair color, eye color, body type)
+        </p>
         <textarea
           value={imageTags}
           onChange={(e) => setImageTags(e.target.value)}
-          placeholder="e.g., blue hair, red eyes, long hair, school uniform, white shirt, blue skirt"
-          rows={8}
+          placeholder="e.g., blue hair, red eyes, long hair, twin tails"
+          rows={4}
           className="w-full px-4 py-3 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm border border-purple-200/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-500 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 font-mono text-sm"
         />
-
-        {/* Save Button */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-        >
-          {saving ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              Saving...
-            </>
-          ) : (
-            'Save Image Tags'
-          )}
-        </button>
       </div>
+
+      {/* Contextual Tags Input */}
+      <div className="space-y-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          Contextual Tags (Character-Specific Options)
+        </label>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+          AI chooses from these tags based on conversation context (e.g., clothing, common poses, settings)
+        </p>
+        <textarea
+          value={contextualTags}
+          onChange={(e) => setContextualTags(e.target.value)}
+          placeholder="e.g., smiling, casual clothes, bedroom, sitting, looking at viewer, school uniform"
+          rows={4}
+          className="w-full px-4 py-3 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm border border-purple-200/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-500 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 font-mono text-sm"
+        />
+      </div>
+
+      {/* Save Button */}
+      <button
+        onClick={handleSave}
+        disabled={saving}
+        className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+      >
+        {saving ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            Saving...
+          </>
+        ) : (
+          'Save All Tags'
+        )}
+      </button>
 
       {/* Info Box */}
       <div className="bg-blue-50/50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200/30 dark:border-blue-800/30">
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">ℹ️ How it Works:</p>
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">ℹ️ How Image Generation Works:</p>
         <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
           <p>1. <strong>Base prompt:</strong> "masterpiece, best quality, amazing quality, 1girl, solo"</p>
-          <p>2. <strong>Character tags:</strong> Your tags from above</p>
-          <p>3. <strong>Context tags:</strong> AI generates tags based on situation (e.g., "smiling, waving, park, daytime")</p>
-          <p className="text-xs italic mt-2">Final prompt = Base + Character + Context</p>
+          <p>2. <strong>Always Needed Tags:</strong> Your character's appearance (forced into every image)</p>
+          <p>3. <strong>AI-Chosen Tags:</strong> AI analyzes conversation and selects appropriate tags from:
+            <span className="block ml-4 mt-1">• Global tag library (all valid Danbooru tags)</span>
+            <span className="block ml-4">• Your contextual tags (character-specific options)</span>
+          </p>
+          <p className="text-xs italic mt-2">Final prompt = Base + Always Needed + AI-Chosen Tags</p>
+          <p className="text-xs mt-2">🎯 The AI intelligently picks tags based on the last 10 messages</p>
         </div>
       </div>
 

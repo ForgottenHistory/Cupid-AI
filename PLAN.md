@@ -114,6 +114,70 @@
 
 ---
 
+## Planned Improvements
+
+### Better Danbooru Image Generation
+
+**Problem**: Current system asks LLM to generate Danbooru tags from scratch. LLMs struggle with specific formatting and creativity, resulting in bland/invalid tags.
+
+**Solution**: Tag library + character-specific tag system
+
+**Architecture**:
+1. **Global Tag Library** (text file in backend)
+   - Comprehensive list of valid Danbooru tags
+   - Loaded into prompt as reference
+   - LLM chooses from this list instead of inventing tags
+   - Organized by category (expressions, poses, locations, clothing, lighting)
+
+2. **Character-Specific Tags** (stored in character profile)
+   - **ALWAYS NEEDED tags** (`image_tags` field): Character appearance that MUST be included every time
+     - Example: "blue hair, red eyes, long hair, twin tails"
+     - These are immutable, always in the prompt
+   - **IMPORTANT, NOT NEEDED tags** (new `contextual_tags` field): Character-specific contextual tags
+     - Example: "smiling, casual clothes, bedroom, sitting, looking at viewer"
+     - LLM chooses to include based on conversation context
+     - These are suggestions, not requirements
+
+**Prompt Structure for LLM**:
+```
+Here are valid Danbooru tags you can use:
+[ENTIRE TAG LIBRARY FILE]
+
+Character-specific contextual tags you MAY include:
+[character's contextual_tags - IMPORTANT, NOT NEEDED]
+
+[LAST 10 MESSAGES FROM CONVERSATION]
+
+Generate appropriate Danbooru tags for an image based on the conversation context...
+```
+
+**Final SD Prompt Construction**:
+```
+Base prompt + ALWAYS NEEDED tags + LLM-chosen contextual tags
+```
+The ALWAYS NEEDED tags (`image_tags`) are forced into the final SD prompt - they're not suggestions to the LLM.
+
+**Implementation**:
+- Create `danbooru_tags.txt` in backend with comprehensive tag list
+- Add `contextual_tags` field to characters table (similar to `image_tags`)
+- Update ImageTab with TWO textareas:
+  - "Always Needed Tags" (current `image_tags`) - forced into SD prompt
+  - "Contextual Tags" (new `contextual_tags`) - LLM chooses from these
+- Truncate conversation to last 10 messages before passing to LLM
+- LLM chooses contextual tags from library + character's contextual_tags
+- Validation: Parse LLM output, check against tag library, discard invalid tags
+- Construct final prompt: base + image_tags + validated LLM tags
+- Replaces current tag generation in chat image message system
+
+**Benefits**:
+- More creative and varied image tags
+- Valid Danbooru syntax (validated against library)
+- Character-specific context preserved
+- Better conversation-aware image generation
+- Easy to debug (see what tags were chosen/discarded)
+
+---
+
 ## Open Questions
 
 **Image Posts**:

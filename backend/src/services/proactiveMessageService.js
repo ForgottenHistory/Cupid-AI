@@ -313,11 +313,15 @@ class ProactiveMessageService {
       // Clean up em dashes (replace with periods)
       const cleanedContent = aiResponse.content.replace(/—/g, '.');
 
-      // Save message with is_proactive flag
+      // Split content by newlines to create separate messages
+      const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
+
+      // Save first part as proactive message
+      const firstPart = contentParts[0] || '';
       const savedMessage = messageService.saveMessage(
         conversationId,
         'assistant',
-        cleanedContent,
+        firstPart,
         null, // No reaction for proactive messages
         'text', // messageType
         null, // audioUrl
@@ -325,6 +329,23 @@ class ProactiveMessageService {
         null, // imageTags
         true // isProactive
       );
+
+      // Save subsequent parts as separate text messages (also marked as proactive)
+      const allSavedMessages = [savedMessage];
+      for (let i = 1; i < contentParts.length; i++) {
+        const additionalMessage = messageService.saveMessage(
+          conversationId,
+          'assistant',
+          contentParts[i],
+          null, // No reaction
+          'text', // messageType
+          null, // audioUrl
+          null, // imageUrl
+          null, // imageTags
+          true // isProactive
+        );
+        allSavedMessages.push(additionalMessage);
+      }
 
       // Update conversation and increment unread count
       conversationService.incrementUnreadCount(conversationId);
@@ -339,20 +360,22 @@ class ProactiveMessageService {
       console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (60 min) started`);
       console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
 
-      // Emit to frontend via WebSocket
-      io.to(`user:${userId}`).emit('new_message', {
-        characterId,
-        conversationId,
-        message: savedMessage,
-        aiResponse: {
-          content: cleanedContent,
-          model: aiResponse.model,
-          reaction: null
-        },
-        isProactive: true
+      // Emit all messages to frontend via WebSocket
+      allSavedMessages.forEach(msg => {
+        io.to(`user:${userId}`).emit('new_message', {
+          characterId,
+          conversationId,
+          message: msg,
+          aiResponse: {
+            content: msg.content,
+            model: aiResponse.model,
+            reaction: null
+          },
+          isProactive: true
+        });
       });
 
-      console.log(`✅ Sent proactive message from ${characterData.name} to user ${userId}`);
+      console.log(`✅ Sent ${allSavedMessages.length} proactive message(s) from ${characterData.name} to user ${userId}`);
       return true;
     } catch (error) {
       console.error('❌ Process proactive candidate error:', error.message);

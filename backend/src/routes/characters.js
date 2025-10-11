@@ -83,17 +83,18 @@ router.get('/:characterId', authenticateToken, (req, res) => {
 router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
   try {
     const { characterId } = req.params;
-    const { image_tags } = req.body;
+    const { image_tags, contextual_tags } = req.body;
     const userId = req.user.id;
 
     console.log(`💾 Updating image tags for character ${characterId}:`, image_tags);
+    console.log(`💾 Updating contextual tags for character ${characterId}:`, contextual_tags);
 
-    // Update character image_tags
+    // Update character image_tags and contextual_tags
     const result = db.prepare(`
       UPDATE characters
-      SET image_tags = ?
+      SET image_tags = ?, contextual_tags = ?
       WHERE id = ? AND user_id = ?
-    `).run(image_tags, characterId, userId);
+    `).run(image_tags, contextual_tags, characterId, userId);
 
     console.log(`✅ Update result: ${result.changes} row(s) affected`);
 
@@ -103,13 +104,14 @@ router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
     }
 
     // Verify the update by reading back
-    const character = db.prepare('SELECT image_tags FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+    const character = db.prepare('SELECT image_tags, contextual_tags FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
     console.log(`📝 Verified image_tags in DB:`, character?.image_tags);
+    console.log(`📝 Verified contextual_tags in DB:`, character?.contextual_tags);
 
-    res.json({ success: true, image_tags: character?.image_tags });
+    res.json({ success: true, image_tags: character?.image_tags, contextual_tags: character?.contextual_tags });
   } catch (error) {
-    console.error('Failed to update character image tags:', error);
-    res.status(500).json({ error: 'Failed to update character image tags' });
+    console.error('Failed to update character tags:', error);
+    res.status(500).json({ error: 'Failed to update character tags' });
   }
 });
 

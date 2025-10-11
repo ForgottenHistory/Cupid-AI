@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import socketService from '../services/socketService';
 import chatService from '../services/chatService';
-import { splitMessageIntoParts } from '../utils/messageUtils';
 import { useMood } from '../context/MoodContext';
 
 /**
@@ -90,44 +89,11 @@ export const useChatWebSocket = ({
       });
 
       if (lastMessage && lastMessage.role === 'assistant') {
-        // Split AI message by newlines for progressive display
-        const messageParts = splitMessageIntoParts(lastMessage.content);
-
-        if (messageParts.length > 1) {
-          // Multiple parts - display progressively
-          setDisplayingMessages(true);
-
-          // Display each part with a delay
-          messageParts.forEach((part, index) => {
-            const timeout = setTimeout(() => {
-              if (isMountedRef.current && data.characterId === characterId) {
-                const partMessageId = `${lastMessage.id}-part-${index}`;
-                markMessageAsNew(partMessageId);
-                setMessages(prev => [...prev, {
-                  ...lastMessage,
-                  id: partMessageId,
-                  content: part,
-                  isLastPart: index === messageParts.length - 1
-                }]);
-
-                // On last part, finish up
-                if (index === messageParts.length - 1) {
-                  setDisplayingMessages(false);
-                  setSending(false);
-                  inputRef.current?.focus();
-                }
-              }
-            }, index * 800);
-
-            addDisplayTimeout(timeout);
-          });
-        } else {
-          // Single message - display immediately
-          markMessageAsNew(lastMessage.id);
-          setMessages(prev => [...prev, lastMessage]);
-          setSending(false);
-          inputRef.current?.focus();
-        }
+        // Messages are now split on the backend - just display immediately
+        markMessageAsNew(lastMessage.id);
+        setMessages(prev => [...prev, lastMessage]);
+        setSending(false);
+        inputRef.current?.focus();
       }
 
       // Mark messages as read since user is actively viewing this chat

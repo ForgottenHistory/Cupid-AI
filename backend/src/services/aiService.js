@@ -79,47 +79,7 @@ class AIService {
         finalMessages.push({ role: 'system', content: proactiveInstructions });
       }
 
-      // Append decision context (before schedule for importance)
-      if (decision) {
-        const decisionParts = ['DECISION:'];
-
-        if (decision.shouldSendImage) {
-          decisionParts.push('IMAGE: YES');
-          decisionParts.push('');
-          decisionParts.push('⚠️ MANDATORY FORMAT - Start your response with:');
-          decisionParts.push('[IMAGE_TAGS: tag1, tag2, tag3, tag4, tag5, tag6, ...]');
-          decisionParts.push('Your message text here');
-          decisionParts.push('');
-          decisionParts.push('❌ DO NOT USE: [Sent image: ...] or *sends picture* or any other format');
-          decisionParts.push('✅ USE: [IMAGE_TAGS: cowboy shot, selfie, smiling, tank top and jeans, bedroom, evening, warm lighting]');
-          decisionParts.push('');
-          decisionParts.push('Tags (6-10 total): COMPOSITION/FRAMING, photo type, expression, OUTFIT DETAILS, setting, TIME, LIGHTING');
-          decisionParts.push('Composition - PREFER THESE: close-up, breast focus, hip focus, thigh focus, upper body, cropped torso, navel focus, ass focus, head out of frame');
-          decisionParts.push('Use occasionally: portrait, cowboy shot, full body');
-          decisionParts.push('ALWAYS start with composition! Close-ups and body focus create better, more engaging images!');
-        } else {
-          decisionParts.push('IMAGE: NO (do not mention pics)');
-        }
-
-        if (decision.shouldSendVoice) {
-          decisionParts.push('VOICE: YES (write for speech)');
-        } else {
-          decisionParts.push('VOICE: NO');
-        }
-
-        if (decision.reaction) {
-          decisionParts.push(`REACTION: ${decision.reaction}`);
-        }
-
-        if (decision.reason) {
-          decisionParts.push(`REASON: ${decision.reason}`);
-        }
-
-        finalMessages.push({ role: 'system', content: decisionParts.join('\n') });
-      }
-
-      // Append current status and schedule activities at the VERY END (maximum recency bias)
-      // Combine into single message for better context
+      // Append current status and schedule activities
       const contextParts = [];
 
       if (currentStatus) {
@@ -147,8 +107,19 @@ class AIService {
       });
 
       // Add character name prompt at the very end to prime the response
+      // If sending image/voice, add tags on first line, then character name on second line
       const characterName = characterData.data?.name || characterData.name || 'Character';
-      finalMessages.push({ role: 'assistant', content: `${characterName}: `, prefix: true });
+      let primeContent = `${characterName}: `;
+
+      if (decision) {
+        if (decision.shouldSendImage && decision.imageTags) {
+          primeContent = `${characterName}: [IMAGE: ${decision.imageTags}]\n${characterName}: `;
+        } else if (decision.shouldSendVoice) {
+          primeContent = `${characterName}: [VOICE]\n${characterName}: `;
+        }
+      }
+
+      finalMessages.push({ role: 'assistant', content: primeContent, prefix: true });
 
       // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
       const logUserName = userName || 'User';
@@ -176,44 +147,28 @@ class AIService {
         }
       );
 
-      let rawContent = response.data.choices[0].message.content;
+      let content = response.data.choices[0].message.content;
 
       // Strip any leading "Name: " pattern (AI priming artifact)
       // Example: "Jane Doe: message" -> "message"
       // Only matches names (letters, spaces, hyphens, apostrophes), NOT brackets or special chars
       // Keep stripping until there's no more name pattern at the start
-      while (rawContent.match(/^[A-Za-z\s'-]+:\s*/)) {
-        rawContent = rawContent.replace(/^[A-Za-z\s'-]+:\s*/, '');
+      while (content.match(/^[A-Za-z\s'-]+:\s*/)) {
+        content = content.replace(/^[A-Za-z\s'-]+:\s*/, '');
       }
 
-      // Parse image tags if present
-      let content = rawContent;
-      let imageTags = null;
-
-      // Try to match image tags (allowing leading whitespace/newlines)
-      const imageTagsMatch = rawContent.match(/^\s*\[IMAGE_TAGS:\s*([^\]]+)\]/i);
-      if (imageTagsMatch) {
-        imageTags = imageTagsMatch[1].trim();
-        // Remove the tags from the content
-        content = rawContent.substring(imageTagsMatch[0].length).trim();
-        console.log('🎨 Parsed image tags from LLM response:', imageTags);
-      } else {
-        // Debug: log first 200 chars if image was expected but not found
-        if (decision?.shouldSendImage) {
-          console.warn('⚠️  Expected image tags but none found. Raw content start:', rawContent.substring(0, 200));
-        }
-      }
+      // Strip any text in square brackets [...]
+      // Remove entire lines that contain only bracketed text, or inline brackets
+      content = content.replace(/^\[.*?\]\s*$/gm, '').replace(/\[.*?\]/g, '').trim();
 
       console.log('✅ OpenRouter Response:', {
         model: response.data.model,
         contentLength: content?.length || 0,
-        imageTags: imageTags || 'none',
         usage: response.data.usage
       });
 
       return {
         content: content,
-        imageTags: imageTags,
         model: response.data.model,
         usage: response.data.usage,
       };

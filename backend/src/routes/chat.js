@@ -8,6 +8,7 @@ import aiService from '../services/aiService.js';
 import conversationService from '../services/conversationService.js';
 import messageService from '../services/messageService.js';
 import messageProcessor from '../services/messageProcessor.js';
+import imageTagGenerationService from '../services/imageTagGenerationService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 import db from '../db/database.js';
 
@@ -189,8 +190,13 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
     // Clean up em dashes (replace with periods)
     const cleanedContent = aiResponse.content.replace(/—/g, '.');
 
-    // Save AI first message
-    messageService.saveMessage(conversation.id, 'assistant', cleanedContent);
+    // Split content by newlines to create separate messages
+    const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
+
+    // Save each part as a separate message
+    for (const part of contentParts) {
+      messageService.saveMessage(conversation.id, 'assistant', part);
+    }
 
     // Update conversation timestamp and increment unread count
     conversationService.incrementUnreadCount(conversation.id);
@@ -336,7 +342,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     const userBio = user?.bio || null;
 
     // Get character from backend to check voice/image availability
-    const backendCharacter = db.prepare('SELECT voice_id, image_tags FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+    const backendCharacter = db.prepare('SELECT voice_id, image_tags, contextual_tags FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
     const hasVoice = backendCharacter?.voice_id ? true : false;
     const hasImage = backendCharacter?.image_tags ? true : false;
 
@@ -361,35 +367,48 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
 
     console.log('🎯 Decision made (regenerate):', decision);
 
-    // Get AI response
-    const aiResponse = await aiService.createChatCompletion({
-      messages: aiMessages,
-      characterData: characterData,
-      userId: userId,
-      currentStatus: currentStatusInfo,
-      userBio: userBio,
-      schedule: characterData.schedule,
-      decision: decision  // Pass decision to Content LLM
-    });
-
-    // Clean up em dashes (replace with periods)
-    const cleanedContent = aiResponse.content.replace(/—/g, '.');
-
-    let messageType = 'text';
+    // GENERATE IMAGE FIRST (if decision says so) so Content LLM knows what image was generated
     let imageUrl = null;
+    let imagePrompt = null;
+    let generatedContextTags = null;
+    let messageType = 'text';
 
-    // Generate image if decision says so (and feature is enabled)
     const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
-    if (imageMessagesEnabled && decision.shouldSendImage && hasImage && backendCharacter?.image_tags && aiResponse.imageTags) {
+    if (imageMessagesEnabled && decision.shouldSendImage && hasImage && backendCharacter?.image_tags) {
       console.log(`🎨 Generating image for character ${characterId}`);
-      console.log(`Character tags: ${backendCharacter.image_tags}`);
-      console.log(`Context tags (from Content LLM): ${aiResponse.imageTags}`);
 
       try {
+        // Get recent messages for context (last 10)
+        const recentMessages = imageTagGenerationService.getRecentMessages(conversation.id, db);
+
+        // Fetch user's Content LLM settings for tag generation
+        const userSettings = db.prepare(`
+          SELECT llm_model,
+                 llm_temperature,
+                 llm_max_tokens,
+                 llm_top_p,
+                 llm_frequency_penalty,
+                 llm_presence_penalty,
+                 llm_context_window
+          FROM users WHERE id = ?
+        `).get(userId);
+
+        // Generate context-aware tags using new service
+        generatedContextTags = await imageTagGenerationService.generateTags({
+          recentMessages,
+          contextualTags: backendCharacter.contextual_tags || '',
+          currentStatus: currentStatusInfo,
+          userSettings
+        });
+
+        console.log(`📍 Current Status: ${currentStatusInfo.status}${currentStatusInfo.activity ? ` (${currentStatusInfo.activity})` : ''}`);
+        console.log(`📝 Always Needed Tags: ${backendCharacter.image_tags}`);
+        console.log(`🤖 AI-Generated Context Tags: ${generatedContextTags}`);
+
         const sdService = (await import('../services/sdService.js')).default;
 
-        // Fetch user's SD settings
-        const userSettings = db.prepare(`
+        // Fetch user's SD settings for image generation
+        const sdSettings = db.prepare(`
           SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
                  sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
                  sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model,
@@ -399,8 +418,8 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
 
         const imageResult = await sdService.generateImage({
           characterTags: backendCharacter.image_tags,
-          contextTags: aiResponse.imageTags,
-          userSettings: userSettings
+          contextTags: generatedContextTags,
+          userSettings: sdSettings
         });
 
         if (imageResult.success) {
@@ -425,6 +444,10 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
 
           messageType = 'image';
           imageUrl = `/uploads/images/${filename}`;
+          imagePrompt = imageResult.prompt;
+
+          // Add generated tags to decision so Content LLM knows what was generated
+          decision.imageTags = `${backendCharacter.image_tags}, ${generatedContextTags}`;
 
           // Log result to prompt log file
           if (imageResult.logFilename) {
@@ -438,14 +461,33 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
           }
 
           console.log(`✅ Image saved: ${imageUrl}`);
+          console.log(`📝 Prompt: ${imagePrompt}`);
         } else {
           console.warn(`⚠️  Image generation failed, falling back to text: ${imageResult.error}`);
+          // Clear the decision flag if generation failed
+          decision.shouldSendImage = false;
         }
       } catch (error) {
         console.error(`❌ Image generation error:`, error);
         console.warn(`⚠️  Falling back to text message`);
+        // Clear the decision flag if generation failed
+        decision.shouldSendImage = false;
       }
     }
+
+    // NOW generate AI response - it will know what image was generated
+    const aiResponse = await aiService.createChatCompletion({
+      messages: aiMessages,
+      characterData: characterData,
+      userId: userId,
+      currentStatus: currentStatusInfo,
+      userBio: userBio,
+      schedule: characterData.schedule,
+      decision: decision  // Pass decision with image tags
+    });
+
+    // Clean up em dashes (replace with periods)
+    const cleanedContent = aiResponse.content.replace(/—/g, '.');
 
     // Update last_mood_change timestamp if mood was set
     if (decision.mood && decision.mood !== 'none') {
@@ -457,8 +499,39 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       console.log(`✅ Updated last_mood_change timestamp for character ${characterId} (regenerate)`);
     }
 
-    // Save AI response with reaction
-    messageService.saveMessage(conversation.id, 'assistant', cleanedContent, decision.reaction, messageType, null, imageUrl, aiResponse.imageTags || null);
+    // Split content by newlines to create separate messages
+    const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
+
+    // Save first part as media message (image with all metadata)
+    const firstPart = contentParts[0] || '';
+    messageService.saveMessage(
+      conversation.id,
+      'assistant',
+      firstPart,
+      decision.reaction,
+      messageType,
+      null, // audioUrl
+      imageUrl,
+      generatedContextTags || null,
+      false, // isProactive
+      imagePrompt // imagePrompt
+    );
+
+    // Save subsequent parts as separate text messages
+    for (let i = 1; i < contentParts.length; i++) {
+      messageService.saveMessage(
+        conversation.id,
+        'assistant',
+        contentParts[i],
+        null, // no reaction on subsequent messages
+        'text', // always text
+        null, // no audio
+        null, // no image
+        null, // no image tags
+        false, // not proactive
+        null  // no image prompt
+      );
+    }
 
     // Update conversation timestamp and increment unread count
     conversationService.incrementUnreadCount(conversation.id);

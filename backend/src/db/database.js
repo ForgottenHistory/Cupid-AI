@@ -208,6 +208,12 @@ function runMigrations() {
       console.log('✅ image_tags column added to characters table');
     }
 
+    // Migration: Add contextual_tags column to characters table
+    if (!charactersColumnNames.includes('contextual_tags')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN contextual_tags TEXT;`);
+      console.log('✅ contextual_tags column added to characters table');
+    }
+
     // Migration: Add image_url column to messages table
     if (!messagesColumnNames.includes('image_url')) {
       db.exec(`ALTER TABLE messages ADD COLUMN image_url TEXT;`);
