@@ -42,16 +42,17 @@ router.post('/characters', authenticateToken, (req, res) => {
         const existing = db.prepare('SELECT id FROM characters WHERE id = ? AND user_id = ?').get(char.id, userId);
 
         if (existing) {
-          // Update existing character (preserve schedule, personality, etc.)
+          // Update existing character (preserve schedule, personality, image_tags, voice_id, etc.)
+          // Note: image_tags is backend-only and managed via PUT /characters/:id/image-tags
+          console.log(`🔄 Updating character ${char.id} (preserving image_tags)`);
           db.prepare(`
             UPDATE characters
-            SET name = ?, card_data = ?, image_url = ?, image_tags = ?
+            SET name = ?, card_data = ?, image_url = ?
             WHERE id = ? AND user_id = ?
           `).run(
             name,
             JSON.stringify(char.cardData),
             char.imageUrl || null,
-            imageTags ? JSON.stringify(imageTags) : null,
             char.id,
             userId
           );

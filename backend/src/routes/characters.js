@@ -86,14 +86,27 @@ router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
     const { image_tags } = req.body;
     const userId = req.user.id;
 
+    console.log(`💾 Updating image tags for character ${characterId}:`, image_tags);
+
     // Update character image_tags
-    db.prepare(`
+    const result = db.prepare(`
       UPDATE characters
       SET image_tags = ?
       WHERE id = ? AND user_id = ?
     `).run(image_tags, characterId, userId);
 
-    res.json({ success: true, image_tags });
+    console.log(`✅ Update result: ${result.changes} row(s) affected`);
+
+    if (result.changes === 0) {
+      console.error(`❌ Character ${characterId} not found in backend for user ${userId}`);
+      return res.status(404).json({ error: 'Character not found. Please like/match with this character first to sync to backend.' });
+    }
+
+    // Verify the update by reading back
+    const character = db.prepare('SELECT image_tags FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+    console.log(`📝 Verified image_tags in DB:`, character?.image_tags);
+
+    res.json({ success: true, image_tags: character?.image_tags });
   } catch (error) {
     console.error('Failed to update character image tags:', error);
     res.status(500).json({ error: 'Failed to update character image tags' });
