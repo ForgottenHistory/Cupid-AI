@@ -28,7 +28,7 @@ class ImageTagGenerationService {
 
   /**
    * Generate context-aware image tags using LLM
-   * @param {Array} recentMessages - Last 10 messages from conversation
+   * @param {Array} recentMessages - Last 50 messages from conversation
    * @param {string} contextualTags - Character-specific contextual tags
    * @param {Object} currentStatus - Character's current status and activity
    * @param {Object} userSettings - User's LLM settings
@@ -267,11 +267,11 @@ Your selected tags:`;
   }
 
   /**
-   * Get recent messages from conversation (last 10)
+   * Get recent messages from conversation (last 50)
    * Also fetches image_tags from any previous image messages for consistency
    * @param {number} conversationId - Conversation ID
    * @param {object} db - Database instance
-   * @returns {Array} Last 10 messages with image_tags if present
+   * @returns {Array} Last 50 messages with image_tags if present
    */
   getRecentMessages(conversationId, db) {
     const messages = db.prepare(`
@@ -279,7 +279,7 @@ Your selected tags:`;
       FROM messages
       WHERE conversation_id = ?
       ORDER BY created_at DESC
-      LIMIT 10
+      LIMIT 50
     `).all(conversationId);
 
     // Reverse to get chronological order

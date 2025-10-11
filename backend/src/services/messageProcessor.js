@@ -250,7 +250,7 @@ class MessageProcessor {
         console.log(`🎨 Generating image for character ${characterId}`);
 
         try {
-          // Get recent messages for context (last 10)
+          // Get recent messages for context (last 50)
           const recentMessages = imageTagGenerationService.getRecentMessages(conversationId, db);
 
           // Fetch user's Content LLM settings for tag generation
