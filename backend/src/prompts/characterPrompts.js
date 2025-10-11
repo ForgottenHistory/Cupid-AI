@@ -44,7 +44,7 @@ Fun Facts:
 - [fun fact 2 in first person]
 - [fun fact 3 in first person]
 
-Age: [number, minimum 20, could be much higher depending on context]
+Age: [number, minimum 18, could be much higher depending on context, such as species]
 
 Occupation: [occupation or "none"]
 
