@@ -63,27 +63,37 @@ router.post('/trigger-proactive/:characterId', authenticateToken, async (req, re
 
 /**
  * Debug endpoint to generate an image for a character
+ * Supports both matched characters (from backend) and unmatched characters (from IndexedDB via request body)
  */
 router.post('/generate-image/:characterId', authenticateToken, async (req, res) => {
   try {
     const { characterId } = req.params;
-    const { contextTags } = req.body;
+    const { contextTags, imageTags: providedImageTags, additionalPrompt } = req.body;
     const userId = req.user.id;
 
     console.log(`🐛 Debug: Generating image for character ${characterId}`);
-
-    // Get character from backend
-    const character = db.prepare(`
-      SELECT * FROM characters WHERE id = ? AND user_id = ?
-    `).get(characterId, userId);
-
-    if (!character) {
-      return res.status(404).json({ error: 'Character not found' });
+    if (additionalPrompt) {
+      console.log(`🎨 Additional prompt: ${additionalPrompt}`);
     }
 
-    const imageTags = character.image_tags;
+    let imageTags = providedImageTags; // Use provided tags from request body (for unmatched characters)
+
+    // If no tags provided, try to get from backend (for matched characters)
     if (!imageTags) {
-      return res.status(400).json({ error: 'Character has no image tags configured' });
+      const character = db.prepare(`
+        SELECT * FROM characters WHERE id = ? AND user_id = ?
+      `).get(characterId, userId);
+
+      if (character) {
+        imageTags = character.image_tags;
+        console.log(`🎨 Using image tags from backend`);
+      }
+    } else {
+      console.log(`🎨 Using image tags from request body (unmatched character)`);
+    }
+
+    if (!imageTags) {
+      return res.status(400).json({ error: 'No image tags available. Please configure image tags first.' });
     }
 
     console.log(`🎨 Character tags: ${imageTags}`);
@@ -102,6 +112,7 @@ router.post('/generate-image/:characterId', authenticateToken, async (req, res) 
     const imageResult = await sdService.generateImage({
       characterTags: imageTags,
       contextTags: contextTags || '',
+      additionalPrompt: additionalPrompt || '',
       userSettings: userSettings
     });
 

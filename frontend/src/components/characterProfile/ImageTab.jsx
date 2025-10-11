@@ -7,8 +7,12 @@ const ImageTab = ({ character, onUpdate }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [changingImage, setChangingImage] = useState(false);
+  const [generatingPortrait, setGeneratingPortrait] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
+  const [showPromptModal, setShowPromptModal] = useState(false);
+  const [additionalPrompt, setAdditionalPrompt] = useState('');
 
   // Load character's image tags from backend
   useEffect(() => {
@@ -63,6 +67,92 @@ const ImageTab = ({ character, onUpdate }) => {
     }
   };
 
+  const openPromptModal = () => {
+    // Check if character has image tags configured
+    if (!imageTags || imageTags.trim() === '') {
+      setError('Please configure image tags first before generating a portrait');
+      return;
+    }
+
+    setError(null);
+    setSuccess(null);
+    setAdditionalPrompt('');
+    setShowPromptModal(true);
+  };
+
+  const generatePortrait = async () => {
+    try {
+      setShowPromptModal(false);
+      setGeneratingPortrait(true);
+      setError(null);
+      setSuccess(null);
+
+      console.log(`🎨 Generating portrait for character ${character.id} with tags:`, imageTags);
+      if (additionalPrompt) {
+        console.log(`🎨 Additional prompt:`, additionalPrompt);
+      }
+
+      // Call debug endpoint to generate image with "portrait" as context tag
+      // Pass imageTags for unmatched characters (not yet synced to backend)
+      const response = await api.post(`/debug/generate-image/${character.id}`, {
+        contextTags: 'portrait',
+        imageTags: imageTags, // Support both matched (backend) and unmatched (IndexedDB) characters
+        additionalPrompt: additionalPrompt || undefined
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to generate portrait');
+      }
+
+      const base64Image = response.data.image; // Already includes data:image/png;base64, prefix
+      console.log('✅ Portrait generated successfully');
+
+      // Update character in IndexedDB
+      const updates = {
+        imageUrl: base64Image,
+        cardData: {
+          ...character.cardData,
+          data: {
+            ...character.cardData.data,
+            image: base64Image
+          }
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, updates);
+      console.log('✅ Character portrait updated in IndexedDB');
+
+      // Set preview
+      setImagePreview(base64Image);
+
+      // Sync to backend if character exists
+      try {
+        await api.get(`/characters/${character.id}`);
+        await api.post('/sync/characters', {
+          characters: [await characterService.getCharacter(character.id)]
+        });
+        console.log('✅ Character portrait synced to backend');
+      } catch (err) {
+        if (err.response?.status !== 404) {
+          console.warn('⚠️ Failed to sync portrait to backend:', err);
+        }
+      }
+
+      // Show success
+      setSuccess('Portrait generated successfully!');
+
+      // Notify parent to refresh
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('❌ Failed to generate portrait:', err);
+      setError(err.response?.data?.error || err.message || 'Failed to generate portrait');
+    } finally {
+      setGeneratingPortrait(false);
+    }
+  };
+
   const handleImageChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -87,42 +177,54 @@ const ImageTab = ({ character, onUpdate }) => {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64Image = event.target.result;
-        setImagePreview(base64Image);
 
-        // Update character in IndexedDB
-        const updates = {
-          cardData: {
-            ...character.cardData,
-            data: {
-              ...character.cardData.data,
-              image: base64Image
+        try {
+          // Update character in IndexedDB (update BOTH imageUrl and cardData.data.image)
+          const updates = {
+            imageUrl: base64Image, // Top-level property for display
+            cardData: {
+              ...character.cardData,
+              data: {
+                ...character.cardData.data,
+                image: base64Image // Nested property for card data
+              }
+            }
+          };
+
+          await characterService.updateCharacterData(character.id, updates);
+          console.log('✅ Character image updated in IndexedDB (both imageUrl and cardData.data.image)');
+
+          // Set preview after successful save
+          setImagePreview(base64Image);
+
+          // Trigger re-sync to backend (if character is already synced)
+          try {
+            await api.get(`/characters/${character.id}`);
+            // Character exists in backend, sync the new image
+            await api.post('/sync/characters', {
+              characters: [await characterService.getCharacter(character.id)]
+            });
+            console.log('✅ Character image synced to backend');
+          } catch (err) {
+            if (err.response?.status !== 404) {
+              console.warn('⚠️ Failed to sync image to backend:', err);
             }
           }
-        };
 
-        await characterService.updateCharacterData(character.id, updates);
-        console.log('✅ Character image updated in IndexedDB');
+          // Show success message
+          setSuccess('Character image updated successfully!');
+          setError(null);
 
-        // Trigger re-sync to backend (if character is already synced)
-        try {
-          await api.get(`/characters/${character.id}`);
-          // Character exists in backend, sync the new image
-          await api.post('/sync/characters', {
-            characters: [await characterService.getCharacter(character.id)]
-          });
-          console.log('✅ Character image synced to backend');
-        } catch (err) {
-          if (err.response?.status !== 404) {
-            console.warn('⚠️ Failed to sync image to backend:', err);
+          // Notify parent to refresh
+          if (onUpdate) {
+            onUpdate();
           }
+        } catch (err) {
+          console.error('❌ Failed to save image:', err);
+          setError('Failed to save image to IndexedDB');
+        } finally {
+          setChangingImage(false);
         }
-
-        // Notify parent to refresh
-        if (onUpdate) {
-          onUpdate();
-        }
-
-        setChangingImage(false);
       };
 
       reader.onerror = () => {
@@ -166,33 +268,60 @@ const ImageTab = ({ character, onUpdate }) => {
             </div>
           </div>
 
-          {/* Upload Button */}
+          {/* Upload and Generate Buttons */}
           <div className="flex-1">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-              Change your character's portrait image. Supports JPG, PNG, WebP (max 5MB).
+              Change your character's portrait image. Upload a file or generate one using AI.
             </p>
-            <label className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium rounded-xl cursor-pointer transition-colors">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                disabled={changingImage}
-                className="hidden"
-              />
-              {changingImage ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Choose New Image
-                </>
-              )}
-            </label>
+            <div className="flex gap-3">
+              <label className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 text-white font-medium rounded-xl cursor-pointer transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  disabled={changingImage || generatingPortrait}
+                  className="hidden"
+                />
+                {changingImage ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Upload Image
+                  </>
+                )}
+              </label>
+
+              <button
+                onClick={openPromptModal}
+                disabled={changingImage || generatingPortrait || !imageTags}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-medium rounded-xl transition-colors disabled:cursor-not-allowed"
+              >
+                {generatingPortrait ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    Generate Portrait
+                  </>
+                )}
+              </button>
+            </div>
+            {!imageTags && (
+              <p className="text-xs text-orange-600 dark:text-orange-400 mt-2">
+                ⚠️ Configure image tags below before generating
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -215,6 +344,12 @@ const ImageTab = ({ character, onUpdate }) => {
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-700 dark:text-red-400">
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 text-green-700 dark:text-green-400">
+          {success}
         </div>
       )}
 
@@ -258,6 +393,58 @@ const ImageTab = ({ character, onUpdate }) => {
           <p className="text-xs italic mt-2">Final prompt = Base + Character + Context</p>
         </div>
       </div>
+
+      {/* Prompt Modal */}
+      {showPromptModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-lg w-full border border-gray-200 dark:border-gray-700">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                Generate Portrait
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Add optional details to customize the portrait
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Additional Prompting (Optional)
+                </label>
+                <textarea
+                  value={additionalPrompt}
+                  onChange={(e) => setAdditionalPrompt(e.target.value)}
+                  placeholder="e.g., sunset lighting, outdoor background, casual pose..."
+                  rows={4}
+                  className="w-full px-4 py-3 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm border border-purple-200/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-500 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 text-sm"
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  Leave empty to use default portrait settings
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex gap-3 justify-end">
+              <button
+                onClick={() => setShowPromptModal(false)}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-gray-100 font-medium rounded-xl transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={generatePortrait}
+                className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-medium rounded-xl transition-colors"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

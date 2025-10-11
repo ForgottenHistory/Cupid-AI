@@ -17,12 +17,14 @@ class SDService {
    * @param {Object} params
    * @param {string} params.characterTags - Character-specific Danbooru tags
    * @param {string} params.contextTags - Situational context tags from Decision LLM
+   * @param {string} params.additionalPrompt - Optional additional user-provided prompt
    * @param {string} params.negativePrompt - Optional custom negative prompt
    * @param {Object} params.userSettings - User's SD settings from database
    */
   async generateImage({
     characterTags = '',
     contextTags = '',
+    additionalPrompt = '',
     negativePrompt = null,
     userSettings = null
   }) {
@@ -48,7 +50,7 @@ class SDService {
 
       // Build full prompt using user's main prompt
       const mainPrompt = settings.sd_main_prompt || 'masterpiece, best quality, amazing quality, 1girl, solo';
-      const fullPrompt = [mainPrompt, characterTags, contextTags]
+      const fullPrompt = [mainPrompt, characterTags, contextTags, additionalPrompt]
         .filter(p => p && p.trim())
         .join(', ');
 
@@ -269,6 +271,7 @@ class SDService {
         negativePrompt: fullNegative,
         characterTags,
         contextTags,
+        additionalPrompt,
         settings
       });
 
@@ -289,6 +292,7 @@ class SDService {
         negativePrompt: fullNegative || 'N/A',
         characterTags: characterTags || '',
         contextTags: contextTags || '',
+        additionalPrompt: additionalPrompt || '',
         settings: settings || {}
       });
 
@@ -310,7 +314,7 @@ class SDService {
   /**
    * Save image generation prompt to log file
    */
-  saveImagePromptLog({ prompt, negativePrompt, characterTags, contextTags, settings }) {
+  saveImagePromptLog({ prompt, negativePrompt, characterTags, contextTags, additionalPrompt, settings }) {
     try {
       const logsDir = path.join(__dirname, '../../logs/prompts');
 
@@ -339,6 +343,7 @@ ${negativePrompt}
 Main Prompt: ${settings.sd_main_prompt || 'masterpiece, best quality, amazing quality, 1girl, solo'}
 Character Tags: ${characterTags || 'none'}
 Context Tags: ${contextTags || 'none'}
+Additional Prompt: ${additionalPrompt || 'none'}
 
 === SETTINGS ===
 Model: ${settings.sd_model || 'default'}
