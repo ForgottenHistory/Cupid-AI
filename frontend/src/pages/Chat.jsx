@@ -26,6 +26,9 @@ const Chat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageDescription, setImageDescription] = useState('');
 
+  // Header visibility state (default hidden)
+  const [showHeader, setShowHeader] = useState(false);
+
   // Core chat state
   const {
     character,
@@ -267,8 +270,8 @@ const Chat = () => {
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30">
-      {/* Chat Header */}
-      {character && (
+      {/* Chat Header - Conditionally shown */}
+      {character && showHeader && (
         <ChatHeader
           character={character}
           characterStatus={characterStatus}
@@ -282,7 +285,7 @@ const Chat = () => {
       <div className="flex-1 flex overflow-hidden gap-4 p-4">
         {/* Left Side - Character Image */}
         {character && (
-          <div className="w-[320px] relative overflow-hidden rounded-2xl shadow-2xl flex-shrink-0 border border-purple-200/30 dark:border-gray-600/30">
+          <div className="w-[320px] relative overflow-hidden rounded-2xl shadow-2xl flex-shrink-0 border border-purple-200/30 dark:border-gray-600/30 group">
             {/* Image with gradient overlays for depth */}
             <div className="absolute inset-0">
               <img
@@ -303,6 +306,26 @@ const Chat = () => {
                 boxShadow: 'inset 0 0 100px rgba(0,0,0,0.1)'
               }}></div>
             </div>
+
+            {/* Toggle Header Button - Top Right */}
+            <button
+              onClick={() => setShowHeader(!showHeader)}
+              className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg transition-all opacity-0 group-hover:opacity-100 shadow-lg"
+              title={showHeader ? "Hide Header" : "Show Header"}
+            >
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {showHeader ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                )}
+              </svg>
+            </button>
 
             {/* Character name overlay at bottom */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm p-5">
