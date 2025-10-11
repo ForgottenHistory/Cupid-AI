@@ -26,8 +26,8 @@ const Chat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageDescription, setImageDescription] = useState('');
 
-  // Header visibility state (default hidden)
-  const [showHeader, setShowHeader] = useState(false);
+  // Header collapse state (default collapsed/tucked in)
+  const [headerCollapsed, setHeaderCollapsed] = useState(true);
 
   // Core chat state
   const {
@@ -270,14 +270,16 @@ const Chat = () => {
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30">
-      {/* Chat Header - Conditionally shown */}
-      {character && showHeader && (
+      {/* Chat Header - Always visible */}
+      {character && (
         <ChatHeader
           character={character}
           characterStatus={characterStatus}
           messages={messages}
           onBack={() => navigate('/')}
           onUnmatch={handleUnmatch}
+          collapsed={headerCollapsed}
+          setCollapsed={setHeaderCollapsed}
         />
       )}
 
@@ -309,9 +311,9 @@ const Chat = () => {
 
             {/* Toggle Header Button - Top Right */}
             <button
-              onClick={() => setShowHeader(!showHeader)}
+              onClick={() => setHeaderCollapsed(!headerCollapsed)}
               className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg transition-all opacity-0 group-hover:opacity-100 shadow-lg"
-              title={showHeader ? "Hide Header" : "Show Header"}
+              title={headerCollapsed ? "Expand Header" : "Collapse Header"}
             >
               <svg
                 className="w-5 h-5 text-white"
@@ -319,10 +321,10 @@ const Chat = () => {
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                {showHeader ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                ) : (
+                {headerCollapsed ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 )}
               </svg>
             </button>
