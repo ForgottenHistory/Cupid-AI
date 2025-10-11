@@ -481,7 +481,8 @@ router.put('/sd-settings', authenticateToken, (req, res) => {
 router.get('/behavior-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
-      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit, pacing_style
+      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
+             proactive_away_chance, proactive_busy_chance, pacing_style
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -493,6 +494,8 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       maxEmojisPerMessage: settings.max_emojis_per_message,
       proactiveMessageHours: settings.proactive_message_hours,
       dailyProactiveLimit: settings.daily_proactive_limit,
+      proactiveAwayChance: settings.proactive_away_chance,
+      proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style
     });
   } catch (error) {
@@ -507,7 +510,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, pacingStyle } = req.body;
+    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -519,6 +522,12 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     }
     if (dailyProactiveLimit !== undefined && (dailyProactiveLimit < 1 || dailyProactiveLimit > 20)) {
       return res.status(400).json({ error: 'Daily proactive limit must be between 1 and 20' });
+    }
+    if (proactiveAwayChance !== undefined && (proactiveAwayChance < 0 || proactiveAwayChance > 100)) {
+      return res.status(400).json({ error: 'Proactive away chance must be between 0 and 100' });
+    }
+    if (proactiveBusyChance !== undefined && (proactiveBusyChance < 0 || proactiveBusyChance > 100)) {
+      return res.status(400).json({ error: 'Proactive busy chance must be between 0 and 100' });
     }
     if (pacingStyle !== undefined && !['slow', 'balanced', 'forward'].includes(pacingStyle)) {
       return res.status(400).json({ error: 'Pacing style must be slow, balanced, or forward' });
@@ -540,6 +549,14 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('daily_proactive_limit = ?');
       values.push(dailyProactiveLimit);
     }
+    if (proactiveAwayChance !== undefined) {
+      updates.push('proactive_away_chance = ?');
+      values.push(proactiveAwayChance);
+    }
+    if (proactiveBusyChance !== undefined) {
+      updates.push('proactive_busy_chance = ?');
+      values.push(proactiveBusyChance);
+    }
     if (pacingStyle !== undefined) {
       updates.push('pacing_style = ?');
       values.push(pacingStyle);
@@ -557,7 +574,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
 
     // Get updated settings
     const settings = db.prepare(`
-      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit, pacing_style
+      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
+             proactive_away_chance, proactive_busy_chance, pacing_style
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -565,6 +583,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       maxEmojisPerMessage: settings.max_emojis_per_message,
       proactiveMessageHours: settings.proactive_message_hours,
       dailyProactiveLimit: settings.daily_proactive_limit,
+      proactiveAwayChance: settings.proactive_away_chance,
+      proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style
     });
   } catch (error) {

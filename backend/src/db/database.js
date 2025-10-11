@@ -309,6 +309,15 @@ function runMigrations() {
       `);
       console.log('✅ Behavior settings columns added to users table');
     }
+
+    // Migration: Add proactive message away/busy chance columns to users table
+    if (!userColumnNames.includes('proactive_away_chance')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN proactive_away_chance INTEGER DEFAULT 50;
+        ALTER TABLE users ADD COLUMN proactive_busy_chance INTEGER DEFAULT 10;
+      `);
+      console.log('✅ Proactive away/busy chance columns added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

@@ -6,6 +6,8 @@ const BehaviorSettings = ({ onClose }) => {
     maxEmojisPerMessage: 2,
     proactiveMessageHours: 4,
     dailyProactiveLimit: 5,
+    proactiveAwayChance: 50,
+    proactiveBusyChance: 10,
     pacingStyle: 'balanced'
   });
   const [loading, setLoading] = useState(true);
@@ -60,6 +62,8 @@ const BehaviorSettings = ({ onClose }) => {
       maxEmojisPerMessage: 2,
       proactiveMessageHours: 4,
       dailyProactiveLimit: 5,
+      proactiveAwayChance: 50,
+      proactiveBusyChance: 10,
       pacingStyle: 'balanced'
     });
     setSuccess('');
@@ -176,6 +180,50 @@ const BehaviorSettings = ({ onClose }) => {
                 <span>20</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Maximum proactive messages across all characters per day</p>
+            </div>
+
+            {/* Proactive Away Chance */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Proactive When Away</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveAwayChance}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={settings.proactiveAwayChance}
+                onChange={(e) => updateSetting('proactiveAwayChance', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Never</span>
+                <span>Always</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Chance characters send proactive messages when status is AWAY</p>
+            </div>
+
+            {/* Proactive Busy Chance */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Proactive When Busy</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveBusyChance}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={settings.proactiveBusyChance}
+                onChange={(e) => updateSetting('proactiveBusyChance', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Never</span>
+                <span>Always</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Chance characters send proactive messages when status is BUSY</p>
             </div>
 
             {/* Pacing Style */}
