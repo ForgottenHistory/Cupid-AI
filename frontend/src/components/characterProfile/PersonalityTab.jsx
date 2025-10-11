@@ -44,7 +44,7 @@ const PersonalityTab = ({ data, loading, onGenerate }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Big Five Personality Traits</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Big Five Personality Traits</h3>
         <GenerateButton
           onClick={onGenerate}
           loading={loading}
@@ -60,16 +60,16 @@ const PersonalityTab = ({ data, loading, onGenerate }) => {
           {traits.map((trait) => (
             <div key={trait.name}>
               <div className="flex justify-between items-center mb-2">
-                <h4 className="font-semibold text-gray-800">{trait.name}</h4>
-                <span className="text-sm font-medium text-gray-600">{trait.value}/100</span>
+                <h4 className="font-semibold text-gray-800 dark:text-gray-200">{trait.name}</h4>
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{trait.value}/100</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-3">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                 <div
                   className={`bg-gradient-to-r ${trait.gradient} h-3 rounded-full transition-all`}
                   style={{ width: `${trait.value}%` }}
                 ></div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{trait.description}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{trait.description}</p>
             </div>
           ))}
         </div>
