@@ -3,8 +3,9 @@ import { useState } from 'react';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch, collapsed, setCollapsed }) => {
+const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   // Calculate approximate token count (1 token ≈ 4 characters)
   const calculateTokens = () => {

@@ -26,8 +26,8 @@ const Chat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageDescription, setImageDescription] = useState('');
 
-  // Header collapse state (default collapsed/tucked in)
-  const [headerCollapsed, setHeaderCollapsed] = useState(true);
+  // Character image visibility state (default visible)
+  const [showCharacterImage, setShowCharacterImage] = useState(true);
 
   // Core chat state
   const {
@@ -278,16 +278,18 @@ const Chat = () => {
           messages={messages}
           onBack={() => navigate('/')}
           onUnmatch={handleUnmatch}
-          collapsed={headerCollapsed}
-          setCollapsed={setHeaderCollapsed}
         />
       )}
 
       {/* Main Chat Area - Split view */}
       <div className="flex-1 flex overflow-hidden gap-4 p-4">
-        {/* Left Side - Character Image */}
+        {/* Left Side - Character Image (with smooth transitions) */}
         {character && (
-          <div className="w-[320px] relative overflow-hidden rounded-2xl shadow-2xl flex-shrink-0 border border-purple-200/30 dark:border-gray-600/30 group">
+          <div
+            className={`relative overflow-hidden rounded-2xl shadow-2xl flex-shrink-0 border border-purple-200/30 dark:border-gray-600/30 group transition-all duration-300 ease-in-out ${
+              showCharacterImage ? 'w-[320px] opacity-100' : 'w-0 opacity-0 border-0'
+            }`}
+          >
             {/* Image with gradient overlays for depth */}
             <div className="absolute inset-0">
               <img
@@ -300,6 +302,8 @@ const Chat = () => {
                   backfaceVisibility: 'hidden'
                 }}
               />
+              {/* Top gradient fade */}
+              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/50 via-black/20 to-transparent"></div>
               {/* Gradient overlays for sleek blending */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-purple-50/20 dark:to-gray-800/30"></div>
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 dark:to-black/30"></div>
@@ -309,11 +313,11 @@ const Chat = () => {
               }}></div>
             </div>
 
-            {/* Toggle Header Button - Top Right */}
+            {/* Hide Image Button - Top Right */}
             <button
-              onClick={() => setHeaderCollapsed(!headerCollapsed)}
+              onClick={() => setShowCharacterImage(false)}
               className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg transition-all opacity-0 group-hover:opacity-100 shadow-lg"
-              title={headerCollapsed ? "Expand Header" : "Collapse Header"}
+              title="Hide character image"
             >
               <svg
                 className="w-5 h-5 text-white"
@@ -321,19 +325,43 @@ const Chat = () => {
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                {headerCollapsed ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                )}
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
               </svg>
             </button>
 
-            {/* Character name overlay at bottom */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm p-5">
-              <h2 className="text-xl font-bold text-white drop-shadow-lg">{character.name}</h2>
+            {/* Character name overlay at bottom - multiple layers for smooth blur fade */}
+            <div className="absolute bottom-0 left-0 right-0 h-32">
+              {/* Blur layer with very gradual fade */}
+              <div className="absolute inset-0 backdrop-blur-sm" style={{
+                maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 100%)',
+                WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 100%)'
+              }}></div>
+              {/* Dark gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-40% via-black/20 to-transparent"></div>
+              {/* Text */}
+              <div className="absolute bottom-5 left-5 right-5">
+                <h2 className="text-xl font-bold text-white drop-shadow-lg">{character.name}</h2>
+              </div>
             </div>
           </div>
+        )}
+
+        {/* Show Image Button (when hidden) */}
+        {character && !showCharacterImage && (
+          <button
+            onClick={() => setShowCharacterImage(true)}
+            className="w-12 flex-shrink-0 bg-white dark:bg-gray-800 border border-purple-200/30 dark:border-gray-600/30 rounded-xl shadow-lg hover:bg-purple-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center animate-fade-in"
+            title="Show character image"
+          >
+            <svg
+              className="w-6 h-6 text-purple-600 dark:text-purple-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+          </button>
         )}
 
         {/* Right Side - Messages */}
