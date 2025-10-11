@@ -266,95 +266,97 @@ const Chat = () => {
   const showAnyTypingIndicator = showTypingIndicator || showTypingIndicatorInternal;
 
   return (
-    <div className="h-full flex bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30">
-      {/* Left Side - Character Image */}
+    <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30">
+      {/* Chat Header */}
       {character && (
-        <div className="w-[380px] relative overflow-hidden border-r border-purple-100/50 dark:border-gray-700/50 flex-shrink-0">
-          {/* Image with gradient overlays for depth */}
-          <div className="absolute inset-0">
-            <img
-              src={character.imageUrl}
-              alt={character.name}
-              className="w-full h-full object-cover object-center"
-              style={{
-                imageRendering: 'auto',
-                transform: 'translateZ(0)',
-                backfaceVisibility: 'hidden'
-              }}
-            />
-            {/* Gradient overlays for sleek blending */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-purple-50/20 dark:to-gray-800/30"></div>
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 dark:to-black/30"></div>
-            {/* Subtle vignette effect */}
-            <div className="absolute inset-0 shadow-inner" style={{
-              boxShadow: 'inset 0 0 100px rgba(0,0,0,0.1)'
-            }}></div>
-          </div>
-
-          {/* Character name overlay at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent backdrop-blur-sm p-6">
-            <h2 className="text-2xl font-bold text-white drop-shadow-lg">{character.name}</h2>
-          </div>
-        </div>
+        <ChatHeader
+          character={character}
+          characterStatus={characterStatus}
+          messages={messages}
+          onBack={() => navigate('/')}
+          onUnmatch={handleUnmatch}
+        />
       )}
 
-      {/* Right Side - Chat Interface */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Chat Header */}
+      {/* Main Chat Area - Split view */}
+      <div className="flex-1 flex overflow-hidden gap-4 p-4">
+        {/* Left Side - Character Image */}
         {character && (
-          <ChatHeader
-            character={character}
-            characterStatus={characterStatus}
-            messages={messages}
-            onBack={() => navigate('/')}
-            onUnmatch={handleUnmatch}
-          />
-        )}
+          <div className="w-[320px] relative overflow-hidden rounded-2xl shadow-2xl flex-shrink-0 border border-purple-200/30 dark:border-gray-600/30">
+            {/* Image with gradient overlays for depth */}
+            <div className="absolute inset-0">
+              <img
+                src={character.imageUrl}
+                alt={character.name}
+                className="w-full h-full object-cover object-center"
+                style={{
+                  imageRendering: 'auto',
+                  transform: 'translateZ(0)',
+                  backfaceVisibility: 'hidden'
+                }}
+              />
+              {/* Gradient overlays for sleek blending */}
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-purple-50/20 dark:to-gray-800/30"></div>
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 dark:to-black/30"></div>
+              {/* Subtle vignette effect */}
+              <div className="absolute inset-0 shadow-inner" style={{
+                boxShadow: 'inset 0 0 100px rgba(0,0,0,0.1)'
+              }}></div>
+            </div>
 
-        {/* Messages */}
-        <MessageList
-          messages={messages}
-          character={character}
-          showTypingIndicator={showAnyTypingIndicator}
-          newMessageIds={newMessageIds}
-          editingMessageId={editingMessageId}
-          editingText={editingText}
-          setEditingText={setEditingText}
-          onStartEdit={handleStartEdit}
-          onCancelEdit={handleCancelEdit}
-          onSaveEdit={handleSaveEdit}
-          onDeleteFrom={handleDeleteFrom}
-          messagesEndRef={messagesEndRef}
-        />
-
-        {/* Error Display */}
-        {error && (
-          <div className="px-6 py-2">
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm shadow-sm">
-              {error}
+            {/* Character name overlay at bottom */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent backdrop-blur-sm p-5">
+              <h2 className="text-xl font-bold text-white drop-shadow-lg">{character.name}</h2>
             </div>
           </div>
         )}
 
-        {/* Input */}
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          sending={sending}
-          displayingMessages={displayingMessages}
-          hasMessages={messages.length > 0}
-          characterName={character?.name}
-          characterId={characterId}
-          character={character}
-          inputRef={inputRef}
-          onSend={handleSend}
-          onRegenerate={handleRegenerateLast}
-          selectedImage={selectedImage}
-          setSelectedImage={setSelectedImage}
-          imageDescription={imageDescription}
-          setImageDescription={setImageDescription}
-        />
+        {/* Right Side - Messages */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <MessageList
+            messages={messages}
+            character={character}
+            showTypingIndicator={showAnyTypingIndicator}
+            newMessageIds={newMessageIds}
+            editingMessageId={editingMessageId}
+            editingText={editingText}
+            setEditingText={setEditingText}
+            onStartEdit={handleStartEdit}
+            onCancelEdit={handleCancelEdit}
+            onSaveEdit={handleSaveEdit}
+            onDeleteFrom={handleDeleteFrom}
+            messagesEndRef={messagesEndRef}
+          />
+
+          {/* Error Display */}
+          {error && (
+            <div className="px-6 py-2">
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm shadow-sm">
+                {error}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Input */}
+      <ChatInput
+        input={input}
+        setInput={setInput}
+        sending={sending}
+        displayingMessages={displayingMessages}
+        hasMessages={messages.length > 0}
+        characterName={character?.name}
+        characterId={characterId}
+        character={character}
+        inputRef={inputRef}
+        onSend={handleSend}
+        onRegenerate={handleRegenerateLast}
+        selectedImage={selectedImage}
+        setSelectedImage={setSelectedImage}
+        imageDescription={imageDescription}
+        setImageDescription={setImageDescription}
+      />
 
       {/* Unmatch Modal */}
       {unmatchData && (
