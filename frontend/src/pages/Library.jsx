@@ -105,34 +105,34 @@ const Library = () => {
       <div className="max-w-7xl mx-auto px-8 py-8">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-md">
-            <div className="text-3xl font-bold text-purple-600 mb-1">{stats.total}</div>
-            <div className="text-gray-600">Total Characters</div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md border border-gray-200 dark:border-gray-700">
+            <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-1">{stats.total}</div>
+            <div className="text-gray-600 dark:text-gray-400">Total Characters</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-md">
-            <div className="text-3xl font-bold text-green-600 mb-1">{stats.liked}</div>
-            <div className="text-gray-600">Liked</div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md border border-gray-200 dark:border-gray-700">
+            <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">{stats.liked}</div>
+            <div className="text-gray-600 dark:text-gray-400">Liked</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-md">
-            <div className="text-3xl font-bold text-blue-600 mb-1">{stats.remaining}</div>
-            <div className="text-gray-600">To Swipe</div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-md border border-gray-200 dark:border-gray-700">
+            <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">{stats.remaining}</div>
+            <div className="text-gray-600 dark:text-gray-400">To Swipe</div>
           </div>
         </div>
 
         {/* Add Characters Section */}
         <div className="mb-8 space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900">Add Characters</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Add Characters</h2>
 
           {/* Create Character Button */}
-          <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl p-6 shadow-lg">
+          <div className="bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 rounded-xl p-6 shadow-lg border border-pink-400/30 dark:border-purple-600/30">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-white mb-2">Create from Scratch</h3>
-                <p className="text-pink-100">Use AI to generate a unique character with custom personality and appearance</p>
+                <p className="text-pink-100 dark:text-purple-100">Use AI to generate a unique character with custom personality and appearance</p>
               </div>
               <button
                 onClick={() => navigate('/wizard')}
-                className="px-6 py-3 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition font-semibold shadow-md"
+                className="px-6 py-3 bg-white dark:bg-gray-900 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition font-semibold shadow-md"
               >
                 Character Wizard
               </button>
@@ -141,7 +141,7 @@ const Library = () => {
 
           {/* Upload Zone */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-700 mb-3">Import Character Cards</h3>
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Import Character Cards</h3>
             <UploadZone onUpload={handleUpload} />
           </div>
         </div>
@@ -153,7 +153,7 @@ const Library = () => {
             className={`px-4 py-2 rounded-lg font-medium transition ${
               filter === 'all'
                 ? 'bg-purple-500 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
             }`}
           >
             All ({stats.total})
@@ -163,7 +163,7 @@ const Library = () => {
             className={`px-4 py-2 rounded-lg font-medium transition ${
               filter === 'liked'
                 ? 'bg-green-500 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
             }`}
           >
             Liked ({stats.liked})
@@ -173,7 +173,7 @@ const Library = () => {
             className={`px-4 py-2 rounded-lg font-medium transition ${
               filter === 'unviewed'
                 ? 'bg-blue-500 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
             }`}
           >
             To Swipe ({stats.remaining})
@@ -184,7 +184,7 @@ const Library = () => {
         {loading ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading characters...</p>
+            <p className="text-gray-600 dark:text-gray-400">Loading characters...</p>
           </div>
         ) : (
           <CharacterGrid
