@@ -17,11 +17,11 @@ export async function syncAllCharacters(userId) {
       return { success: true, synced: 0, skipped: 0, total: 0 };
     }
 
-    // Extract all character data
+    // Extract all character data (exclude imageUrl - too large and not needed by backend)
     const characterData = characters.map(char => ({
       id: char.id,
       cardData: char.cardData,
-      imageUrl: char.imageUrl || null
+      // imageUrl removed - images stay in IndexedDB, backend doesn't need them
     }));
 
     console.log(`📋 Syncing ${characterData.length} characters to backend...`);

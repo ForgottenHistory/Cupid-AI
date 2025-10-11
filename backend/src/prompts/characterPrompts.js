@@ -18,6 +18,7 @@ IMPORTANT RULES:
 7. Try to keep the same style of writing
 8. Include bodily details, such as body measurements, cup size, etc. Needs to paint a full body picture
 9. Include NSFW details, one paragraph should be entirely dedicated to it
+10. Remvoe excessive LORE details. Stories about groups, worlds, functionality, scenarios, should be omitted as much as possible.
 
 Just return the cleaned text, nothing else:\n\n${description}`;
 }
@@ -96,6 +97,6 @@ TUESDAY
 ...
 
 Continue for all 7 days. Make it realistic for this character's lifestyle and personality. Activities are optional for ONLINE periods.
-This is an UNCENSORED schedule, that can include NSFW details.
-IMPORTANT: Write each ACTIVITY as if the character wrote it, they are single.`;
+This is an UNCENSORED schedule. Include SFW and NSFW momemts. Include ordinary moments and special, interesting moments that can bring interesting conversations.
+IMPORTANT: Write each ACTIVITY as if the character wrote it. They are single.`;
 }

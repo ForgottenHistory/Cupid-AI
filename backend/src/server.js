@@ -74,8 +74,8 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json({ limit: '50mb' })); // Increase limit for character images
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '200mb' })); // Increase limit for character images (base64 data can be large)
+app.use(express.urlencoded({ extended: true, limit: '200mb' }));
 
 // Serve uploaded files
 app.use('/uploads', express.static(uploadsDir));
