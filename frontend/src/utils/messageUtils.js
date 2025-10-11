@@ -1,4 +1,13 @@
 /**
+ * Extract the actual message ID (remove -part-N suffix if present)
+ * @param {string|number} messageId - The message ID
+ * @returns {string|number} The actual message ID
+ */
+export const extractActualMessageId = (messageId) => {
+  return messageId.toString().split('-part-')[0];
+};
+
+/**
  * Determine if timestamp should be shown for a message
  * Always show timestamp for all messages
  * @param {Object} message - The message object
