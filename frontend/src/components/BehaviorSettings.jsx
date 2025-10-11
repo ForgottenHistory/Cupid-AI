@@ -69,7 +69,7 @@ const BehaviorSettings = ({ onClose }) => {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="bg-white rounded-2xl p-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
@@ -78,7 +78,7 @@ const BehaviorSettings = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
         {/* Header */}
         <div className="p-6 border-b bg-gradient-to-r from-pink-500 to-purple-600">
           <div className="flex items-center justify-between">
@@ -102,12 +102,12 @@ const BehaviorSettings = ({ onClose }) => {
           <div className="p-6 space-y-6">
             {/* Error/Success Messages */}
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
                 {error}
               </div>
             )}
             {success && (
-              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+              <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 text-green-700 dark:text-green-300 px-4 py-3 rounded-lg">
                 {success}
               </div>
             )}
@@ -115,8 +115,8 @@ const BehaviorSettings = ({ onClose }) => {
             {/* Emoji Usage */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="font-semibold text-gray-900">Max Emojis Per Message</label>
-                <span className="text-sm font-medium text-purple-600">{settings.maxEmojisPerMessage}</span>
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Max Emojis Per Message</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.maxEmojisPerMessage}</span>
               </div>
               <input
                 type="range"
@@ -125,20 +125,20 @@ const BehaviorSettings = ({ onClose }) => {
                 step="1"
                 value={settings.maxEmojisPerMessage}
                 onChange={(e) => updateSetting('maxEmojisPerMessage', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>None</span>
                 <span>Lots</span>
               </div>
-              <p className="text-sm text-gray-600">How many emojis characters can use in each message</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">How many emojis characters can use in each message</p>
             </div>
 
             {/* Proactive Message Timing */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="font-semibold text-gray-900">Proactive Message Timing</label>
-                <span className="text-sm font-medium text-purple-600">{settings.proactiveMessageHours} hours</span>
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Proactive Message Timing</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveMessageHours} hours</span>
               </div>
               <input
                 type="range"
@@ -147,20 +147,20 @@ const BehaviorSettings = ({ onClose }) => {
                 step="1"
                 value={settings.proactiveMessageHours}
                 onChange={(e) => updateSetting('proactiveMessageHours', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>1h</span>
                 <span>24h</span>
               </div>
-              <p className="text-sm text-gray-600">Minimum hours before characters send proactive messages</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Minimum hours before characters send proactive messages</p>
             </div>
 
             {/* Daily Proactive Limit */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="font-semibold text-gray-900">Daily Proactive Message Limit</label>
-                <span className="text-sm font-medium text-purple-600">{settings.dailyProactiveLimit} per day</span>
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Daily Proactive Message Limit</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.dailyProactiveLimit} per day</span>
               </div>
               <input
                 type="range"
@@ -169,43 +169,43 @@ const BehaviorSettings = ({ onClose }) => {
                 step="1"
                 value={settings.dailyProactiveLimit}
                 onChange={(e) => updateSetting('dailyProactiveLimit', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
-              <div className="flex justify-between text-xs text-gray-500">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>1</span>
                 <span>20</span>
               </div>
-              <p className="text-sm text-gray-600">Maximum proactive messages across all characters per day</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum proactive messages across all characters per day</p>
             </div>
 
             {/* Pacing Style */}
             <div className="space-y-2">
-              <label className="font-semibold text-gray-900">Pacing & Chemistry Style</label>
+              <label className="font-semibold text-gray-900 dark:text-gray-100">Pacing & Chemistry Style</label>
               <select
                 value={settings.pacingStyle}
                 onChange={(e) => updateSetting('pacingStyle', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
               >
                 <option value="slow">Slow - Takes time to develop chemistry, more resistant</option>
                 <option value="balanced">Balanced - Natural progression, matches energy</option>
                 <option value="forward">Forward - More direct and receptive from the start</option>
               </select>
-              <p className="text-sm text-gray-600">How characters pace romantic/intimate development</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">How characters pace romantic/intimate development</p>
             </div>
 
-            <div className="pt-4 border-t">
-              <p className="text-xs text-gray-500">
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 💡 <strong>Tip:</strong> These settings affect all characters. Changes take effect immediately.
               </p>
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="p-6 border-t bg-gray-50 flex items-center justify-between">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex items-center justify-between">
             <button
               type="button"
               onClick={resetToDefaults}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition font-medium"
+              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition font-medium"
             >
               Reset to Defaults
             </button>
@@ -213,7 +213,7 @@ const BehaviorSettings = ({ onClose }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition font-medium"
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition font-medium"
               >
                 Cancel
               </button>
