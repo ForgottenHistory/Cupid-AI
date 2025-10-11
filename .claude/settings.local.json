@@ -5,7 +5,9 @@
       "Bash(git commit:*)",
       "Bash(python:*)",
       "Bash(git add:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "WebSearch",
+      "WebFetch(domain:openrouter.ai)"
     ],
     "deny": [],
     "ask": []
