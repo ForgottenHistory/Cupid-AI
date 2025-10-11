@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import chatService from '../../services/chatService';
+import Emoji from '../Emoji';
 
 /**
  * Chat input component with send, regenerate, and AI suggestion buttons
@@ -72,7 +73,10 @@ const ChatInput = ({
                 <span>Generating...</span>
               </div>
             ) : (
-              '💼 Serious'
+              <div className="flex items-center justify-center gap-1.5">
+                <Emoji emoji="💼" size="1.1em" />
+                <span>Serious</span>
+              </div>
             )}
           </button>
           <button
@@ -87,7 +91,10 @@ const ChatInput = ({
                 <span>Generating...</span>
               </div>
             ) : (
-              '😏 Sarcastic'
+              <div className="flex items-center justify-center gap-1.5">
+                <Emoji emoji="😏" size="1.1em" />
+                <span>Sarcastic</span>
+              </div>
             )}
           </button>
           <button
@@ -102,7 +109,10 @@ const ChatInput = ({
                 <span>Generating...</span>
               </div>
             ) : (
-              '💕 Flirty'
+              <div className="flex items-center justify-center gap-1.5">
+                <Emoji emoji="💕" size="1.1em" />
+                <span>Flirty</span>
+              </div>
             )}
           </button>
         </div>

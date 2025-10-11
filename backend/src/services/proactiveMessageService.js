@@ -113,8 +113,8 @@ class ProactiveMessageService {
         const now = new Date();
         const gapHours = (now - lastUserMessageTime) / (1000 * 60 * 60);
 
-        // Skip if user sent a message within the last hour
-        if (gapHours < 1) {
+        // Skip if user sent a message within the last 4 hours
+        if (gapHours < 4) {
           continue;
         }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { shouldShowTimestamp, formatRelativeTime } from '../../utils/messageUtils';
 import AudioPlayer from './AudioPlayer';
 import ImageModal from '../ImageModal';
+import Emoji from '../Emoji';
 
 /**
  * Individual message bubble component
@@ -122,13 +123,15 @@ const MessageBubble = ({
               title="Click to view full size"
             />
             {message.content && (
-              <p className={`text-xs ${message.role === 'user' ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'} italic break-words`}>
-                {message.content}
-              </p>
+              <Emoji
+                emoji={message.content}
+                className={`text-xs ${message.role === 'user' ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'} italic break-words`}
+                size="0.9em"
+              />
             )}
           </div>
         ) : (
-          <p className="break-words leading-relaxed">{message.content}</p>
+          <Emoji emoji={message.content} className="break-words leading-relaxed" size="1.25em" />
         )}
 
         {/* Show timestamp for user messages or last part of assistant multi-messages */}
@@ -144,8 +147,8 @@ const MessageBubble = ({
 
         {/* Reaction badge (show on user messages if next message is assistant with reaction) */}
         {message.role === 'user' && messages[index + 1]?.role === 'assistant' && messages[index + 1]?.reaction && (
-          <div className="absolute -bottom-2 -right-2 text-lg bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-1.5 py-0.5 shadow-lg border border-purple-200/50 dark:border-gray-600/50">
-            {messages[index + 1].reaction}
+          <div className="absolute -bottom-2 -right-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-1.5 py-0.5 shadow-lg border border-purple-200/50 dark:border-gray-600/50">
+            <Emoji emoji={messages[index + 1].reaction} size="1.15em" />
           </div>
         )}
       </div>
