@@ -49,3 +49,6 @@ nul
 test_output.wav
 /backend/uploads
 /tts-server/voices
+backend/danbooru_tags.txt
+.claude/settings.local.json
+.claude/settings.local.json
