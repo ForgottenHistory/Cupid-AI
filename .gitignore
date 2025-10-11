@@ -52,3 +52,4 @@ test_output.wav
 backend/danbooru_tags.txt
 .claude/settings.local.json
 .claude/settings.local.json
+backend/danbooru_tags.txt
