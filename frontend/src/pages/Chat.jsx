@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useMood } from '../context/MoodContext';
 import chatService from '../services/chatService';
 import characterService from '../services/characterService';
 
@@ -15,6 +16,8 @@ import ChatHeader from '../components/chat/ChatHeader';
 import MessageList from '../components/chat/MessageList';
 import ChatInput from '../components/chat/ChatInput';
 import UnmatchModal from '../components/UnmatchModal';
+import ChatBackgroundEffects from '../components/chat/ChatBackgroundEffects';
+import MoodModal from '../components/chat/MoodModal';
 
 const Chat = () => {
   const { characterId } = useParams();
@@ -28,6 +31,12 @@ const Chat = () => {
 
   // Character image visibility state (default visible)
   const [showCharacterImage, setShowCharacterImage] = useState(true);
+
+  // Mood context (persistent per character)
+  const { setMoodEffect, clearMoodEffect, closeMoodModal, getMoodForCharacter } = useMood();
+
+  // Get mood state for current character
+  const { effect: backgroundEffect, visible: backgroundVisible, showModal: showMoodModal, characterName: currentCharacterName } = getMoodForCharacter(characterId);
 
   // Core chat state
   const {
@@ -116,6 +125,57 @@ const Chat = () => {
     setImageDescription('');
   }, [characterId]);
 
+  // Check for 30-minute time gap when chat first loads and restore mood effects
+  useEffect(() => {
+    if (messages.length > 0 && !loading && character) {
+      console.log(`🔍 Checking mood restoration for ${character.name} (${characterId})`);
+
+      // Find last non-system message (user or assistant)
+      const lastNonSystemMsg = [...messages].reverse().find(m => m.role !== 'system');
+
+      if (lastNonSystemMsg) {
+        const lastMsgTime = new Date(lastNonSystemMsg.created_at).getTime();
+        const nowTime = Date.now();
+        const gapMinutes = (nowTime - lastMsgTime) / (1000 * 60);
+
+        if (gapMinutes >= 30) {
+          console.log(`⏰ Conversation idle (${gapMinutes.toFixed(1)} min) - clearing instantly`);
+          clearMoodEffect(characterId, true); // instant clear
+          return;
+        }
+      }
+
+      // Find the most recent mood system message
+      const moodPattern = /\[.+ switched background to (\w+)\]/;
+      const lastMoodMsg = [...messages].reverse().find(m => {
+        return m.role === 'system' && moodPattern.test(m.content);
+      });
+
+      if (lastMoodMsg) {
+        const match = lastMoodMsg.content.match(moodPattern);
+        const mood = match[1].toLowerCase();
+        const moodTime = new Date(lastMoodMsg.created_at).getTime();
+        const elapsed = Date.now() - moodTime;
+        const thirtyMinutes = 30 * 60 * 1000;
+
+        // Only restore if mood is less than 30 minutes old
+        if (elapsed < thirtyMinutes) {
+          const remaining = thirtyMinutes - elapsed;
+          console.log(`🔄 Restoring ${mood} for ${character.name} (${(remaining / 60000).toFixed(1)} min remaining, no modal)`);
+          setMoodEffect(characterId, mood, character.name, remaining, false); // false = don't show modal
+        } else {
+          console.log(`⏰ Mood expired (${(elapsed / 60000).toFixed(1)} min old) - clearing instantly`);
+          clearMoodEffect(characterId, true); // instant clear
+        }
+      } else {
+        console.log(`📭 No mood message found for ${character.name} - clearing instantly`);
+        clearMoodEffect(characterId, true); // instant clear
+      }
+    }
+    // Only run when characterId changes or loading finishes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [characterId, loading]);
+
   // Debug function for testing unmatch modal
   useEffect(() => {
     if (character) {
@@ -200,15 +260,65 @@ const Chat = () => {
         }
       };
 
-      console.log('🐛 Debug functions available:');
-      console.log('  - debugUnmatch() - Test unmatch modal');
-      console.log('  - debugGenerateImage(contextTags) - Generate character image');
-      console.log('    Example: debugGenerateImage("smiling, waving, park, sunny day")');
+      // Debug function for testing chat background effects (frontend only)
+      window.debugChatBackground = (effect = 'hearts') => {
+        const validEffects = ['none', 'hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
+        if (!validEffects.includes(effect)) {
+          console.log(`❌ Invalid effect. Valid options: ${validEffects.join(', ')}`);
+          return;
+        }
+        console.log(`🎨 Setting chat background effect: ${effect} for character ${characterId}`);
+
+        if (effect !== 'none') {
+          // Pass auto-clear timeout to context (30 minutes)
+          setMoodEffect(characterId, effect, character?.name || 'Character', 30 * 60 * 1000);
+        } else {
+          clearMoodEffect(characterId);
+        }
+      };
+
+      // Debug function for full mood system (backend + frontend)
+      window.debugMood = async (mood = 'hearts') => {
+        const validMoods = ['hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
+        if (!validMoods.includes(mood)) {
+          console.log(`❌ Invalid mood. Valid options: ${validMoods.join(', ')}`);
+          return;
+        }
+
+        console.log(`🎨 Triggering full mood system: ${mood} for character ${characterId}`);
+
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`http://localhost:3000/api/chat/conversations/${characterId}/debug-mood`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ mood, characterName: character?.name })
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            console.error('❌ Mood trigger failed:', error);
+            return;
+          }
+
+          const result = await response.json();
+          console.log('✅ Mood triggered successfully!');
+          console.log('📝 System message:', result.systemMessage);
+        } catch (error) {
+          console.error('❌ Debug mood error:', error);
+        }
+      };
     }
     return () => {
       delete window.debugUnmatch;
       delete window.debugGenerateImage;
+      delete window.debugChatBackground;
+      delete window.debugMood;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character]);
 
   // Handle unmatch
@@ -268,21 +378,54 @@ const Chat = () => {
   // Combine typing indicators (WebSocket + internal for regenerate)
   const showAnyTypingIndicator = showTypingIndicator || showTypingIndicatorInternal;
 
+  // Get background gradient based on mood
+  const getMoodBackgroundGradient = () => {
+    switch (backgroundEffect) {
+      case 'hearts':
+        return 'bg-gradient-to-b from-pink-100 to-red-100 dark:from-pink-900 dark:to-red-900';
+      case 'stars':
+        return 'bg-gradient-to-b from-yellow-100 to-orange-100 dark:from-yellow-900 dark:to-orange-900';
+      case 'laugh':
+        return 'bg-gradient-to-b from-yellow-100 to-amber-100 dark:from-yellow-900 dark:to-amber-900';
+      case 'sparkles':
+        return 'bg-gradient-to-b from-purple-100 to-pink-100 dark:from-purple-900 dark:to-pink-900';
+      case 'fire':
+        return 'bg-gradient-to-b from-orange-100 to-red-100 dark:from-orange-900 dark:to-red-900';
+      case 'roses':
+        return 'bg-gradient-to-b from-pink-100 to-rose-100 dark:from-pink-900 dark:to-rose-900';
+      default:
+        return '';
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30">
-      {/* Chat Header - Always visible */}
-      {character && (
-        <ChatHeader
-          character={character}
-          characterStatus={characterStatus}
-          messages={messages}
-          onBack={() => navigate('/')}
-          onUnmatch={handleUnmatch}
+    <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30 relative">
+      {/* Mood Background Overlay - Only render when visible to avoid flash */}
+      {backgroundEffect !== 'none' && backgroundVisible && (
+        <div
+          className={`absolute inset-0 ${getMoodBackgroundGradient()} opacity-40 dark:opacity-20`}
+          style={{ pointerEvents: 'none' }}
         />
       )}
 
+      {/* Background Effects */}
+      <ChatBackgroundEffects effect={backgroundEffect} visible={backgroundVisible} />
+
+      {/* Chat Header - Always visible */}
+      {character && (
+        <div className="relative z-10">
+          <ChatHeader
+            character={character}
+            characterStatus={characterStatus}
+            messages={messages}
+            onBack={() => navigate('/')}
+            onUnmatch={handleUnmatch}
+          />
+        </div>
+      )}
+
       {/* Main Chat Area - Split view */}
-      <div className="flex-1 flex overflow-hidden gap-4 p-4">
+      <div className="flex-1 flex overflow-hidden gap-4 p-4 relative z-10">
         {/* Left Side - Character Image (with smooth transitions) */}
         {character && (
           <div
@@ -393,23 +536,25 @@ const Chat = () => {
       </div>
 
       {/* Input */}
-      <ChatInput
-        input={input}
-        setInput={setInput}
-        sending={sending}
-        displayingMessages={displayingMessages}
-        hasMessages={messages.length > 0}
-        characterName={character?.name}
-        characterId={characterId}
-        character={character}
-        inputRef={inputRef}
-        onSend={handleSend}
-        onRegenerate={handleRegenerateLast}
-        selectedImage={selectedImage}
-        setSelectedImage={setSelectedImage}
-        imageDescription={imageDescription}
-        setImageDescription={setImageDescription}
-      />
+      <div className="relative z-10">
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          sending={sending}
+          displayingMessages={displayingMessages}
+          hasMessages={messages.length > 0}
+          characterName={character?.name}
+          characterId={characterId}
+          character={character}
+          inputRef={inputRef}
+          onSend={handleSend}
+          onRegenerate={handleRegenerateLast}
+          selectedImage={selectedImage}
+          setSelectedImage={setSelectedImage}
+          imageDescription={imageDescription}
+          setImageDescription={setImageDescription}
+        />
+      </div>
 
       {/* Unmatch Modal */}
       {unmatchData && (
@@ -419,6 +564,15 @@ const Chat = () => {
             imageUrl: character?.imageUrl
           }}
           onClose={() => setUnmatchData(null)}
+        />
+      )}
+
+      {/* Mood Modal */}
+      {showMoodModal && (
+        <MoodModal
+          effect={backgroundEffect}
+          characterName={currentCharacterName}
+          onClose={() => closeMoodModal(characterId)}
         />
       )}
     </div>

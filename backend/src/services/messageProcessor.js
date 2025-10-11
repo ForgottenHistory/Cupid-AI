@@ -139,6 +139,43 @@ class MessageProcessor {
 
       console.log('🎯 Decision made:', decision);
 
+      // Insert background effect system message if mood is set (not 'none')
+      if (decision.mood && decision.mood !== 'none') {
+        const characterName = characterData.name || 'Character';
+        const systemMessage = `[${characterName} switched background to ${decision.mood.toUpperCase()}]`;
+
+        // Save background effect system message to conversation history
+        const savedMoodMessage = messageService.saveMessage(
+          conversationId,
+          'system',
+          systemMessage,
+          null, // no reaction
+          'text',
+          null, // no audio
+          null, // no image
+          null, // no image tags
+          false, // not proactive
+          null  // no image prompt
+        );
+
+        // Add to aiMessages array so Content LLM sees it immediately
+        aiMessages.push({
+          role: 'system',
+          content: systemMessage
+        });
+
+        console.log(`🎨 Background effect inserted: ${characterName} → ${decision.mood}`);
+
+        // Emit mood change to frontend
+        io.to(`user:${userId}`).emit('mood_change', {
+          characterId,
+          mood: decision.mood,
+          characterName: characterData.name || 'Character',
+          systemMessage: systemMessage,
+          messageId: savedMoodMessage.id
+        });
+      }
+
       // Check if character wants to unmatch
       if (decision.shouldUnmatch) {
         console.log(`💔 Character ${characterId} has decided to unmatch user ${userId}`);

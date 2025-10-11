@@ -9,7 +9,7 @@ class DecisionEngineService {
 
   /**
    * Decision Engine: Analyze conversation and decide on actions
-   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, imageContext: string|null }
+   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, imageContext: string|null }
    */
   async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false }) {
     if (!this.apiKey) {
@@ -51,7 +51,8 @@ Decide on the character's behavioral response. Output your decision in this EXAC
 Reaction: [emoji or "none"]
 Should Respond: [yes/no]
 Should Unmatch: [yes/no]
-${hasVoice ? 'Send Voice: [yes/no]\n' : ''}${hasImage ? 'Send Image: [yes/no]\n' : ''}Reason: [brief explanation in one sentence]
+${hasVoice ? 'Send Voice: [yes/no]\n' : ''}${hasImage ? 'Send Image: [yes/no]\n' : ''}Mood: [none/hearts/stars/laugh/sparkles/fire/roses]
+Reason: [brief explanation in one sentence]
 
 Guidelines:
 - "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
@@ -77,8 +78,17 @@ Guidelines:
   * Early conversation before rapport built → Usually NO
   * Personality: High openness/extraversion = more likely to send spontaneous pics
   Images should feel natural to the conversation flow, not forced or random.` : ''}
+- "Mood": Set the chat background mood based on how the character is feeling. IMPORTANT: Should be RARE - only use when there's a strong emotional shift:
+  * "hearts" - Feeling romantic, flirty, lovey-dovey (use when conversation gets romantic/sweet)
+  * "stars" - Feeling excited, thrilled, amazed (use when something exciting happens)
+  * "laugh" - Finding something hilarious, laughing hard (use when genuinely funny moments happen)
+  * "sparkles" - Feeling magical, special, dreamy (use when feeling extra special/enchanted)
+  * "fire" - Feeling passionate, intense, heated (use for passionate/spicy moments)
+  * "roses" - Feeling sweet, tender, soft (use for gentle romantic moments)
+  * "none" - No strong mood change (DEFAULT - use most of the time)
+  IMPORTANT: Only set a mood when there's a clear emotional SHIFT in the conversation. Don't spam moods on every message. Most messages should be "none".
 
-Output ONLY the ${hasVoice && hasImage ? 'six' : hasVoice || hasImage ? 'five' : 'four'} lines in the exact format shown above, nothing else.`;
+Output ONLY the ${hasVoice && hasImage ? 'seven' : hasVoice || hasImage ? 'six' : 'five'} lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Decision Engine Request:', {
         model: decisionSettings.model,
@@ -237,6 +247,7 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
         shouldUnmatch: false,
         shouldSendVoice: false,
         shouldSendImage: false,
+        mood: 'none',
         reason: 'No reason provided'
       };
 
@@ -259,6 +270,12 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
         } else if (line.startsWith('Send Image:')) {
           const value = line.substring('Send Image:'.length).trim().toLowerCase();
           decision.shouldSendImage = value === 'yes';
+        } else if (line.startsWith('Mood:')) {
+          const value = line.substring('Mood:'.length).trim().toLowerCase();
+          const validMoods = ['none', 'hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
+          if (validMoods.includes(value)) {
+            decision.mood = value;
+          }
         } else if (line.startsWith('Reason:')) {
           const value = line.substring('Reason:'.length).trim();
           if (value) {
@@ -312,6 +329,7 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
       shouldUnmatch: false,
       shouldSendVoice: false,
       shouldSendImage: false,
+      mood: 'none',
       reason: 'Default decision (fallback)'
     };
   }

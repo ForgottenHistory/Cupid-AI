@@ -2,23 +2,45 @@ import db from '../db/database.js';
 
 class MessageService {
   /**
+   * Convert SQLite timestamp to ISO format (append Z for UTC)
+   */
+  formatTimestamp(sqliteTimestamp) {
+    if (!sqliteTimestamp) return sqliteTimestamp;
+    // SQLite CURRENT_TIMESTAMP format: '2025-10-11 08:49:13'
+    // Convert to ISO format: '2025-10-11T08:49:13Z'
+    return sqliteTimestamp.replace(' ', 'T') + 'Z';
+  }
+
+  /**
    * Get all messages for a conversation
    */
   getMessages(conversationId) {
-    return db.prepare(`
+    const messages = db.prepare(`
       SELECT * FROM messages
       WHERE conversation_id = ?
       ORDER BY created_at ASC
     `).all(conversationId);
+
+    // Convert timestamps to ISO format
+    return messages.map(msg => ({
+      ...msg,
+      created_at: this.formatTimestamp(msg.created_at)
+    }));
   }
 
   /**
    * Get message by ID
    */
   getMessage(messageId) {
-    return db.prepare(`
+    const message = db.prepare(`
       SELECT * FROM messages WHERE id = ?
     `).get(messageId);
+
+    if (message) {
+      message.created_at = this.formatTimestamp(message.created_at);
+    }
+
+    return message;
   }
 
   /**
@@ -137,6 +159,7 @@ class MessageService {
       throw new Error('Message not found');
     }
 
+    // Allow deletion if user owns the conversation (works for both user/assistant/system messages)
     if (message.user_id !== userId) {
       throw new Error('Unauthorized');
     }

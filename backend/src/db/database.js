@@ -318,6 +318,55 @@ function runMigrations() {
       `);
       console.log('✅ Proactive away/busy chance columns added to users table');
     }
+
+    // Migration: Update messages table to allow 'system' role
+    // Check if the constraint needs updating
+    const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();
+    if (messagesSchema && messagesSchema.sql.includes("CHECK(role IN ('user', 'assistant'))")) {
+      console.log('🔄 Updating messages table to allow system role...');
+
+      // SQLite doesn't support ALTER TABLE for CHECK constraints, so we need to recreate the table
+      db.exec(`
+        PRAGMA foreign_keys=OFF;
+
+        BEGIN TRANSACTION;
+
+        -- Create new table with updated constraint
+        CREATE TABLE messages_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          conversation_id INTEGER NOT NULL,
+          role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
+          content TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          reaction TEXT,
+          message_type TEXT DEFAULT 'text',
+          audio_url TEXT,
+          image_url TEXT,
+          image_tags TEXT,
+          is_proactive INTEGER DEFAULT 0,
+          image_prompt TEXT,
+          FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+        );
+
+        -- Copy data from old table
+        INSERT INTO messages_new SELECT * FROM messages;
+
+        -- Drop old table
+        DROP TABLE messages;
+
+        -- Rename new table
+        ALTER TABLE messages_new RENAME TO messages;
+
+        -- Recreate index
+        CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
+
+        COMMIT;
+
+        PRAGMA foreign_keys=ON;
+      `);
+
+      console.log('✅ messages table updated to allow system role');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

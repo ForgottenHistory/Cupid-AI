@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import socketService from '../services/socketService';
 import chatService from '../services/chatService';
 import { splitMessageIntoParts } from '../utils/messageUtils';
+import { useMood } from '../context/MoodContext';
 
 /**
  * Hook for managing WebSocket connection and real-time message handling
@@ -31,6 +32,7 @@ export const useChatWebSocket = ({
 }) => {
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [unmatchData, setUnmatchData] = useState(null);
+  const { setMoodEffect, clearMoodEffect } = useMood();
 
   // Check if character is currently typing when characterId changes
   useEffect(() => {
@@ -61,6 +63,26 @@ export const useChatWebSocket = ({
       console.log('📨 Received new message via WebSocket:', data);
       setShowTypingIndicator(false);
       const lastMessage = data.message;
+
+      // Check for 30-minute time gap and clear mood effects if needed
+      setMessages(prev => {
+        if (prev.length > 0) {
+          // Find last non-system message (user or assistant)
+          const lastNonSystemMsg = [...prev].reverse().find(m => m.role !== 'system');
+
+          if (lastNonSystemMsg) {
+            const lastMsgTime = new Date(lastNonSystemMsg.created_at).getTime();
+            const newMsgTime = new Date(lastMessage.created_at).getTime();
+            const gapMinutes = (newMsgTime - lastMsgTime) / (1000 * 60);
+
+            if (gapMinutes >= 30) {
+              console.log(`⏰ Time gap of ${gapMinutes.toFixed(1)} minutes detected - clearing mood effects`);
+              clearMoodEffect(characterId);
+            }
+          }
+        }
+        return prev; // Don't actually modify messages yet
+      });
 
       if (lastMessage && lastMessage.role === 'assistant') {
         // Split AI message by newlines for progressive display
@@ -173,11 +195,34 @@ export const useChatWebSocket = ({
       }
     };
 
+    const handleMoodChange = (data) => {
+      // Only update UI if this is the current character
+      if (data.characterId !== characterId) return;
+
+      console.log('🎨 Mood change received:', data);
+
+      // Set mood visual effects for this character with 30 minute auto-clear
+      setMoodEffect(data.characterId, data.mood, data.characterName, 30 * 60 * 1000);
+
+      // Add system message to chat if systemMessage is provided
+      if (data.systemMessage) {
+        const systemMsg = {
+          id: data.messageId || `system-${Date.now()}`,
+          role: 'system',
+          content: data.systemMessage,
+          created_at: new Date().toISOString(), // Already in UTC format with Z
+        };
+
+        setMessages(prev => [...prev, systemMsg]);
+      }
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
     socketService.on('ai_response_error', handleAIResponseError);
     socketService.on('character_unmatched', handleCharacterUnmatched);
+    socketService.on('mood_change', handleMoodChange);
 
     // Cleanup
     return () => {
@@ -186,8 +231,9 @@ export const useChatWebSocket = ({
       socketService.off('character_offline', handleCharacterOffline);
       socketService.off('ai_response_error', handleAIResponseError);
       socketService.off('character_unmatched', handleCharacterUnmatched);
+      socketService.off('mood_change', handleMoodChange);
     };
-  }, [user, characterId]);
+  }, [user, characterId, setMoodEffect]);
 
   return {
     showTypingIndicator,

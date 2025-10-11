@@ -109,6 +109,23 @@
   }
 }
 
+@keyframes float-fall {
+  0% {
+    transform: translateY(-50px) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(calc(100vh + 50px)) translateX(30px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
 }
@@ -127,4 +144,8 @@
 
 .animate-slideUp {
   animation: slide-up 0.3s ease-out;
+}
+
+.animate-float-fall {
+  animation: float-fall linear infinite;
 }

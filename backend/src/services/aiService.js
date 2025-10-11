@@ -335,7 +335,6 @@ class AIService {
         if (msg.role === 'system') {
           parts.push(`[SYSTEM MESSAGE ${index > 0 ? index : ''}]:`);
           parts.push(msg.content);
-          parts.push('');
         } else if (msg.prefix) {
           // Skip priming prefix - it's just an API artifact to prompt the AI
           // The actual AI response isn't part of the logged conversation yet
@@ -347,8 +346,9 @@ class AIService {
 
       let logContent = parts.join('\n');
 
-      // Clean up time gap markers - remove the [SYSTEM MESSAGE N]: label so they appear inline
-      logContent = logContent.replace(/\[SYSTEM MESSAGE \d*\]:\n(\[TIME GAP:)/g, '\n\n$1');
+      // Clean up special markers - remove the [SYSTEM MESSAGE N]: label so they appear inline
+      logContent = logContent.replace(/\[SYSTEM MESSAGE \d*\]:\n(\[TIME GAP:)/g, '\n$1');
+      logContent = logContent.replace(/\[SYSTEM MESSAGE \d*\]:\n(\[.+ switched background to)/g, '\n$1');
 
       // Write to file
       fs.writeFileSync(filepath, logContent, 'utf8');

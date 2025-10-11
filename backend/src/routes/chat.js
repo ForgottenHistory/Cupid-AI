@@ -552,4 +552,58 @@ router.post('/upload-user-image', authenticateToken, uploadUserImage.single('ima
   }
 });
 
+/**
+ * POST /api/chat/conversations/:characterId/debug-mood
+ * Debug endpoint to trigger mood change
+ */
+router.post('/conversations/:characterId/debug-mood', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { mood, characterName } = req.body;
+    const userId = req.user.id;
+
+    const validMoods = ['hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
+    if (!validMoods.includes(mood)) {
+      return res.status(400).json({ error: `Invalid mood. Must be one of: ${validMoods.join(', ')}` });
+    }
+
+    const charName = characterName || 'Character';
+
+    // Get or create conversation
+    const conversation = conversationService.getOrCreateConversation(userId, characterId, charName);
+    const systemMessage = `[${charName} switched background to ${mood.toUpperCase()}]`;
+
+    // Save background effect system message to conversation history
+    const savedMessage = messageService.saveMessage(
+      conversation.id,
+      'system',
+      systemMessage,
+      null, // no reaction
+      'text',
+      null, // no audio
+      null, // no image
+      null, // no image tags
+      false, // not proactive
+      null  // no image prompt
+    );
+
+    console.log(`🎨 [DEBUG] Background effect inserted: ${charName} → ${mood}`);
+
+    // Emit mood change to frontend
+    const io = req.app.get('io');
+    io.to(`user:${userId}`).emit('mood_change', {
+      characterId,
+      mood: mood,
+      characterName: charName,
+      systemMessage: systemMessage,
+      messageId: savedMessage.id
+    });
+
+    res.json({ success: true, mood, systemMessage });
+  } catch (error) {
+    console.error('Debug mood error:', error);
+    res.status(500).json({ error: error.message || 'Failed to trigger mood' });
+  }
+});
+
 export default router;

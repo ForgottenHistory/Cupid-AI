@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import chatService from '../services/chatService';
 import { extractActualMessageId, splitMessageIntoParts } from '../utils/messageUtils';
+import { useMood } from '../context/MoodContext';
 
 /**
  * Hook for managing message actions (send, regenerate, edit, delete)
@@ -29,6 +30,9 @@ export const useMessageActions = ({
   const [editingMessageId, setEditingMessageId] = useState(null);
   const [editingText, setEditingText] = useState('');
   const [showTypingIndicatorInternal, setShowTypingIndicatorInternal] = useState(false);
+
+  // Get mood context
+  const { clearMoodEffect } = useMood();
 
   // Cache input text per character
   const inputCacheRef = useRef({});
@@ -64,6 +68,23 @@ export const useMessageActions = ({
     const userMessage = input.trim();
     const hasImage = selectedImage && imageDescription.trim();
     const currentCharacterId = characterId; // Capture current character ID
+
+    // Check for 30-minute time gap and clear mood effects if needed
+    if (messages.length > 0) {
+      // Find last non-system message (user or assistant)
+      const lastNonSystemMsg = [...messages].reverse().find(m => m.role !== 'system');
+
+      if (lastNonSystemMsg) {
+        const lastMsgTime = new Date(lastNonSystemMsg.created_at).getTime();
+        const nowTime = Date.now();
+        const gapMinutes = (nowTime - lastMsgTime) / (1000 * 60);
+
+        if (gapMinutes >= 30) {
+          console.log(`⏰ Time gap of ${gapMinutes.toFixed(1)} minutes detected - clearing mood effects`);
+          clearMoodEffect(characterId);
+        }
+      }
+    }
 
     setInput('');
     setSending(true);
@@ -297,11 +318,45 @@ export const useMessageActions = ({
 
   /**
    * Delete message and all messages after it
+   * @param {number|string} messageIndexOrId - Either message index or message ID
    */
-  const handleDeleteFrom = async (messageIndex) => {
+  const handleDeleteFrom = async (messageIndexOrId) => {
     if (!window.confirm('Delete this message and everything after it?')) return;
 
-    const messageToDelete = messages[messageIndex];
+    // Handle both index (number) and ID (string) inputs
+    let messageToDelete;
+    let messageIndex;
+
+    if (typeof messageIndexOrId === 'number') {
+      // Called with index (from MessageBubble)
+      messageIndex = messageIndexOrId;
+      messageToDelete = messages[messageIndex];
+      console.log('🗑️ Found message by index:', messageToDelete);
+    } else {
+      // Called with ID (from SystemMessage) - compare with type coercion since ID might be string or number
+      messageToDelete = messages.find(m => m.id == messageIndexOrId); // Loose equality to handle string/number
+      messageIndex = messages.findIndex(m => m.id == messageIndexOrId);
+      console.log('🗑️ Found message by ID:', messageToDelete, 'at index:', messageIndex);
+    }
+
+    if (!messageToDelete) {
+      console.error('🗑️ Message not found!');
+      setError('Message not found');
+      return;
+    }
+
+    // Check if this is a mood system message and clear effects if so
+    if (messageToDelete.role === 'system') {
+      // Pattern: [CharacterName switched background to MOOD]
+      const moodPattern = /\[.+ switched background to (\w+)\]/;
+      const match = messageToDelete.content.match(moodPattern);
+
+      if (match) {
+        const mood = match[1].toLowerCase();
+        console.log(`🧹 Detected mood system message deletion: ${mood} - clearing effects for character ${characterId}`);
+        clearMoodEffect(characterId);
+      }
+    }
 
     try {
       // Extract actual message ID (remove -part-N suffix if present)
