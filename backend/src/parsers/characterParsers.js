@@ -20,20 +20,36 @@ export function parseDatingProfileResponse(content) {
 
   try {
     const lines = content.split('\n');
-    let currentSection = null;
+    let currentSection = 'bio'; // Start capturing bio from the beginning
+    let bioLines = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line) continue;
 
       if (line.startsWith('Bio:')) {
-        profileData.bio = line.substring('Bio:'.length).trim();
+        currentSection = 'bio';
+        const bioContent = line.substring('Bio:'.length).trim();
+        if (bioContent) bioLines.push(bioContent);
       } else if (line.startsWith('Interests:')) {
+        if (currentSection === 'bio' && bioLines.length > 0) {
+          profileData.bio = bioLines.join(' ');
+        }
+        currentSection = null;
+        bioLines = [];
         const interestsStr = line.substring('Interests:'.length).trim();
         profileData.interests = interestsStr.split(',').map(i => i.trim()).filter(i => i.length > 0);
       } else if (line.startsWith('Fun Facts:')) {
+        if (currentSection === 'bio' && bioLines.length > 0) {
+          profileData.bio = bioLines.join(' ');
+        }
+        bioLines = [];
         currentSection = 'funFacts';
       } else if (line.startsWith('Age:')) {
+        if (currentSection === 'bio' && bioLines.length > 0) {
+          profileData.bio = bioLines.join(' ');
+        }
+        bioLines = [];
         const ageStr = line.substring('Age:'.length).trim();
         profileData.age = parseInt(ageStr) || null;
         currentSection = null;
@@ -55,6 +71,9 @@ export function parseDatingProfileResponse(content) {
         const value = line.substring('Measurements:'.length).trim();
         profileData.measurements = (value && value.toLowerCase() !== 'none') ? value : null;
         currentSection = null;
+      } else if (currentSection === 'bio') {
+        // Multi-line bio content
+        bioLines.push(line);
       } else if (currentSection === 'funFacts' && line.startsWith('-')) {
         const fact = line.substring(1).trim();
         if (fact) profileData.funFacts.push(fact);

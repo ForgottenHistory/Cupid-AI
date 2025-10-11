@@ -31,10 +31,17 @@ export const useChatWebSocket = ({
 }) => {
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [unmatchData, setUnmatchData] = useState(null);
-  const { setMoodEffect, clearMoodEffect } = useMood();
+  const [currentThought, setCurrentThought] = useState(null);
+  const { setMoodEffect, clearMoodEffect} = useMood();
+
+  // Use ref to track current characterId to prevent stale closures
+  const currentCharacterIdRef = useRef(characterId);
 
   // Check if character is currently typing when characterId changes
   useEffect(() => {
+    // Update ref with current characterId
+    currentCharacterIdRef.current = characterId;
+
     console.log('🔄 Character changed to:', characterId);
     const isTyping = characterId && socketService.isTyping(characterId);
     setShowTypingIndicator(isTyping);
@@ -43,6 +50,9 @@ export const useChatWebSocket = ({
     if (isTyping) {
       console.log('⌨️  Restoring typing indicator for character:', characterId);
     }
+
+    // Clear thought when switching characters
+    setCurrentThought(null);
   }, [characterId]);
 
   useEffect(() => {
@@ -59,7 +69,9 @@ export const useChatWebSocket = ({
       console.log('📨 Received new message via WebSocket:', data);
 
       // If message is from a DIFFERENT character, refresh sidebar immediately
-      if (data.characterId !== characterId) {
+      // Use ref to get the CURRENT characterId, not the one from when handler was created
+      if (data.characterId !== currentCharacterIdRef.current) {
+        console.log(`📨 Message from different character (${data.characterId} vs current ${currentCharacterIdRef.current}) - ignoring`);
         window.dispatchEvent(new Event('characterUpdated'));
         return;
       }
@@ -81,7 +93,7 @@ export const useChatWebSocket = ({
 
             if (gapMinutes >= 30) {
               console.log(`⏰ Time gap of ${gapMinutes.toFixed(1)} minutes detected - clearing mood effects`);
-              clearMoodEffect(characterId);
+              clearMoodEffect(currentCharacterIdRef.current);
             }
           }
         }
@@ -98,7 +110,7 @@ export const useChatWebSocket = ({
 
       // Mark messages as read since user is actively viewing this chat
       // Do this BEFORE refreshing sidebar so unread count is correct
-      chatService.markAsRead(characterId).then(() => {
+      chatService.markAsRead(currentCharacterIdRef.current).then(() => {
         // Refresh sidebar after marking as read
         window.dispatchEvent(new Event('characterUpdated'));
       }).catch(err => {
@@ -109,7 +121,7 @@ export const useChatWebSocket = ({
     };
 
     const handleCharacterTyping = (data) => {
-      if (data.characterId !== characterId) return;
+      if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('⌨️  Character is typing...');
 
       // Store typing state globally
@@ -122,7 +134,7 @@ export const useChatWebSocket = ({
       socketService.clearTyping(data.characterId);
 
       // Only update UI if this is the current character
-      if (data.characterId !== characterId) return;
+      if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('💤 Character is offline');
 
       setShowTypingIndicator(false);
@@ -135,7 +147,7 @@ export const useChatWebSocket = ({
       socketService.clearTyping(data.characterId);
 
       // Only update UI if this is the current character
-      if (data.characterId !== characterId) return;
+      if (data.characterId !== currentCharacterIdRef.current) return;
       console.error('❌ AI response error:', data.error);
 
       setShowTypingIndicator(false);
@@ -144,7 +156,7 @@ export const useChatWebSocket = ({
     };
 
     const handleCharacterUnmatched = async (data) => {
-      if (data.characterId !== characterId) return;
+      if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('💔 Character has unmatched:', data);
 
       // Unlike character in IndexedDB
@@ -168,7 +180,7 @@ export const useChatWebSocket = ({
 
     const handleMoodChange = (data) => {
       // Only update UI if this is the current character
-      if (data.characterId !== characterId) return;
+      if (data.characterId !== currentCharacterIdRef.current) return;
 
       console.log('🎨 Mood change received:', data);
 
@@ -188,12 +200,28 @@ export const useChatWebSocket = ({
       }
     };
 
+    const handleCharacterThought = (data) => {
+      // Only update UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+
+      console.log('💭 Thought received:', data.thought);
+
+      // Set thought (will auto-fade after a few seconds)
+      setCurrentThought(data.thought);
+
+      // Auto-clear thought after 8 seconds
+      setTimeout(() => {
+        setCurrentThought(null);
+      }, 8000);
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
     socketService.on('ai_response_error', handleAIResponseError);
     socketService.on('character_unmatched', handleCharacterUnmatched);
     socketService.on('mood_change', handleMoodChange);
+    socketService.on('character_thought', handleCharacterThought);
 
     // Cleanup
     return () => {
@@ -203,6 +231,7 @@ export const useChatWebSocket = ({
       socketService.off('ai_response_error', handleAIResponseError);
       socketService.off('character_unmatched', handleCharacterUnmatched);
       socketService.off('mood_change', handleMoodChange);
+      socketService.off('character_thought', handleCharacterThought);
     };
   }, [user, characterId, setMoodEffect]);
 
@@ -211,5 +240,6 @@ export const useChatWebSocket = ({
     setShowTypingIndicator,
     unmatchData,
     setUnmatchData,
+    currentThought,
   };
 };

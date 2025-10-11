@@ -127,9 +127,19 @@ class MessageProcessor {
         }
       }
 
-      // Call Decision LLM (pass current engagement state, voice, image availability, and last mood change)
+      // Call Decision LLM (pass current engagement state, voice, image availability, last mood change, and message count)
       const currentlyEngaged = engagementState?.engagement_state === 'engaged';
       const lastMoodChange = engagementState?.last_mood_change || null;
+
+      // Get total message count (user + assistant) for thought frequency
+      const totalMessageCount = db.prepare(`
+        SELECT COUNT(*) as count
+        FROM messages
+        WHERE conversation_id = ? AND role IN ('user', 'assistant')
+      `).get(conversationId).count;
+
+      console.log(`💭 Total message count: ${totalMessageCount} (next will be ${totalMessageCount + 1}, thought: ${(totalMessageCount + 1) % 10 === 0})`);
+
       const decision = await aiService.makeDecision({
         messages: aiMessages,
         characterData: characterData,
@@ -138,10 +148,23 @@ class MessageProcessor {
         isEngaged: currentlyEngaged,
         hasVoice: hasVoice,
         hasImage: hasImage,
-        lastMoodChange: lastMoodChange
+        lastMoodChange: lastMoodChange,
+        assistantMessageCount: totalMessageCount
       });
 
       console.log('🎯 Decision made:', decision);
+
+      // Emit thought if present (every 10th message) - frontend only, not saved to DB
+      if (decision.thought) {
+        console.log(`💭 Thought generated: ${decision.thought}`);
+
+        // Emit thought to frontend
+        io.to(`user:${userId}`).emit('character_thought', {
+          characterId,
+          thought: decision.thought,
+          characterName: characterData.name || 'Character'
+        });
+      }
 
       // Insert background effect system message if mood is set (not 'none')
       if (decision.mood && decision.mood !== 'none') {
@@ -338,7 +361,21 @@ class MessageProcessor {
       // Save AI response with reaction
       if (aiResponse) {
         // Clean up em dashes (replace with periods)
-        const cleanedContent = aiResponse.content.replace(/—/g, '.');
+        let cleanedContent = aiResponse.content.replace(/—/g, '.');
+
+        // Strip emojis from every 3rd assistant message to reduce repetition
+        const assistantMessageCount = db.prepare(`
+          SELECT COUNT(*) as count
+          FROM messages
+          WHERE conversation_id = ? AND role = 'assistant'
+        `).get(conversationId).count;
+
+        // If this will be the 3rd, 6th, 9th, etc. message (count is 2, 5, 8, etc.)
+        if ((assistantMessageCount + 1) % 3 === 0) {
+          // Strip all emojis using comprehensive regex
+          cleanedContent = cleanedContent.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
+          console.log(`🚫 Stripped emojis from message ${assistantMessageCount + 1} (every 3rd message)`);
+        }
 
         let messageType = 'text';
         let audioUrl = null;

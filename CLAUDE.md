@@ -19,6 +19,13 @@
 - **Selective Reading**: Reading the first few words of an instruction and missing critical qualifiers.
 - **Overconfidence**: Assuming you understand without verification.
 - **Tunnel Vision**: Focusing on one small detail and missing the bigger picture.
+- **Quick Fixes and Hacks**: When something doesn't work, don't patch it with heuristics or workarounds. Fix the root cause.
+  - Bad: "Reasoning leaking? Let me strip it with regex patterns"
+  - Good: "Reasoning leaking? Use a non-reasoning model instead"
+  - Bad: "Tags getting discarded? Let me add 1000 color combinations to the library"
+  - Good: "Tags getting discarded? Make validation smarter to handle color+item combos"
+- **Band-aids over Architecture**: Don't add code to work around problems. Change the approach.
+- **"This should work" mentality**: If you're adding complex logic to fix an edge case, you're probably solving the wrong problem.
 
 ### When Making Changes
 1. **Read the request 2-3 times** before touching any code

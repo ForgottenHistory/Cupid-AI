@@ -104,7 +104,7 @@ const Chat = () => {
   });
 
   // WebSocket real-time messaging
-  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData } = useChatWebSocket({
+  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData, currentThought } = useChatWebSocket({
     characterId,
     user,
     isMountedRef,
@@ -116,6 +116,15 @@ const Chat = () => {
     addDisplayTimeout,
     inputRef,
   });
+
+  // Debug: Log when thought changes
+  useEffect(() => {
+    if (currentThought) {
+      console.log('💭 [UI] Displaying thought:', currentThought);
+    } else {
+      console.log('💭 [UI] Thought cleared');
+    }
+  }, [currentThought]);
 
   // Extract received images from character messages
   const receivedImages = messages
@@ -150,9 +159,12 @@ const Chat = () => {
     if (autoScrollEnabled && receivedImages.length > 0) {
       console.log(`🔄 Auto-scroll enabled with ${receivedImages.length} images`);
 
-      // Cycle every 5 seconds
+      // Cycle every 60 seconds with random selection
       autoScrollIntervalRef.current = setInterval(() => {
-        setCurrentImageIndex(prevIndex => (prevIndex + 1) % receivedImages.length);
+        setCurrentImageIndex(() => {
+          // Pick random index
+          return Math.floor(Math.random() * receivedImages.length);
+        });
       }, 60000);
     }
 
@@ -502,6 +514,20 @@ const Chat = () => {
                 boxShadow: 'inset 0 0 100px rgba(0,0,0,0.1)'
               }}></div>
             </div>
+
+            {/* Thought Display - Top Left */}
+            {currentThought && (
+              <div className="absolute top-4 left-4 max-w-[240px] animate-fade-in">
+                <div className="bg-black/60 backdrop-blur-md rounded-lg px-3 py-2 shadow-xl border border-white/10">
+                  <div className="flex items-start gap-2">
+                    <span className="text-base opacity-60">💭</span>
+                    <p className="text-xs text-white/90 leading-relaxed italic">
+                      {currentThought}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Control Buttons - Top Right */}
             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">

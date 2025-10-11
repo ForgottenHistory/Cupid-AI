@@ -9,9 +9,9 @@ class DecisionEngineService {
 
   /**
    * Decision Engine: Analyze conversation and decide on actions
-   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, imageContext: string|null }
+   * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, thought: string|null, imageContext: string|null }
    */
-  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null }) {
+  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0 }) {
     if (!this.apiKey) {
       throw new Error('OpenRouter API key not configured');
     }
@@ -31,6 +31,13 @@ class DecisionEngineService {
       }
 
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
+
+      // Check if this is a thought message (every 10th message)
+      const shouldGenerateThought = (assistantMessageCount + 1) % 10 === 0;
+
+      if (shouldGenerateThought) {
+        console.log(`💭 Decision Engine: Thought will be requested (message ${assistantMessageCount + 1})`);
+      }
 
       // Get personality data if available
       let personalityContext = '';
@@ -65,7 +72,7 @@ Reaction: [emoji or "none"]
 Should Respond: [yes/no]
 Should Unmatch: [yes/no]
 ${hasVoice ? 'Send Voice: [yes/no]\n' : ''}${hasImage ? 'Send Image: [yes/no]\n' : ''}Mood: [none/hearts/stars/laugh/sparkles/fire/roses]
-Reason: [brief explanation in one sentence]
+${shouldGenerateThought ? 'Thought: [internal monologue - 1-2 sentences about how character feels about the conversation]\n' : ''}Reason: [brief explanation in one sentence]
 
 Guidelines:
 - "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
@@ -100,9 +107,14 @@ Guidelines:
   * "fire" - ONLY for intensely passionate/spicy exchanges
   * "roses" - ONLY for deeply tender, vulnerable emotional moments
 
-  WARNING: Setting a mood is a BIG DEAL. If you're unsure, use "none". Moods should feel special and rare, not common. Think: "Would this moment stand out in a month?" If no, use "none".` : ''}
+  WARNING: Setting a mood is a BIG DEAL. If you're unsure, use "none". Moods should feel special and rare, not common. Think: "Would this moment stand out in a month?" If no, use "none".` : ''}${shouldGenerateThought ? `
+- "Thought": This is the character's internal monologue - what they're REALLY thinking/feeling about the conversation.
+  * Keep it 1-2 sentences max
+  * Be honest about their feelings (interest, confusion, attraction, concern, excitement, etc.)
+  * Can reveal things they wouldn't say out loud
+  * Examples: "He's really sweet, but I'm not sure if he's just being polite or actually interested." / "This conversation is so easy and fun - I could talk to him for hours."` : ''}
 
-Output ONLY the ${hasVoice && hasImage ? 'seven' : hasVoice || hasImage ? 'six' : 'five'} lines in the exact format shown above, nothing else.`;
+Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasVoice || hasImage ? 'seven' : 'six') : (hasVoice && hasImage ? 'seven' : hasVoice || hasImage ? 'six' : 'five')} lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Decision Engine Request:', {
         model: decisionSettings.model,
@@ -272,6 +284,7 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
         shouldSendVoice: false,
         shouldSendImage: false,
         mood: 'none',
+        thought: null,
         reason: 'No reason provided'
       };
 
@@ -299,6 +312,11 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
           const validMoods = ['none', 'hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
           if (validMoods.includes(value)) {
             decision.mood = value;
+          }
+        } else if (line.startsWith('Thought:')) {
+          const value = line.substring('Thought:'.length).trim();
+          if (value) {
+            decision.thought = value;
           }
         } else if (line.startsWith('Reason:')) {
           const value = line.substring('Reason:'.length).trim();
@@ -354,6 +372,7 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
       shouldSendVoice: false,
       shouldSendImage: false,
       mood: 'none',
+      thought: null,
       reason: 'Default decision (fallback)'
     };
   }
