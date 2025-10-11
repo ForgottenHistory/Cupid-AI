@@ -115,14 +115,14 @@ const SDSettings = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-4 flex justify-between items-center">
+        <div className="bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 px-6 py-4 flex justify-between items-center border-b border-purple-400/30 dark:border-purple-600/30">
           <h2 className="text-2xl font-bold text-white">Image Generation Settings</h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-200 transition"
+            className="text-white/90 hover:text-white hover:bg-white/20 p-2 rounded-full transition"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -140,74 +140,74 @@ const SDSettings = ({ onClose }) => {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Messages */}
               {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
                   {error}
                 </div>
               )}
               {success && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                <div className="p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg text-green-700 dark:text-green-300 text-sm">
                   {success}
                 </div>
               )}
 
               {/* Main Prompt */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Main Prompt
                 </label>
                 <textarea
                   value={settings.mainPrompt}
                   onChange={(e) => setSettings({ ...settings, mainPrompt: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-gray-100"
                   rows="3"
                   placeholder="Tags added to the beginning of every image generation"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   These tags are added to the start of every image prompt. Example: "masterpiece, best quality, amazing quality"
                 </p>
               </div>
 
               {/* Negative Prompt */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Negative Prompt
                 </label>
                 <textarea
                   value={settings.negativePrompt}
                   onChange={(e) => setSettings({ ...settings, negativePrompt: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-gray-100"
                   rows="4"
                   placeholder="Tags to avoid in image generation"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   These tags tell Stable Diffusion what to avoid. Example: "lowres, bad anatomy, bad hands, text, error"
                 </p>
               </div>
 
               {/* Model */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Stable Diffusion Model
                 </label>
                 <input
                   type="text"
                   value={settings.model}
                   onChange={(e) => setSettings({ ...settings, model: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-gray-100"
                   placeholder="Leave empty to use default model"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   The checkpoint/model name to use in Stable Diffusion WebUI. Leave empty to use the currently loaded model.
                 </p>
               </div>
 
               {/* Base Settings */}
-              <div className="space-y-4 pt-4 border-t border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Base Generation</h3>
+              <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Base Generation</h3>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                       Sampling Steps
                     </label>
                     <input
@@ -216,12 +216,12 @@ const SDSettings = ({ onClose }) => {
                       onChange={(e) => setSettings({ ...settings, sd_steps: parseInt(e.target.value) })}
                       min="1"
                       max="150"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                       CFG Scale
                     </label>
                     <input
@@ -231,20 +231,20 @@ const SDSettings = ({ onClose }) => {
                       min="1"
                       max="30"
                       step="0.5"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                       Sampler
                     </label>
                     <select
                       value={settings.sd_sampler}
                       onChange={(e) => setSettings({ ...settings, sd_sampler: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                     >
                       <option>DPM++ 2M</option>
                       <option>DPM++ SDE</option>
@@ -255,13 +255,13 @@ const SDSettings = ({ onClose }) => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                       Scheduler
                     </label>
                     <select
                       value={settings.sd_scheduler}
                       onChange={(e) => setSettings({ ...settings, sd_scheduler: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                     >
                       <option>Karras</option>
                       <option>Exponential</option>
@@ -272,9 +272,9 @@ const SDSettings = ({ onClose }) => {
               </div>
 
               {/* Highres Fix */}
-              <div className="space-y-4 pt-4 border-t border-gray-200">
+              <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Highres Fix</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Highres Fix</h3>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -282,15 +282,15 @@ const SDSettings = ({ onClose }) => {
                       onChange={(e) => setSettings({ ...settings, sd_enable_hr: e.target.checked })}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                   </label>
                 </div>
 
                 {settings.sd_enable_hr && (
-                  <div className="space-y-4 pl-4 border-l-2 border-purple-300">
+                  <div className="space-y-4 pl-4 border-l-2 border-purple-300 dark:border-purple-600">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                           Upscale Factor
                         </label>
                         <input
@@ -300,18 +300,18 @@ const SDSettings = ({ onClose }) => {
                           min="1.0"
                           max="2.0"
                           step="0.1"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                           Upscaler
                         </label>
                         <select
                           value={settings.sd_hr_upscaler}
                           onChange={(e) => setSettings({ ...settings, sd_hr_upscaler: e.target.value })}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                         >
                           <option>remacri_original</option>
                           <option>4x-UltraSharp</option>
@@ -323,7 +323,7 @@ const SDSettings = ({ onClose }) => {
 
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                           Highres Steps
                         </label>
                         <input
@@ -332,12 +332,12 @@ const SDSettings = ({ onClose }) => {
                           onChange={(e) => setSettings({ ...settings, sd_hr_steps: parseInt(e.target.value) })}
                           min="0"
                           max="150"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                           Highres CFG
                         </label>
                         <input
@@ -347,12 +347,12 @@ const SDSettings = ({ onClose }) => {
                           min="1"
                           max="30"
                           step="0.5"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                           Denoising Strength
                         </label>
                         <input
@@ -362,7 +362,7 @@ const SDSettings = ({ onClose }) => {
                           min="0"
                           max="1"
                           step="0.05"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                         />
                       </div>
                     </div>
@@ -371,9 +371,9 @@ const SDSettings = ({ onClose }) => {
               </div>
 
               {/* ADetailer */}
-              <div className="space-y-4 pt-4 border-t border-gray-200">
+              <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">ADetailer</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">ADetailer</h3>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
@@ -381,19 +381,19 @@ const SDSettings = ({ onClose }) => {
                       onChange={(e) => setSettings({ ...settings, sd_enable_adetailer: e.target.checked })}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                    <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
                   </label>
                 </div>
 
                 {settings.sd_enable_adetailer && (
-                  <div className="pl-4 border-l-2 border-purple-300">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <div className="pl-4 border-l-2 border-purple-300 dark:border-purple-600">
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
                       Detection Model
                     </label>
                     <select
                       value={settings.sd_adetailer_model}
                       onChange={(e) => setSettings({ ...settings, sd_adetailer_model: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
                     >
                       <option>face_yolov8n.pt</option>
                       <option>face_yolov8s.pt</option>
@@ -406,11 +406,11 @@ const SDSettings = ({ onClose }) => {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 dark:hover:from-pink-700 dark:hover:to-purple-800 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold shadow-md hover:shadow-lg"
                 >
                   {saving ? (
                     <span className="flex items-center justify-center gap-2">
@@ -425,7 +425,7 @@ const SDSettings = ({ onClose }) => {
                   type="button"
                   onClick={handleReset}
                   disabled={saving}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
                   Reset to Defaults
                 </button>

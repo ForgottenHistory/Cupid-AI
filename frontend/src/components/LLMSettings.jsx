@@ -22,17 +22,17 @@ const LLMSettings = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="p-6 border-b bg-gradient-to-r from-pink-500 to-purple-600">
+        <div className="p-6 border-b border-purple-400/30 dark:border-purple-600/30 bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold text-white">LLM Settings</h2>
-              <p className="text-white/80 text-sm mt-1">Configure AI models and parameters</p>
+              <p className="text-white/90 text-sm mt-1">Configure AI models and parameters</p>
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:bg-white/20 p-2 rounded-full transition"
+              className="text-white/90 hover:text-white hover:bg-white/20 p-2 rounded-full transition"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -42,13 +42,13 @@ const LLMSettings = ({ onClose }) => {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b bg-gray-50">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
           <button
             onClick={() => setActiveTab('content')}
             className={`flex-1 px-6 py-3 font-semibold transition ${
               activeTab === 'content'
-                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400 bg-white dark:bg-gray-800'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             Content LLM
@@ -57,8 +57,8 @@ const LLMSettings = ({ onClose }) => {
             onClick={() => setActiveTab('decision')}
             className={`flex-1 px-6 py-3 font-semibold transition ${
               activeTab === 'decision'
-                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
-                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400 bg-white dark:bg-gray-800'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             Decision LLM
