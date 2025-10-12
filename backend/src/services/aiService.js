@@ -89,8 +89,18 @@ class AIService {
       });
 
       // Split message history: keep last 5 separate for recency
-      const last5Messages = trimmedMessages.slice(-5);
-      const olderMessages = trimmedMessages.slice(0, -5);
+      // BUT if the message right before the last 5 is a TIME GAP, include it with last 5
+      let splitIndex = trimmedMessages.length - 5;
+
+      // Walk backwards from splitIndex to include any TIME GAP messages
+      while (splitIndex > 0 &&
+             trimmedMessages[splitIndex - 1].role === 'system' &&
+             trimmedMessages[splitIndex - 1].content.startsWith('[TIME GAP:')) {
+        splitIndex--;
+      }
+
+      const last5Messages = trimmedMessages.slice(splitIndex);
+      const olderMessages = trimmedMessages.slice(0, splitIndex);
 
       // Build final messages array with older history first
       const finalMessages = [
@@ -147,6 +157,7 @@ class AIService {
       });
 
       // Add last 5 messages for maximum recency (right before character prime)
+      // TIME GAP messages are already included if they immediately precede the last 5
       finalMessages.push(...last5Messages);
 
       // Add character name prompt at the very end to prime the response

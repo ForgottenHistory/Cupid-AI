@@ -26,14 +26,14 @@ class ProactiveMessageService {
   }
 
   /**
-   * Find candidates for proactive messages
-   * Returns array of { userId, characterId, conversationId, gapHours, characterData, personality, userSettings }
+   * Find candidates for proactive messages (both normal and left-on-read)
+   * Returns array of { userId, characterId, conversationId, gapHours, characterData, personality, userSettings, triggerType, minutesSinceRead }
    */
   findCandidates() {
     const candidates = [];
 
     // Get all users with their last global proactive timestamp and behavior settings
-    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_away_chance, proactive_busy_chance, proactive_messages_today, last_proactive_date, proactive_check_interval, last_proactive_check_at FROM users').all();
+    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_away_chance, proactive_busy_chance, proactive_messages_today, last_proactive_date, proactive_check_interval, last_proactive_check_at, left_on_read_messages_today, last_left_on_read_date, daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown FROM users').all();
 
     for (const user of users) {
       // Check if enough time has passed since last check for this user
@@ -219,7 +219,82 @@ class ProactiveMessageService {
           }
         }
 
-        // Add to candidates with user settings
+        // CHECK FOR LEFT-ON-READ SCENARIO (separate from normal proactive)
+        // Only check if last message was from assistant (not proactive) and user opened chat
+        if (lastMessage && lastMessage.role === 'assistant' && !lastMessage.is_proactive) {
+          const conversationDetails = db.prepare(`
+            SELECT last_opened_at FROM conversations WHERE id = ?
+          `).get(character.conversation_id);
+
+          if (conversationDetails?.last_opened_at) {
+            const lastOpened = new Date(conversationDetails.last_opened_at);
+            const lastMessageTime = new Date(lastMessage.created_at);
+            const now = new Date();
+
+            // User opened chat AFTER last message was sent
+            if (lastOpened > lastMessageTime) {
+              const minutesSinceRead = (now - lastOpened) / (1000 * 60);
+
+              // Trigger window: configurable (default 5-15 minutes)
+              const triggerMin = user.left_on_read_trigger_min || 5;
+              const triggerMax = user.left_on_read_trigger_max || 15;
+
+              if (minutesSinceRead >= triggerMin && minutesSinceRead <= triggerMax) {
+                // Check left-on-read daily limit
+                const leftOnReadLimit = user.daily_left_on_read_limit || 10;
+
+                // Reset left-on-read counter if new day
+                if (user.last_left_on_read_date !== today) {
+                  db.prepare('UPDATE users SET left_on_read_messages_today = 0, last_left_on_read_date = ? WHERE id = ?').run(today, user.id);
+                  user.left_on_read_messages_today = 0;
+                }
+
+                // Check if under left-on-read daily limit
+                if (user.left_on_read_messages_today < leftOnReadLimit) {
+                  // Check per-character left-on-read rate limit: configurable (default 120 minutes)
+                  const characterCooldown = user.left_on_read_character_cooldown || 120;
+                  let canSendLeftOnRead = true;
+                  if (character.last_left_on_read_at) {
+                    const lastLeftOnReadTime = new Date(character.last_left_on_read_at);
+                    const minutesSinceLastLeftOnRead = (now - lastLeftOnReadTime) / (1000 * 60);
+
+                    if (minutesSinceLastLeftOnRead < characterCooldown) {
+                      canSendLeftOnRead = false;
+                    }
+                  }
+
+                  if (canSendLeftOnRead) {
+                    // Add as left-on-read candidate
+                    const characterName = characterData.data?.name || characterData.name || 'Character';
+                    console.log(`👀 Left-on-read candidate: ${characterName} (read ${minutesSinceRead.toFixed(1)} min ago)`);
+
+                    candidates.push({
+                      userId: user.id,
+                      characterId: character.id,
+                      conversationId: character.conversation_id,
+                      gapHours: 0, // Not applicable for left-on-read
+                      characterData: characterData,
+                      personality: personality,
+                      schedule: schedule,
+                      isFirstMessage: false,
+                      triggerType: 'left_on_read',
+                      minutesSinceRead: minutesSinceRead,
+                      userSettings: {
+                        dailyLeftOnReadLimit: leftOnReadLimit,
+                        leftOnReadMessagesToday: user.left_on_read_messages_today
+                      }
+                    });
+
+                    // Don't add as normal proactive candidate - already added as left-on-read
+                    continue;
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Add to candidates with user settings (normal proactive)
         candidates.push({
           userId: user.id,
           characterId: character.id,
@@ -229,6 +304,7 @@ class ProactiveMessageService {
           personality: personality,
           schedule: schedule,
           isFirstMessage: isFirstMessage,
+          triggerType: 'normal',
           userSettings: {
             dailyProactiveLimit: user.daily_proactive_limit || 5,
             proactiveAwayChance: user.proactive_away_chance || 50,
@@ -246,48 +322,75 @@ class ProactiveMessageService {
    */
   async processCandidate(candidate, io, debugMode = false) {
     try {
-      const { userId, characterId, conversationId, gapHours, characterData, personality, schedule, isFirstMessage } = candidate;
-
-      // Calculate send probability
-      const probability = this.calculateSendProbability(gapHours, personality);
-      const roll = Math.random() * 100;
+      const { userId, characterId, conversationId, gapHours, characterData, personality, schedule, isFirstMessage, triggerType, minutesSinceRead } = candidate;
 
       // Extract character name (handle v2 card format)
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
-      if (debugMode) {
-        console.log(`🐛 Debug mode: Bypassing probability check for ${characterName}`);
-      } else {
-        const messageType = isFirstMessage ? 'FIRST MESSAGE' : 'continuation';
-        console.log(`🎲 Proactive check: ${characterName} (${messageType}, gap: ${gapHours.toFixed(1)}h, prob: ${probability.toFixed(1)}%, roll: ${roll.toFixed(1)}%)`);
-
-        // Random roll
-        if (roll > probability) {
-          return false; // Don't send
-        }
-      }
-
       // Get conversation history
       const messages = messageService.getConversationHistory(conversationId);
 
-      // For first messages, skip Decision Engine (no context to analyze)
+      // Handle different trigger types
       let decision = null;
-      if (isFirstMessage) {
-        console.log(`🎯 First message: AUTO-SEND (icebreaker)`);
+
+      if (triggerType === 'left_on_read') {
+        // LEFT-ON-READ: Use Decision Engine to decide if character should follow up
+        if (debugMode) {
+          console.log(`🐛 Debug mode: Bypassing decision engine for left-on-read from ${characterName}`);
+          decision = { shouldSend: true, messageType: 'left_on_read', reason: 'Debug mode' };
+        } else {
+          console.log(`👀 Left-on-read check: ${characterName} (read ${minutesSinceRead.toFixed(1)} min ago)`);
+
+          decision = await aiService.makeLeftOnReadDecision({
+            messages: messages,
+            characterData: characterData,
+            personality: personality,
+            minutesSinceRead: minutesSinceRead,
+            userId: userId
+          });
+
+          console.log(`🎯 Left-on-read decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} - ${decision.reason}`);
+
+          // If decision says don't send, respect it
+          if (!decision.shouldSend) {
+            return false;
+          }
+        }
       } else {
-        // Call Decision Engine in proactive mode
-        decision = await aiService.makeProactiveDecision({
-          messages: messages,
-          characterData: characterData,
-          gapHours: gapHours,
-          userId: userId
-        });
+        // NORMAL PROACTIVE: Use probability calculation
+        const probability = this.calculateSendProbability(gapHours, personality);
+        const roll = Math.random() * 100;
 
-        console.log(`🎯 Proactive decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} (${decision.messageType}) - ${decision.reason}`);
+        if (debugMode) {
+          console.log(`🐛 Debug mode: Bypassing probability check for ${characterName}`);
+        } else {
+          const messageType = isFirstMessage ? 'FIRST MESSAGE' : 'continuation';
+          console.log(`🎲 Proactive check: ${characterName} (${messageType}, gap: ${gapHours.toFixed(1)}h, prob: ${probability.toFixed(1)}%, roll: ${roll.toFixed(1)}%)`);
 
-        // If decision says don't send, respect it
-        if (!decision.shouldSend) {
-          return false;
+          // Random roll
+          if (roll > probability) {
+            return false; // Don't send
+          }
+        }
+
+        // For first messages, skip Decision Engine (no context to analyze)
+        if (isFirstMessage) {
+          console.log(`🎯 First message: AUTO-SEND (icebreaker)`);
+        } else {
+          // Call Decision Engine in proactive mode
+          decision = await aiService.makeProactiveDecision({
+            messages: messages,
+            characterData: characterData,
+            gapHours: gapHours,
+            userId: userId
+          });
+
+          console.log(`🎯 Proactive decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} (${decision.messageType}) - ${decision.reason}`);
+
+          // If decision says don't send, respect it
+          if (!decision.shouldSend) {
+            return false;
+          }
         }
       }
 
@@ -356,13 +459,28 @@ class ProactiveMessageService {
 
       // Update rate limit timestamps and increment daily counter
       const now = new Date().toISOString();
-      db.prepare('UPDATE users SET last_global_proactive_at = ?, proactive_messages_today = proactive_messages_today + 1 WHERE id = ?').run(now, userId);
-      db.prepare('UPDATE characters SET last_proactive_at = ? WHERE id = ? AND user_id = ?').run(now, characterId, userId);
 
-      // Get updated count for logging
-      const userCount = db.prepare('SELECT proactive_messages_today, daily_proactive_limit FROM users WHERE id = ?').get(userId);
-      console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (60 min) started`);
-      console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
+      if (triggerType === 'left_on_read') {
+        // Left-on-read specific rate limits
+        db.prepare('UPDATE users SET left_on_read_messages_today = left_on_read_messages_today + 1 WHERE id = ?').run(userId);
+        db.prepare('UPDATE characters SET last_left_on_read_at = ? WHERE id = ? AND user_id = ?').run(now, characterId, userId);
+
+        // Get updated count and cooldown for logging
+        const userCount = db.prepare('SELECT left_on_read_messages_today, daily_left_on_read_limit, left_on_read_character_cooldown FROM users WHERE id = ?').get(userId);
+        const cooldownMinutes = userCount.left_on_read_character_cooldown || 120;
+        const cooldownDisplay = cooldownMinutes >= 60 ? `${(cooldownMinutes / 60).toFixed(1)} hours` : `${cooldownMinutes} min`;
+        console.log(`⏱️  Rate limits updated: ${characterName} left-on-read cooldown (${cooldownDisplay}) started`);
+        console.log(`📊 Daily left-on-read count: ${userCount.left_on_read_messages_today}/${userCount.daily_left_on_read_limit}`);
+      } else {
+        // Normal proactive rate limits
+        db.prepare('UPDATE users SET last_global_proactive_at = ?, proactive_messages_today = proactive_messages_today + 1 WHERE id = ?').run(now, userId);
+        db.prepare('UPDATE characters SET last_proactive_at = ? WHERE id = ? AND user_id = ?').run(now, characterId, userId);
+
+        // Get updated count for logging
+        const userCount = db.prepare('SELECT proactive_messages_today, daily_proactive_limit FROM users WHERE id = ?').get(userId);
+        console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (60 min) started`);
+        console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
+      }
 
       // Emit all messages to frontend via WebSocket
       allSavedMessages.forEach(msg => {

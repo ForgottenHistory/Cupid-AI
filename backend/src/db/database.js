@@ -55,6 +55,12 @@ function runMigrations() {
       console.log('✅ unread_count column added to conversations table');
     }
 
+    // Migration: Add last_opened_at column to conversations table
+    if (!convColumnNames.includes('last_opened_at')) {
+      db.exec(`ALTER TABLE conversations ADD COLUMN last_opened_at TIMESTAMP;`);
+      console.log('✅ last_opened_at column added to conversations table');
+    }
+
     // Migration: Add context_window column to users table
     if (!userColumnNames.includes('llm_context_window')) {
       db.exec(`ALTER TABLE users ADD COLUMN llm_context_window INTEGER DEFAULT 4000;`);
@@ -176,6 +182,31 @@ function runMigrations() {
     if (!charactersColumnNames.includes('last_proactive_at')) {
       db.exec(`ALTER TABLE characters ADD COLUMN last_proactive_at TIMESTAMP;`);
       console.log('✅ last_proactive_at column added to characters table');
+    }
+
+    // Migration: Add left-on-read rate limiting columns (separate from normal proactive)
+    if (!userColumnNames.includes('left_on_read_messages_today')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN left_on_read_messages_today INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN last_left_on_read_date TEXT;
+        ALTER TABLE users ADD COLUMN daily_left_on_read_limit INTEGER DEFAULT 10;
+      `);
+      console.log('✅ Left-on-read rate limiting columns added to users table');
+    }
+
+    if (!charactersColumnNames.includes('last_left_on_read_at')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN last_left_on_read_at TIMESTAMP;`);
+      console.log('✅ last_left_on_read_at column added to characters table');
+    }
+
+    // Migration: Add left-on-read behavior config columns to users table
+    if (!userColumnNames.includes('left_on_read_trigger_min')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN left_on_read_trigger_min INTEGER DEFAULT 5;
+        ALTER TABLE users ADD COLUMN left_on_read_trigger_max INTEGER DEFAULT 15;
+        ALTER TABLE users ADD COLUMN left_on_read_character_cooldown INTEGER DEFAULT 120;
+      `);
+      console.log('✅ Left-on-read behavior config columns added to users table');
     }
 
     // Migration: Add swipe limit tracking to users table

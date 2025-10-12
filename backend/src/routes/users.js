@@ -624,7 +624,8 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
       SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
-             proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval
+             proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
+             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -639,7 +640,11 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       proactiveAwayChance: settings.proactive_away_chance,
       proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style,
-      proactiveCheckInterval: settings.proactive_check_interval
+      proactiveCheckInterval: settings.proactive_check_interval,
+      dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
+      leftOnReadTriggerMin: settings.left_on_read_trigger_min,
+      leftOnReadTriggerMax: settings.left_on_read_trigger_max,
+      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown
     });
   } catch (error) {
     console.error('Get behavior settings error:', error);
@@ -653,7 +658,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval } = req.body;
+    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -677,6 +682,18 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     }
     if (proactiveCheckInterval !== undefined && (proactiveCheckInterval < 1 || proactiveCheckInterval > 60)) {
       return res.status(400).json({ error: 'Proactive check interval must be between 1 and 60 minutes' });
+    }
+    if (dailyLeftOnReadLimit !== undefined && (dailyLeftOnReadLimit < 0 || dailyLeftOnReadLimit > 50)) {
+      return res.status(400).json({ error: 'Daily left-on-read limit must be between 0 and 50' });
+    }
+    if (leftOnReadTriggerMin !== undefined && (leftOnReadTriggerMin < 1 || leftOnReadTriggerMin > 30)) {
+      return res.status(400).json({ error: 'Left-on-read trigger minimum must be between 1 and 30 minutes' });
+    }
+    if (leftOnReadTriggerMax !== undefined && (leftOnReadTriggerMax < 5 || leftOnReadTriggerMax > 60)) {
+      return res.status(400).json({ error: 'Left-on-read trigger maximum must be between 5 and 60 minutes' });
+    }
+    if (leftOnReadCharacterCooldown !== undefined && (leftOnReadCharacterCooldown < 30 || leftOnReadCharacterCooldown > 480)) {
+      return res.status(400).json({ error: 'Left-on-read character cooldown must be between 30 and 480 minutes' });
     }
 
     // Build update query dynamically
@@ -711,6 +728,22 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('proactive_check_interval = ?');
       values.push(proactiveCheckInterval);
     }
+    if (dailyLeftOnReadLimit !== undefined) {
+      updates.push('daily_left_on_read_limit = ?');
+      values.push(dailyLeftOnReadLimit);
+    }
+    if (leftOnReadTriggerMin !== undefined) {
+      updates.push('left_on_read_trigger_min = ?');
+      values.push(leftOnReadTriggerMin);
+    }
+    if (leftOnReadTriggerMax !== undefined) {
+      updates.push('left_on_read_trigger_max = ?');
+      values.push(leftOnReadTriggerMax);
+    }
+    if (leftOnReadCharacterCooldown !== undefined) {
+      updates.push('left_on_read_character_cooldown = ?');
+      values.push(leftOnReadCharacterCooldown);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -725,7 +758,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     // Get updated settings
     const settings = db.prepare(`
       SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
-             proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval
+             proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
+             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -736,7 +770,11 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       proactiveAwayChance: settings.proactive_away_chance,
       proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style,
-      proactiveCheckInterval: settings.proactive_check_interval
+      proactiveCheckInterval: settings.proactive_check_interval,
+      dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
+      leftOnReadTriggerMin: settings.left_on_read_trigger_min,
+      leftOnReadTriggerMax: settings.left_on_read_trigger_max,
+      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown
     });
   } catch (error) {
     console.error('Update behavior settings error:', error);

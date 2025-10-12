@@ -9,6 +9,10 @@ const BehaviorSettings = ({ onClose }) => {
     proactiveAwayChance: 50,
     proactiveBusyChance: 10,
     proactiveCheckInterval: 5,
+    dailyLeftOnReadLimit: 10,
+    leftOnReadTriggerMin: 5,
+    leftOnReadTriggerMax: 15,
+    leftOnReadCharacterCooldown: 120,
     pacingStyle: 'balanced'
   });
   const [loading, setLoading] = useState(true);
@@ -66,6 +70,10 @@ const BehaviorSettings = ({ onClose }) => {
       proactiveAwayChance: 50,
       proactiveBusyChance: 10,
       proactiveCheckInterval: 5,
+      dailyLeftOnReadLimit: 10,
+      leftOnReadTriggerMin: 5,
+      leftOnReadTriggerMax: 15,
+      leftOnReadCharacterCooldown: 120,
       pacingStyle: 'balanced'
     });
     setSuccess('');
@@ -248,6 +256,104 @@ const BehaviorSettings = ({ onClose }) => {
                 <span>Always</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Chance characters send proactive messages when status is BUSY</p>
+            </div>
+
+            {/* Left-On-Read Section Header */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Left-On-Read Behavior</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When you read a message but don't reply, characters may follow up based on their personality</p>
+            </div>
+
+            {/* Daily Left-On-Read Limit */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Daily Left-On-Read Limit</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.dailyLeftOnReadLimit} per day</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="1"
+                value={settings.dailyLeftOnReadLimit}
+                onChange={(e) => updateSetting('dailyLeftOnReadLimit', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Disabled</span>
+                <span>50</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum left-on-read follow-ups per day across all characters</p>
+            </div>
+
+            {/* Left-On-Read Trigger Window Min */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Trigger Window (Minimum)</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.leftOnReadTriggerMin} minutes</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="30"
+                step="1"
+                value={settings.leftOnReadTriggerMin}
+                onChange={(e) => updateSetting('leftOnReadTriggerMin', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>1 min</span>
+                <span>30 min</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Minimum time after reading before character may follow up</p>
+            </div>
+
+            {/* Left-On-Read Trigger Window Max */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Trigger Window (Maximum)</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.leftOnReadTriggerMax} minutes</span>
+              </div>
+              <input
+                type="range"
+                min="5"
+                max="60"
+                step="1"
+                value={settings.leftOnReadTriggerMax}
+                onChange={(e) => updateSetting('leftOnReadTriggerMax', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>5 min</span>
+                <span>60 min</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum time window for left-on-read detection</p>
+            </div>
+
+            {/* Left-On-Read Character Cooldown */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Character Cooldown</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.leftOnReadCharacterCooldown >= 60
+                    ? `${(settings.leftOnReadCharacterCooldown / 60).toFixed(1)} hours`
+                    : `${settings.leftOnReadCharacterCooldown} minutes`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="30"
+                max="480"
+                step="30"
+                value={settings.leftOnReadCharacterCooldown}
+                onChange={(e) => updateSetting('leftOnReadCharacterCooldown', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>30 min</span>
+                <span>8 hours</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Minimum time before same character can send another left-on-read follow-up</p>
             </div>
 
             {/* Pacing Style */}
