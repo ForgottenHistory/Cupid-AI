@@ -1,3 +1,5 @@
+import { loadPrompts } from '../routes/prompts.js';
+
 class PromptBuilderService {
   /**
    * Get surrounding activities from schedule (3 before, 3 after current)
@@ -111,13 +113,12 @@ class PromptBuilderService {
       }
     }
 
+    // Load prompts from config
+    const prompts = loadPrompts();
+
     // Add departing context
     if (isDeparting) {
-      parts.push(`\n\n⚠️ IMPORTANT: You need to wrap up the conversation now. Something came up or you need to get back to what you were doing. Send a brief, natural departing message that:`);
-      parts.push(`\n- Acknowledges their last message`);
-      parts.push(`\n- Mentions you have to go (use your current status/activity as context for why)`);
-      parts.push(`\n- Keeps it casual and natural ("gtg", "gotta run", "talk later", etc.)`);
-      parts.push(`\n- DON'T make it dramatic or apologetic - just a casual "ttyl" type message`);
+      parts.push(`\n\n${prompts.departingPrompt}`);
     }
 
     if (userBio) {
@@ -128,39 +129,19 @@ class PromptBuilderService {
       parts.push(`\n\n${characterData.system_prompt}`);
     }
 
-    parts.push(`\n\nCONTEXT: You're both using an experimental long-distance romance app that connects people from different cities and countries. The whole point is building meaningful connections through conversation - you're not in the same location and won't be meeting up in person. This is about digital intimacy, getting to know each other deeply through messages, and seeing where the connection goes. Geography doesn't matter here; chemistry does.`);
+    parts.push(`\n\n${prompts.contextPrompt}`);
 
-    parts.push(`\n\nIMPORTANT: You are texting someone you're interested in on a dating app. Text like a real person, not a character in a story.
-
-- NO asterisks for actions (*smiles*, *laughs*, etc)
-- NO quotation marks around dialogue
-- NO theatrical descriptions or over-the-top performances
-- Keep it SHORT and casual - text message length (1-3 sentences usually)
-- Be yourself, not an exaggerated version
-- Talk like you would actually text someone
-- Show personality through words, not actions
-- Use emojis SPARINGLY - like a real person would (0-2 emojis per message MAX, many messages have none)
-- Don't end every message with an emoji - that's annoying and fake
-- Emojis should feel natural, not forced
-
-PACING & CHEMISTRY:
-- Act according to YOUR personality and what YOU want - not just mirroring them
-- Some people take things slow, some are more forward - stay true to your character
-- Attraction should build naturally based on mutual interest, not just one person pushing
-- If you're feeling it AND they're feeling it, let things develop organically
-- If you're not ready or not feeling it, that's valid - don't just go along with what they want
-- Conversely, if YOU want to escalate and they seem receptive, take initiative
-- Read chemistry, not just their energy - two-way street, both people have desires`);
+    parts.push(`\n\n${prompts.systemPrompt}`);
 
     // Add media sending context if provided
     if (decision) {
       if (decision.shouldSendVoice) {
-        parts.push(`\n\n📱 VOICE MESSAGE: You are sending a voice message with this response. Your text will be spoken aloud, so write naturally as if speaking. Keep it conversational and authentic.`);
+        parts.push(`\n\n${prompts.voiceMessagePrompt}`);
       }
       // Note: Image sending is now handled via inline [IMAGE: tags] in the final message primer
     }
 
-    parts.push(`\n\nStay true to your character but keep it real and chill.`);
+    parts.push(`\n\n${prompts.closingPrompt}`);
 
     return parts.join('');
   }
@@ -234,19 +215,13 @@ PACING & CHEMISTRY:
    */
   buildProactiveInstructions(proactiveType, gapHours, isFirstMessage = false) {
     const parts = [];
+    const prompts = loadPrompts();
 
     // Special handling for first messages (icebreakers)
     if (isFirstMessage) {
       const timeSinceMatch = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since you matched.` : ' You matched recently.';
       parts.push(`💬 FIRST MESSAGE: You're reaching out for the first time!${timeSinceMatch}`);
-      parts.push(`\n\n✨ ICEBREAKER: You want to break the ice and start a conversation. This is your first message to them, so make it count!
-
-- Reference something from their profile if it caught your attention
-- Ask a question that's easy to answer and engaging
-- Show genuine interest and personality
-- Keep it light, friendly, and authentic
-- Don't be generic - "hey" is boring!
-- 1-2 sentences is perfect for a first message`);
+      parts.push(`\n\n${prompts.proactiveFirstMessagePrompt}`);
 
       return parts.join('');
     }
@@ -256,14 +231,14 @@ PACING & CHEMISTRY:
     parts.push(`💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
 
     if (proactiveType === 'resume') {
-      parts.push(`\n\nYou want to CONTINUE the previous conversation. Pick up where you left off - reference what you were talking about before. Keep it casual, like you've been thinking about it.`);
+      parts.push(`\n\n${prompts.proactiveResumePrompt}`);
     } else if (proactiveType === 'fresh') {
-      parts.push(`\n\n⚠️ FRESH START: The previous conversation ended naturally. DO NOT reference or continue the old topic. Start a COMPLETELY NEW conversation - share something that happened recently (but be aware of current time/day!), ask how they're doing, or bring up a fresh topic. Make sure any time references (like "this morning", "saturday", etc) make sense given the current date and time. Pretend the old conversation never happened.`);
+      parts.push(`\n\n${prompts.proactiveFreshPrompt}`);
     } else if (proactiveType === 'callback') {
-      parts.push(`\n\nYou want to BRING UP something interesting from earlier in the conversation. Reference a topic or detail that stuck with you. Make it feel like you've been thinking about it.`);
+      parts.push(`\n\n${prompts.proactiveCallbackPrompt}`);
     }
 
-    parts.push(`\n\nKeep it short and natural (1-2 sentences). Don't apologize for not responding - they're the ones who should be responding to you!`);
+    parts.push(`\n\n${prompts.proactiveClosingPrompt}`);
 
     // Add time-specific guidance
     if (gapHours) {

@@ -21,6 +21,8 @@ import wizardRoutes from './routes/wizard.js';
 import feedRoutes from './routes/feed.js';
 import syncRoutes from './routes/sync.js';
 import tagLibraryRoutes from './routes/tagLibrary.js';
+import promptsRoutes from './routes/prompts.js';
+import imageTagPromptsRoutes from './routes/imageTagPrompts.js';
 
 // Import services
 import proactiveMessageService from './services/proactiveMessageService.js';
@@ -92,6 +94,8 @@ app.use('/api/wizard', wizardRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/tag-library', tagLibraryRoutes);
+app.use('/api/prompts', promptsRoutes);
+app.use('/api/image-tag-prompts', imageTagPromptsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
