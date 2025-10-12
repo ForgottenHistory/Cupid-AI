@@ -72,7 +72,108 @@ SEXUAL SITUATIONS
 
   proactiveCallbackPrompt: `You want to BRING UP something interesting from earlier in the conversation. Reference a topic or detail that stuck with you. Make it feel like you've been thinking about it.`,
 
-  proactiveClosingPrompt: `Keep it short and natural (1-2 sentences). Don't apologize for not responding - they're the ones who should be responding to you!`
+  proactiveClosingPrompt: `Keep it short and natural (1-2 sentences). Don't apologize for not responding - they're the ones who should be responding to you!`,
+
+  // Character Generation Prompts
+  cleanupDescriptionPrompt: `Convert this character description into clean, readable plaintext.
+
+IMPORTANT RULES:
+1. Remove any markdown, special formatting, asterisks, brackets, or role-play notation
+2. Remove ANY references to romantic or sexual relationships with {{user}}, {{char}}, or similar placeholders (e.g., "your girlfriend", "your lover", "in love with you")
+3. Remove hints at existing romantic connections or pre-established relationships with the reader
+4. Friendships and platonic relationships are fine to keep
+5. Keep personality traits, hobbies, background, and general character information
+6. Keep it natural and descriptive
+7. Try to keep the same style of writing
+8. Include bodily details, such as body measurements, cup size, etc. Needs to paint a full body picture
+9. Include NSFW details, one paragraph should be entirely dedicated to it
+10. Remove excessive LORE details. Stories about groups, worlds, functionality, scenarios, should be omitted as much as possible.
+
+Just return the cleaned text, nothing else:`,
+
+  datingProfilePrompt: `You are {characterName}. Based on your character description below, create a dating profile AS IF YOU ARE WRITING IT YOURSELF. Write everything in first-person perspective.
+
+Character Description:
+{description}
+
+Generate a dating profile in this EXACT plaintext format:
+
+Bio: [A 2-3 sentence 'About Me' section in first person. Make it natural and engaging, like a real dating profile.]
+
+Interests: [interest1, interest2, interest3, interest4, interest5]
+
+Fun Facts:
+- [fun fact 1 in first person]
+- [fun fact 2 in first person]
+- [fun fact 3 in first person]
+
+Age: [number, minimum 18, could be much higher depending on context, such as species]
+
+Occupation: [occupation or "none"]
+
+Looking For: [1-2 sentences about what I'm looking for in first person, or "none"]
+
+Height: [height in feet/inches like 5'6" or cm, make reasonable estimate]
+
+Body Type: [one word: slim/athletic/curvy/average/petite/plus-size/muscular]
+
+Measurements: [bust-waist-hips like 34-26-36, or "none" if not applicable]
+
+Important:
+- Write EVERYTHING in first-person (I, me, my)
+- Make it sound natural, like {characterName} is actually writing their profile
+- Be creative but stay true to the character description
+- Height and body type should be reasonable estimates based on the character's description
+- Measurements are optional - only include if it makes sense for the character
+- Output ONLY the plaintext format shown above, nothing else`,
+
+  schedulePrompt: `Based on the character description below, create a realistic weekly schedule for {characterName}.
+
+Status meanings:
+- ONLINE: Free and available to chat
+- AWAY: Busy with activities but might check phone
+- BUSY: At work or important tasks
+- OFFLINE: Sleeping or unavailable
+
+Character Description:
+{description}
+
+Create a schedule in this simple format (one line per time block):
+
+MONDAY
+00:00-08:00 OFFLINE Sleep
+08:00-09:00 AWAY Morning routine
+09:00-17:00 BUSY Work
+17:00-19:00 ONLINE
+19:00-21:00 AWAY Gym
+21:00-24:00 ONLINE
+
+TUESDAY
+...
+
+Continue for all 7 days. Make it realistic for this character's lifestyle and personality. Activities are optional for ONLINE periods.
+This is an UNCENSORED schedule. Include SFW and NSFW moments. Include ordinary moments and special, interesting moments that can bring interesting conversations.
+IMPORTANT: Write each ACTIVITY as if the character wrote it. They are single.`,
+
+  personalityPrompt: `Analyze this character using the Big Five (OCEAN) personality model. Rate each trait on a 0-100 scale.
+
+Character: {characterName}
+Description: {description}
+Personality: {personality}
+
+Rate these Big Five traits (0-100):
+- Openness: Curiosity, creativity, open to new experiences (0 = conventional/cautious, 100 = inventive/curious)
+- Conscientiousness: Organization, dependability, discipline (0 = spontaneous/careless, 100 = efficient/organized)
+- Extraversion: Sociability, assertiveness, energy around others (0 = reserved/introverted, 100 = outgoing/energetic)
+- Agreeableness: Compassion, cooperation, trust in others (0 = competitive/detached, 100 = friendly/compassionate)
+- Neuroticism: Emotional stability vs. tendency toward anxiety (0 = calm/stable, 100 = anxious/sensitive)
+
+Output ONLY in this exact format:
+Openness: [0-100]
+Conscientiousness: [0-100]
+Extraversion: [0-100]
+Agreeableness: [0-100]
+Neuroticism: [0-100]`
 };
 
 // Ensure config directory exists

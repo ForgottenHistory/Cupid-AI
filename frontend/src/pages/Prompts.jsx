@@ -11,7 +11,11 @@ const Prompts = () => {
     proactiveResumePrompt: '',
     proactiveFreshPrompt: '',
     proactiveCallbackPrompt: '',
-    proactiveClosingPrompt: ''
+    proactiveClosingPrompt: '',
+    cleanupDescriptionPrompt: '',
+    datingProfilePrompt: '',
+    schedulePrompt: '',
+    personalityPrompt: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -115,7 +119,7 @@ const Prompts = () => {
     return Math.ceil(totalChars / 4);
   };
 
-  const promptFields = [
+  const conversationPromptFields = [
     {
       key: 'systemPrompt',
       label: 'System Prompt',
@@ -175,6 +179,33 @@ const Prompts = () => {
       label: 'Proactive Closing',
       description: 'Final instructions for proactive messages',
       rows: 2
+    }
+  ];
+
+  const characterGenerationPromptFields = [
+    {
+      key: 'cleanupDescriptionPrompt',
+      label: 'Cleanup Description',
+      description: 'AI prompt for cleaning up imported character descriptions (remove formatting, placeholders, etc.)',
+      rows: 8
+    },
+    {
+      key: 'datingProfilePrompt',
+      label: 'Dating Profile Generation',
+      description: 'AI prompt for generating dating profiles from character descriptions. Use {characterName} and {description} as placeholders.',
+      rows: 12
+    },
+    {
+      key: 'schedulePrompt',
+      label: 'Schedule Generation',
+      description: 'AI prompt for generating weekly schedules. Use {characterName} and {description} as placeholders.',
+      rows: 10
+    },
+    {
+      key: 'personalityPrompt',
+      label: 'Big Five Personality Generation',
+      description: 'AI prompt for generating OCEAN personality traits. Use {characterName}, {description}, and {personality} as placeholders.',
+      rows: 10
     }
   ];
 
@@ -253,9 +284,46 @@ const Prompts = () => {
           </button>
         </div>
 
-        {/* Prompt Fields */}
+        {/* Conversation Behavior Prompts */}
         <div className="space-y-6">
-          {promptFields.map(field => (
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Conversation Behavior
+          </h2>
+          {conversationPromptFields.map(field => (
+            <div key={field.key} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+              <label className="block mb-2">
+                <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {field.label}
+                </span>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {field.description}
+                </p>
+              </label>
+              <textarea
+                value={prompts[field.key]}
+                onChange={(e) => updatePrompt(field.key, e.target.value)}
+                rows={field.rows}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-y font-mono text-sm"
+                placeholder={`Enter ${field.label.toLowerCase()}...`}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Separator */}
+        <div className="my-12 border-t-2 border-purple-200 dark:border-purple-800"></div>
+
+        {/* Character Generation Prompts */}
+        <div className="space-y-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Character Generation & Dating Profile
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              AI prompts for generating character profiles, schedules, and personality traits. Use placeholder variables like {'{'}characterName{'}'} and {'{'}description{'}'} where needed.
+            </p>
+          </div>
+          {characterGenerationPromptFields.map(field => (
             <div key={field.key} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
               <label className="block mb-2">
                 <span className="text-lg font-semibold text-gray-900 dark:text-white">

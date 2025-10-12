@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { loadPrompts } from '../routes/prompts.js';
 
 class PersonalityService {
   constructor() {
@@ -16,25 +17,15 @@ class PersonalityService {
     }
 
     try {
-      const prompt = `Analyze this character using the Big Five (OCEAN) personality model. Rate each trait on a 0-100 scale.
+      const prompts = loadPrompts();
+      const characterName = characterData.name || 'Character';
+      const description = characterData.description || 'N/A';
+      const personality = characterData.personality || 'N/A';
 
-Character: ${characterData.name}
-Description: ${characterData.description || 'N/A'}
-Personality: ${characterData.personality || 'N/A'}
-
-Rate these Big Five traits (0-100):
-- Openness: Curiosity, creativity, open to new experiences (0 = conventional/cautious, 100 = inventive/curious)
-- Conscientiousness: Organization, dependability, discipline (0 = spontaneous/careless, 100 = efficient/organized)
-- Extraversion: Sociability, assertiveness, energy around others (0 = reserved/introverted, 100 = outgoing/energetic)
-- Agreeableness: Compassion, cooperation, trust in others (0 = competitive/detached, 100 = friendly/compassionate)
-- Neuroticism: Emotional stability vs. tendency toward anxiety (0 = calm/stable, 100 = anxious/sensitive)
-
-Output ONLY in this exact format:
-Openness: [0-100]
-Conscientiousness: [0-100]
-Extraversion: [0-100]
-Agreeableness: [0-100]
-Neuroticism: [0-100]`;
+      const prompt = prompts.personalityPrompt
+        .replace(/{characterName}/g, characterName)
+        .replace(/{description}/g, description)
+        .replace(/{personality}/g, personality);
 
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
