@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { MoodProvider } from './context/MoodContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -16,6 +16,12 @@ import Prompts from './pages/Prompts';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import CharacterWizard from './pages/CharacterWizard';
+
+// Wrapper component to force Chat remount when characterId changes
+function ChatWrapper() {
+  const { characterId } = useParams();
+  return <Chat key={characterId} />;
+}
 
 function App() {
   return (
@@ -119,7 +125,7 @@ function App() {
             element={
               <ProtectedRoute>
                 <MainLayout>
-                  <Chat />
+                  <ChatWrapper />
                 </MainLayout>
               </ProtectedRoute>
             }

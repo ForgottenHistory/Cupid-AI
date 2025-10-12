@@ -46,7 +46,12 @@ const ModelSelector = ({ selectedModel, onChange, provider = 'openrouter' }) => 
         }));
       }
 
-      setModels(modelData);
+      // Deduplicate models by ID (some providers return duplicates)
+      const uniqueModels = Array.from(
+        new Map(modelData.map(model => [model.id, model])).values()
+      );
+
+      setModels(uniqueModels);
     } catch (err) {
       console.error(`Failed to load ${provider} models:`, err);
       // Fallback to a basic list if API fails

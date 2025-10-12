@@ -4,6 +4,7 @@ import tokenService from './tokenService.js';
 import promptBuilderService from './promptBuilderService.js';
 import decisionEngineService from './decisionEngineService.js';
 import personalityService from './personalityService.js';
+import queueService from './queueService.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -87,13 +88,17 @@ class AIService {
         originalMessageCount: messages.length
       });
 
-      // Build final messages array
+      // Split message history: keep last 5 separate for recency
+      const last5Messages = trimmedMessages.slice(-5);
+      const olderMessages = trimmedMessages.slice(0, -5);
+
+      // Build final messages array with older history first
       const finalMessages = [
         { role: 'system', content: systemPrompt },
-        ...trimmedMessages
+        ...olderMessages
       ];
 
-      // Append current date/time reminder AFTER message history (recency bias)
+      // Append current date/time reminder
       const now = new Date();
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -108,7 +113,7 @@ class AIService {
       const timeReminder = `⏰ IMPORTANT: Current date and time is ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}. Make sure any time/day references in your message are accurate!`;
       finalMessages.push({ role: 'system', content: timeReminder });
 
-      // For proactive messages, append instructions AFTER message history
+      // For proactive messages, append instructions
       if (isProactive && proactiveType) {
         const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage);
         finalMessages.push({ role: 'system', content: proactiveInstructions });
@@ -138,8 +143,11 @@ class AIService {
       // Add roleplay reminder to keep AI on track
       finalMessages.push({
         role: 'system',
-        content: '⚠️ RESUME ROLEPLAY: Stay in character. Write as the character would naturally text in this dating app conversation. No narration, no actions in asterisks, just authentic messages.'
+        content: '⚠️ CRITICAL - RESUME ROLEPLAY NOW: Continue from where the conversation left off. Write something ENTIRELY NEW that progresses the conversation forward. DO NOT copy, repeat, or paraphrase any previous messages. DO NOT regenerate old content. Stay in character. Write as the character would naturally text in this dating app conversation - no narration, no actions in asterisks, just authentic new messages.'
       });
+
+      // Add last 5 messages for maximum recency (right before character prime)
+      finalMessages.push(...last5Messages);
 
       // Add character name prompt at the very end to prime the response
       // If sending image/voice, add tags on first line, then character name on second line
@@ -180,18 +188,21 @@ class AIService {
         requestBody.min_p = 0.0; // Disabled by default
       }
 
-      const response = await axios.post(
-        `${providerConfig.baseUrl}/chat/completions`,
-        requestBody,
-        {
-          headers: {
-            'Authorization': `Bearer ${providerConfig.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://localhost:3000',
-            'X-Title': 'AI-Dater',
+      // Execute request through queue to respect concurrency limits
+      const response = await queueService.enqueue(provider, async () => {
+        return await axios.post(
+          `${providerConfig.baseUrl}/chat/completions`,
+          requestBody,
+          {
+            headers: {
+              'Authorization': `Bearer ${providerConfig.apiKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://localhost:3000',
+              'X-Title': 'AI-Dater',
+            }
           }
-        }
-      );
+        );
+      });
 
       let content = response.data.choices[0].message.content;
 
@@ -323,18 +334,21 @@ class AIService {
         );
       }
 
-      const response = await axios.post(
-        `${providerConfig.baseUrl}/chat/completions`,
-        requestBody,
-        {
-          headers: {
-            'Authorization': `Bearer ${providerConfig.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://localhost:3000',
-            'X-Title': 'AI-Dater',
+      // Execute request through queue to respect concurrency limits
+      const response = await queueService.enqueue(provider, async () => {
+        return await axios.post(
+          `${providerConfig.baseUrl}/chat/completions`,
+          requestBody,
+          {
+            headers: {
+              'Authorization': `Bearer ${providerConfig.apiKey}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://localhost:3000',
+              'X-Title': 'AI-Dater',
+            }
           }
-        }
-      );
+        );
+      });
 
       const message = response.data.choices[0].message;
       const content = message.content;
