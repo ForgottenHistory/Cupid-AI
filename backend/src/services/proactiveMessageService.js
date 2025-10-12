@@ -176,33 +176,37 @@ class ProactiveMessageService {
         }
 
         // Check character status and apply probability for away/busy
-        if (schedule) {
-          const statusInfo = getCurrentStatusFromSchedule(schedule);
+        if (!schedule) {
+          // No schedule = skip this character (can't determine status)
+          console.log(`⚠️ Character ${characterData.data?.name || 'unknown'} has no schedule - skipping`);
+          continue;
+        }
 
-          // Online: Always allow (100% chance)
-          if (statusInfo.status === 'online') {
-            // Continue to next check
+        const statusInfo = getCurrentStatusFromSchedule(schedule);
+
+        // Online: Always allow (100% chance)
+        if (statusInfo.status === 'online') {
+          // Continue to next check
+        }
+        // Away: Check user's away probability setting
+        else if (statusInfo.status === 'away') {
+          const awayChance = user.proactive_away_chance || 50; // Default 50%
+          const roll = Math.random() * 100;
+          if (roll > awayChance) {
+            continue; // Don't send - failed probability check
           }
-          // Away: Check user's away probability setting
-          else if (statusInfo.status === 'away') {
-            const awayChance = user.proactive_away_chance || 50; // Default 50%
-            const roll = Math.random() * 100;
-            if (roll > awayChance) {
-              continue; // Don't send - failed probability check
-            }
+        }
+        // Busy: Check user's busy probability setting
+        else if (statusInfo.status === 'busy') {
+          const busyChance = user.proactive_busy_chance || 10; // Default 10%
+          const roll = Math.random() * 100;
+          if (roll > busyChance) {
+            continue; // Don't send - failed probability check
           }
-          // Busy: Check user's busy probability setting
-          else if (statusInfo.status === 'busy') {
-            const busyChance = user.proactive_busy_chance || 10; // Default 10%
-            const roll = Math.random() * 100;
-            if (roll > busyChance) {
-              continue; // Don't send - failed probability check
-            }
-          }
-          // Offline: Never send
-          else {
-            continue;
-          }
+        }
+        // Offline: Never send
+        else {
+          continue;
         }
 
         // Parse personality data
