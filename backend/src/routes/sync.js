@@ -34,38 +34,50 @@ router.post('/characters', authenticateToken, (req, res) => {
       }
 
       try {
-        // Extract name from card data
+        // Extract data from card data
         const name = char.cardData?.data?.name || 'Character';
         const imageTags = char.cardData?.data?.imageTags || null;
+        const schedule = char.cardData?.data?.schedule || null;
+        const personalityTraits = char.cardData?.data?.personalityTraits || null;
 
         // Check if character already exists
-        const existing = db.prepare('SELECT id FROM characters WHERE id = ? AND user_id = ?').get(char.id, userId);
+        const existing = db.prepare('SELECT id, schedule_generated_at FROM characters WHERE id = ? AND user_id = ?').get(char.id, userId);
 
         if (existing) {
-          // Update existing character (preserve schedule, personality, image_tags, voice_id, image_url, etc.)
-          // Note: image_url is NOT synced here - it stays in IndexedDB (frontend only)
+          // Update existing character - sync schedule and personality from IndexedDB
+          // Only update schedule_generated_at if we're syncing a new schedule
           db.prepare(`
             UPDATE characters
-            SET name = ?, card_data = ?
+            SET name = ?,
+                card_data = ?,
+                schedule_data = ?,
+                personality_data = ?,
+                schedule_generated_at = ?
             WHERE id = ? AND user_id = ?
           `).run(
             name,
             JSON.stringify(char.cardData),
+            schedule ? JSON.stringify(schedule) : null,
+            personalityTraits ? JSON.stringify(personalityTraits) : null,
+            schedule ? new Date().toISOString() : existing.schedule_generated_at,
             char.id,
             userId
           );
         } else {
-          // Insert new character (image_url is NULL - images stay in IndexedDB)
+          // Insert new character
           db.prepare(`
             INSERT INTO characters
-            (id, user_id, name, card_data, image_url, image_tags, created_at)
-            VALUES (?, ?, ?, ?, NULL, ?, CURRENT_TIMESTAMP)
+            (id, user_id, name, card_data, image_url, image_tags, schedule_data, personality_data, schedule_generated_at, created_at)
+            VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, CURRENT_TIMESTAMP)
           `).run(
             char.id,
             userId,
             name,
             JSON.stringify(char.cardData),
-            imageTags ? JSON.stringify(imageTags) : null
+            imageTags ? JSON.stringify(imageTags) : null,
+            schedule ? JSON.stringify(schedule) : null,
+            personalityTraits ? JSON.stringify(personalityTraits) : null,
+            schedule ? new Date().toISOString() : null
           );
         }
 

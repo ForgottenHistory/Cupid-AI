@@ -21,7 +21,7 @@ class PersonalityService {
    * Generate Big Five personality traits for a character
    * Returns: { openness: 0-100, conscientiousness: 0-100, extraversion: 0-100, agreeableness: 0-100, neuroticism: 0-100 }
    */
-  async generatePersonality(characterData) {
+  async generatePersonality(characterData, userId = null) {
     try {
       const aiService = await this.getAIService();
       const prompts = loadPrompts();
@@ -35,11 +35,11 @@ class PersonalityService {
         .replace(/{personality}/g, personalityText);
 
       const response = await aiService.createBasicCompletion(prompt, {
-        model: 'deepseek/deepseek-chat-v3', // Use small model for this
         temperature: 0.7,
         max_tokens: 200,
         messageType: 'personality',
-        characterName: characterName
+        characterName: characterName,
+        userId: userId
       });
 
       const content = response.content.trim();

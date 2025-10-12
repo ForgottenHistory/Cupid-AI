@@ -19,7 +19,8 @@ export async function cleanupDescription(req, res) {
     const response = await aiService.createBasicCompletion(prompt, {
       temperature: 0.7,
       max_tokens: 10000,
-      messageType: 'cleanup-description'
+      messageType: 'cleanup-description',
+      userId: req.user.id
     });
 
     res.json({ cleanedDescription: response.content.trim() });
@@ -47,7 +48,8 @@ export async function generateDatingProfile(req, res) {
       temperature: 0.8,
       max_tokens: 3000,
       messageType: 'dating-profile',
-      characterName: name || 'Character'
+      characterName: name || 'Character',
+      userId: req.user.id
     });
 
     // Parse plaintext response
@@ -79,7 +81,8 @@ export async function generateSchedule(req, res) {
       temperature: 0.7,
       max_tokens: 5000,
       messageType: 'schedule',
-      characterName: name || 'Character'
+      characterName: name || 'Character',
+      userId: req.user.id
     });
 
     // Parse plaintext response into JSON
@@ -111,7 +114,7 @@ export async function generatePersonality(req, res) {
       personality: personality || ''
     };
 
-    const traits = await aiService.generatePersonality(characterData);
+    const traits = await aiService.generatePersonality(characterData, req.user.id);
 
     res.json({ personality: traits });
   } catch (error) {

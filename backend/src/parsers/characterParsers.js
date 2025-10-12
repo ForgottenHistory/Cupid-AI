@@ -131,8 +131,22 @@ export function parseScheduleFromPlaintext(text) {
     const lines = dayContent.trim().split('\n');
 
     for (const line of lines) {
-      const trimmedLine = line.trim();
+      let trimmedLine = line.trim();
       if (!trimmedLine) continue;
+
+      // Normalize whitespace: replace all Unicode spaces with regular spaces
+      // This handles non-breaking spaces, em spaces, en spaces, etc.
+      trimmedLine = trimmedLine.replace(/[\u00A0\u2000-\u200B\u202F\u205F\u3000]/g, ' ');
+
+      // Fix common LLM typos/abbreviations in status codes
+      trimmedLine = trimmedLine.replace(/\b(AWY|AWLY|AW|OFLINE|OFFLIN|BUSYY|ONLIN)\b/gi, (match) => {
+        const upper = match.toUpperCase();
+        if (upper === 'AWY' || upper === 'AWLY' || upper === 'AW') return 'AWAY';
+        if (upper === 'OFLINE' || upper === 'OFFLIN') return 'OFFLINE';
+        if (upper === 'BUSYY') return 'BUSY';
+        if (upper === 'ONLIN') return 'ONLINE';
+        return match;
+      });
 
       // Parse format: "HH:MM-HH:MM STATUS Activity (optional)"
       const match = trimmedLine.match(/(\d{2}:\d{2})-(\d{2}:\d{2})\s+(ONLINE|AWAY|BUSY|OFFLINE)(?:\s+(.+))?/i);
@@ -150,6 +164,13 @@ export function parseScheduleFromPlaintext(text) {
           block.activity = cleanActivity;
         }
         blocks.push(block);
+      } else {
+        // Log lines that failed to parse with hex dump for debugging
+        const hexDump = Array.from(trimmedLine).map(c =>
+          `${c}(${c.charCodeAt(0).toString(16)})`
+        ).join(' ');
+        console.log(`⚠️  Failed to parse schedule line: "${trimmedLine}"`);
+        console.log(`   Hex dump: ${hexDump.substring(0, 200)}...`);
       }
     }
 

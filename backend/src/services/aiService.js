@@ -221,10 +221,14 @@ class AIService {
     }
 
     try {
-      const defaultSettings = llmSettingsService.getDefaultContentSettings();
-      const model = options.model || defaultSettings.model;
-      const temperature = options.temperature ?? 0.8;
-      const max_tokens = options.max_tokens ?? 300;
+      // Use user's Content LLM settings if userId provided, otherwise use defaults
+      const userSettings = options.userId
+        ? llmSettingsService.getUserSettings(options.userId)
+        : llmSettingsService.getDefaultContentSettings();
+
+      const model = options.model || userSettings.model;
+      const temperature = options.temperature ?? userSettings.temperature;
+      const max_tokens = options.max_tokens ?? userSettings.max_tokens;
 
       const requestBody = {
         model: model,
