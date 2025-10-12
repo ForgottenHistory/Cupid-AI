@@ -154,7 +154,7 @@ router.delete('/profile/image', authenticateToken, (req, res) => {
 router.get('/llm-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
-      SELECT llm_model, llm_temperature, llm_max_tokens, llm_top_p,
+      SELECT llm_provider, llm_model, llm_temperature, llm_max_tokens, llm_top_p,
              llm_frequency_penalty, llm_presence_penalty, llm_context_window
       FROM users WHERE id = ?
     `).get(req.user.id);
@@ -164,6 +164,7 @@ router.get('/llm-settings', authenticateToken, (req, res) => {
     }
 
     res.json({
+      provider: settings.llm_provider || 'openrouter',
       model: settings.llm_model,
       temperature: settings.llm_temperature,
       maxTokens: settings.llm_max_tokens,
@@ -184,10 +185,13 @@ router.get('/llm-settings', authenticateToken, (req, res) => {
  */
 router.put('/llm-settings', authenticateToken, (req, res) => {
   try {
-    const { model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow } = req.body;
+    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
+    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    }
     if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
       return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
     }
@@ -211,6 +215,10 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
     const updates = [];
     const values = [];
 
+    if (provider !== undefined) {
+      updates.push('llm_provider = ?');
+      values.push(provider);
+    }
     if (model !== undefined) {
       updates.push('llm_model = ?');
       values.push(model);
@@ -279,7 +287,7 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
 router.get('/decision-llm-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
-      SELECT decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
+      SELECT decision_llm_provider, decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
              decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
       FROM users WHERE id = ?
     `).get(req.user.id);
@@ -289,6 +297,7 @@ router.get('/decision-llm-settings', authenticateToken, (req, res) => {
     }
 
     res.json({
+      provider: settings.decision_llm_provider || 'openrouter',
       model: settings.decision_llm_model,
       temperature: settings.decision_llm_temperature,
       maxTokens: settings.decision_llm_max_tokens,
@@ -309,10 +318,13 @@ router.get('/decision-llm-settings', authenticateToken, (req, res) => {
  */
 router.put('/decision-llm-settings', authenticateToken, (req, res) => {
   try {
-    const { model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow } = req.body;
+    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
+    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    }
     if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
       return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
     }
@@ -336,6 +348,10 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
     const updates = [];
     const values = [];
 
+    if (provider !== undefined) {
+      updates.push('decision_llm_provider = ?');
+      values.push(provider);
+    }
     if (model !== undefined) {
       updates.push('decision_llm_model = ?');
       values.push(model);
@@ -377,12 +393,13 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
 
     // Get updated settings
     const settings = db.prepare(`
-      SELECT decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
+      SELECT decision_llm_provider, decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
              decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
       FROM users WHERE id = ?
     `).get(userId);
 
     res.json({
+      provider: settings.decision_llm_provider || 'openrouter',
       model: settings.decision_llm_model,
       temperature: settings.decision_llm_temperature,
       maxTokens: settings.decision_llm_max_tokens,
@@ -394,6 +411,131 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Update Decision LLM settings error:', error);
     res.status(500).json({ error: 'Failed to update Decision LLM settings' });
+  }
+});
+
+/**
+ * GET /api/users/imagetag-llm-settings
+ * Get user's Image Tag LLM settings
+ */
+router.get('/imagetag-llm-settings', authenticateToken, (req, res) => {
+  try {
+    const settings = db.prepare(`
+      SELECT imagetag_llm_provider, imagetag_llm_model, imagetag_llm_temperature, imagetag_llm_max_tokens, imagetag_llm_top_p,
+             imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty
+      FROM users WHERE id = ?
+    `).get(req.user.id);
+
+    if (!settings) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      provider: settings.imagetag_llm_provider || 'openrouter',
+      model: settings.imagetag_llm_model,
+      temperature: settings.imagetag_llm_temperature,
+      maxTokens: settings.imagetag_llm_max_tokens,
+      topP: settings.imagetag_llm_top_p,
+      frequencyPenalty: settings.imagetag_llm_frequency_penalty,
+      presencePenalty: settings.imagetag_llm_presence_penalty
+    });
+  } catch (error) {
+    console.error('Get Image Tag LLM settings error:', error);
+    res.status(500).json({ error: 'Failed to get Image Tag LLM settings' });
+  }
+});
+
+/**
+ * PUT /api/users/imagetag-llm-settings
+ * Update user's Image Tag LLM settings
+ */
+router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
+  try {
+    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty } = req.body;
+    const userId = req.user.id;
+
+    // Validate parameters
+    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    }
+    if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
+      return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
+    }
+    if (maxTokens !== undefined && (maxTokens < 1 || maxTokens > 4000)) {
+      return res.status(400).json({ error: 'Max tokens must be between 1 and 4000' });
+    }
+    if (topP !== undefined && (topP < 0 || topP > 1)) {
+      return res.status(400).json({ error: 'Top P must be between 0 and 1' });
+    }
+    if (frequencyPenalty !== undefined && (frequencyPenalty < -2 || frequencyPenalty > 2)) {
+      return res.status(400).json({ error: 'Frequency penalty must be between -2 and 2' });
+    }
+    if (presencePenalty !== undefined && (presencePenalty < -2 || presencePenalty > 2)) {
+      return res.status(400).json({ error: 'Presence penalty must be between -2 and 2' });
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (provider !== undefined) {
+      updates.push('imagetag_llm_provider = ?');
+      values.push(provider);
+    }
+    if (model !== undefined) {
+      updates.push('imagetag_llm_model = ?');
+      values.push(model);
+    }
+    if (temperature !== undefined) {
+      updates.push('imagetag_llm_temperature = ?');
+      values.push(temperature);
+    }
+    if (maxTokens !== undefined) {
+      updates.push('imagetag_llm_max_tokens = ?');
+      values.push(maxTokens);
+    }
+    if (topP !== undefined) {
+      updates.push('imagetag_llm_top_p = ?');
+      values.push(topP);
+    }
+    if (frequencyPenalty !== undefined) {
+      updates.push('imagetag_llm_frequency_penalty = ?');
+      values.push(frequencyPenalty);
+    }
+    if (presencePenalty !== undefined) {
+      updates.push('imagetag_llm_presence_penalty = ?');
+      values.push(presencePenalty);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    if (updates.length === 1) { // Only updated_at
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+    db.prepare(query).run(...values);
+
+    // Get updated settings
+    const settings = db.prepare(`
+      SELECT imagetag_llm_provider, imagetag_llm_model, imagetag_llm_temperature, imagetag_llm_max_tokens, imagetag_llm_top_p,
+             imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty
+      FROM users WHERE id = ?
+    `).get(userId);
+
+    res.json({
+      provider: settings.imagetag_llm_provider || 'openrouter',
+      model: settings.imagetag_llm_model,
+      temperature: settings.imagetag_llm_temperature,
+      maxTokens: settings.imagetag_llm_max_tokens,
+      topP: settings.imagetag_llm_top_p,
+      frequencyPenalty: settings.imagetag_llm_frequency_penalty,
+      presencePenalty: settings.imagetag_llm_presence_penalty
+    });
+  } catch (error) {
+    console.error('Update Image Tag LLM settings error:', error);
+    res.status(500).json({ error: 'Failed to update Image Tag LLM settings' });
   }
 });
 

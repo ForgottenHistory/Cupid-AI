@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 
 /**
- * Custom hook for managing LLM settings (Content or Decision)
- * @param {string} type - 'content' or 'decision'
+ * Custom hook for managing LLM settings (Content, Decision, or Image Tag)
+ * @param {string} type - 'content', 'decision', or 'imagetag'
  * @returns {Object} Settings state and handlers
  */
 export const useLLMSettings = (type) => {
@@ -21,7 +21,7 @@ export const useLLMSettings = (type) => {
     try {
       setLoading(true);
       setError('');
-      const endpoint = type === 'content' ? '/users/llm-settings' : '/users/decision-llm-settings';
+      const endpoint = type === 'content' ? '/users/llm-settings' : type === 'decision' ? '/users/decision-llm-settings' : '/users/imagetag-llm-settings';
       const response = await api.get(endpoint);
       setSettings(response.data);
     } catch (err) {
@@ -37,7 +37,7 @@ export const useLLMSettings = (type) => {
       setSaving(true);
       setError('');
       setSuccess('');
-      const endpoint = type === 'content' ? '/users/llm-settings' : '/users/decision-llm-settings';
+      const endpoint = type === 'content' ? '/users/llm-settings' : type === 'decision' ? '/users/decision-llm-settings' : '/users/imagetag-llm-settings';
       await api.put(endpoint, settings);
       setSuccess('Settings saved successfully!');
       setTimeout(() => {
@@ -81,6 +81,7 @@ export const useLLMSettings = (type) => {
 function getDefaultSettings(type) {
   if (type === 'content') {
     return {
+      provider: 'openrouter',
       model: 'deepseek/deepseek-chat-v3',
       temperature: 0.8,
       maxTokens: 800,
@@ -89,8 +90,9 @@ function getDefaultSettings(type) {
       presencePenalty: 0.0,
       contextWindow: 4000,
     };
-  } else {
+  } else if (type === 'decision') {
     return {
+      provider: 'openrouter',
       model: 'deepseek/deepseek-chat-v3',
       temperature: 0.7,
       maxTokens: 500,
@@ -98,6 +100,16 @@ function getDefaultSettings(type) {
       frequencyPenalty: 0.0,
       presencePenalty: 0.0,
       contextWindow: 2000,
+    };
+  } else if (type === 'imagetag') {
+    return {
+      provider: 'openrouter',
+      model: 'x-ai/grok-4-fast',
+      temperature: 0.7,
+      maxTokens: 4000,
+      topP: 1.0,
+      frequencyPenalty: 0.0,
+      presencePenalty: 0.0,
     };
   }
 }

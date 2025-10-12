@@ -18,7 +18,7 @@ export async function cleanupDescription(req, res) {
 
     const response = await aiService.createBasicCompletion(prompt, {
       temperature: 0.7,
-      max_tokens: 10000,
+      max_tokens: 4000,
       messageType: 'cleanup-description',
       userId: req.user.id
     });
@@ -79,7 +79,7 @@ export async function generateSchedule(req, res) {
 
     const response = await aiService.createBasicCompletion(prompt, {
       temperature: 0.7,
-      max_tokens: 5000,
+      max_tokens: 4000,
       messageType: 'schedule',
       characterName: name || 'Character',
       userId: req.user.id

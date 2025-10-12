@@ -56,9 +56,29 @@ const LLMSettingsForm = ({
           </div>
         )}
 
+        {/* Provider Selection */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            AI Provider
+          </label>
+          <select
+            value={settings.provider || 'openrouter'}
+            onChange={(e) => updateSetting('provider', e.target.value)}
+            className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent transition text-gray-900 dark:text-gray-100"
+          >
+            <option value="openrouter">OpenRouter</option>
+            <option value="featherless">Featherless</option>
+          </select>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Choose which AI provider to use for this LLM. Each provider has different models and pricing.
+          </p>
+        </div>
+
         {/* Model Selection */}
         <ModelSelector
+          key={`${type}-${settings.provider || 'openrouter'}`}
           selectedModel={settings.model}
+          provider={settings.provider || 'openrouter'}
           onChange={(value) => updateSetting('model', value)}
         />
 

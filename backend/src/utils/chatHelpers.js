@@ -20,8 +20,6 @@ export function getCurrentStatusFromSchedule(schedule) {
     return { status: 'offline', activity: null };
   }
 
-  console.log(`📋 Today's schedule (${currentDay}):`, JSON.stringify(todaySchedule, null, 2));
-
   // Find the block that contains current time
   for (const block of todaySchedule) {
     // Check if this block crosses midnight (end < start, e.g., 20:00-03:00)

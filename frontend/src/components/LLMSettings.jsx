@@ -3,7 +3,7 @@ import { useLLMSettings } from '../hooks/useLLMSettings';
 import LLMSettingsForm from './settings/LLMSettingsForm';
 
 const LLMSettings = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState('content'); // 'content' or 'decision'
+  const [activeTab, setActiveTab] = useState('content'); // 'content', 'decision', or 'imagetag'
 
   // Hook for Content LLM settings
   const contentLLM = useLLMSettings('content');
@@ -11,8 +11,11 @@ const LLMSettings = ({ onClose }) => {
   // Hook for Decision LLM settings
   const decisionLLM = useLLMSettings('decision');
 
+  // Hook for Image Tag LLM settings
+  const imagetagLLM = useLLMSettings('imagetag');
+
   // Get current tab's settings
-  const currentSettings = activeTab === 'content' ? contentLLM : decisionLLM;
+  const currentSettings = activeTab === 'content' ? contentLLM : activeTab === 'decision' ? decisionLLM : imagetagLLM;
 
   // Handle form submission
   const handleSubmit = (e) => {
@@ -62,6 +65,16 @@ const LLMSettings = ({ onClose }) => {
             }`}
           >
             Decision LLM
+          </button>
+          <button
+            onClick={() => setActiveTab('imagetag')}
+            className={`flex-1 px-6 py-3 font-semibold transition ${
+              activeTab === 'imagetag'
+                ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400 bg-white dark:bg-gray-800'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            Image Tag LLM
           </button>
         </div>
 

@@ -53,6 +53,50 @@ if (fs.existsSync(logFile)) {
 
 console.log('📝 File logging enabled:', logFile);
 
+/**
+ * Clean log entries older than 10 minutes
+ */
+function cleanOldLogs() {
+  try {
+    if (!fs.existsSync(logFile)) {
+      return;
+    }
+
+    const content = fs.readFileSync(logFile, 'utf8');
+    if (!content) {
+      return;
+    }
+
+    const lines = content.split('\n');
+    const now = new Date();
+    const tenMinutesAgo = new Date(now.getTime() - 10 * 60 * 1000);
+
+    // Filter lines to keep only those from last 10 minutes
+    const recentLines = lines.filter(line => {
+      if (!line.trim()) {
+        return false; // Remove empty lines
+      }
+
+      // Extract timestamp from format: [2025-10-12T13:46:14.630Z]
+      const timestampMatch = line.match(/^\[(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)\]/);
+      if (!timestampMatch) {
+        return false; // Skip malformed lines
+      }
+
+      const lineDate = new Date(timestampMatch[1]);
+      return lineDate >= tenMinutesAgo;
+    });
+
+    // Write back only recent logs
+    fs.writeFileSync(logFile, recentLines.join('\n') + (recentLines.length > 0 ? '\n' : ''), 'utf8');
+  } catch (error) {
+    originalConsoleError('❌ Failed to clean old logs:', error);
+  }
+}
+
+// Clean old logs every minute
+setInterval(cleanOldLogs, 60 * 1000);
+
 export default {
   logFile
 };

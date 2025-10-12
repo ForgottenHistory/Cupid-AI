@@ -340,6 +340,29 @@ function runMigrations() {
       console.log('✅ Proactive check interval columns added to users table');
     }
 
+    // Migration: Add AI provider columns to users table
+    if (!userColumnNames.includes('llm_provider')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN llm_provider TEXT DEFAULT 'openrouter';
+        ALTER TABLE users ADD COLUMN decision_llm_provider TEXT DEFAULT 'openrouter';
+      `);
+      console.log('✅ llm_provider and decision_llm_provider columns added to users table');
+    }
+
+    // Migration: Add Image Tag LLM settings columns to users table
+    if (!userColumnNames.includes('imagetag_llm_model')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN imagetag_llm_provider TEXT DEFAULT 'openrouter';
+        ALTER TABLE users ADD COLUMN imagetag_llm_model TEXT DEFAULT 'x-ai/grok-4-fast';
+        ALTER TABLE users ADD COLUMN imagetag_llm_temperature REAL DEFAULT 0.7;
+        ALTER TABLE users ADD COLUMN imagetag_llm_max_tokens INTEGER DEFAULT 4000;
+        ALTER TABLE users ADD COLUMN imagetag_llm_top_p REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN imagetag_llm_frequency_penalty REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN imagetag_llm_presence_penalty REAL DEFAULT 0.0;
+      `);
+      console.log('✅ Image Tag LLM settings columns added to users table');
+    }
+
     // Migration: Update messages table to allow 'system' role
     // Check if the constraint needs updating
     const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();

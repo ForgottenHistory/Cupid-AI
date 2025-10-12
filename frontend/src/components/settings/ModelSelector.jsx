@@ -4,7 +4,7 @@ import axios from 'axios';
 /**
  * Model selector with search and filter capabilities
  */
-const ModelSelector = ({ selectedModel, onChange }) => {
+const ModelSelector = ({ selectedModel, onChange, provider = 'openrouter' }) => {
   const [models, setModels] = useState([]);
   const [loadingModels, setLoadingModels] = useState(true);
   const [filterFree, setFilterFree] = useState(false);
@@ -12,27 +12,53 @@ const ModelSelector = ({ selectedModel, onChange }) => {
 
   useEffect(() => {
     loadModels();
-  }, []);
+  }, [provider]);
 
   const loadModels = async () => {
     try {
       setLoadingModels(true);
-      const response = await axios.get('https://openrouter.ai/api/v1/models');
-      const modelData = response.data.data.map(model => ({
-        id: model.id,
-        name: model.name,
-        pricing: model.pricing,
-        context_length: model.context_length,
-        isFree: model.pricing?.prompt === '0' || model.id.includes(':free')
-      }));
+
+      // Determine API endpoint based on provider
+      const apiUrl = provider === 'featherless'
+        ? 'https://api.featherless.ai/v1/models'
+        : 'https://openrouter.ai/api/v1/models';
+
+      const response = await axios.get(apiUrl);
+
+      // Parse models based on provider format
+      let modelData;
+      if (provider === 'featherless') {
+        // Featherless format: { data: [ { id, name, model_class, context_length, ... } ] }
+        modelData = response.data.data.map(model => ({
+          id: model.id,
+          name: model.name || model.id,
+          context_length: model.context_length,
+          isFree: false // Featherless doesn't expose free/paid info in API
+        }));
+      } else {
+        // OpenRouter format: { data: [ { id, name, pricing, ... } ] }
+        modelData = response.data.data.map(model => ({
+          id: model.id,
+          name: model.name,
+          pricing: model.pricing,
+          context_length: model.context_length,
+          isFree: model.pricing?.prompt === '0' || model.id.includes(':free')
+        }));
+      }
+
       setModels(modelData);
     } catch (err) {
-      console.error('Failed to load models:', err);
+      console.error(`Failed to load ${provider} models:`, err);
       // Fallback to a basic list if API fails
-      setModels([
-        { id: 'deepseek/deepseek-chat-v3', name: 'DeepSeek Chat v3', isFree: true },
-        { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', isFree: true },
-      ]);
+      const fallbackModels = provider === 'featherless'
+        ? [
+            { id: 'GalrionSoftworks/Margnum-12B-v1', name: 'Margnum 12B v1', isFree: false },
+          ]
+        : [
+            { id: 'deepseek/deepseek-chat-v3', name: 'DeepSeek Chat v3', isFree: true },
+            { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', isFree: true },
+          ];
+      setModels(fallbackModels);
     } finally {
       setLoadingModels(false);
     }
@@ -53,21 +79,21 @@ const ModelSelector = ({ selectedModel, onChange }) => {
 
   return (
     <div>
-      <label className="block text-sm font-semibold text-gray-700 mb-2">
+      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
         Model
       </label>
 
       {/* Current Selection Display */}
       {!loadingModels && models.length > 0 && selectedModelData && (
-        <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-          <div className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-1">
+        <div className="mb-3 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg">
+          <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide mb-1">
             Currently Selected
           </div>
-          <div className="font-medium text-gray-900">
+          <div className="font-medium text-gray-900 dark:text-gray-100">
             {selectedModelData.name}
           </div>
           {selectedModelData.isFree && (
-            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+            <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 text-xs font-medium rounded">
               Free
             </span>
           )}
@@ -81,15 +107,15 @@ const ModelSelector = ({ selectedModel, onChange }) => {
           placeholder="Search models..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+          className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800"
         />
         <button
           type="button"
           onClick={() => setFilterFree(!filterFree)}
           className={`px-3 py-2 text-sm rounded-lg transition ${
             filterFree
-              ? 'bg-purple-500 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-purple-500 dark:bg-purple-600 text-white'
+              : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
           }`}
         >
           Free Only
@@ -101,7 +127,7 @@ const ModelSelector = ({ selectedModel, onChange }) => {
         value={selectedModel}
         onChange={(e) => onChange(e.target.value)}
         disabled={loadingModels}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
         size="8"
       >
         {loadingModels ? (
@@ -114,7 +140,7 @@ const ModelSelector = ({ selectedModel, onChange }) => {
             const freeLabel = model.isFree && !alreadyHasFree ? ' (Free)' : '';
 
             return (
-              <option key={model.id} value={model.id} className="text-gray-900 py-1">
+              <option key={model.id} value={model.id} className="text-gray-900 dark:text-gray-100 py-1">
                 {model.name}{freeLabel}
               </option>
             );
@@ -122,7 +148,7 @@ const ModelSelector = ({ selectedModel, onChange }) => {
         )}
       </select>
 
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
         {filteredModels.length} models available · Use search and filter to find models
       </p>
     </div>

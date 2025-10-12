@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import aiService from './aiService.js';
+import llmSettingsService from './llmSettingsService.js';
 import { loadImageTagPrompts } from '../routes/imageTagPrompts.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -32,12 +33,21 @@ class ImageTagGenerationService {
    * @param {Array} recentMessages - Last 50 messages from conversation
    * @param {string} contextualTags - Character-specific contextual tags
    * @param {Object} currentStatus - Character's current status and activity
-   * @param {Object} userSettings - User's LLM settings
+   * @param {number} userId - User ID for getting Image Tag LLM settings
    * @returns {Promise<string>} Comma-separated validated tags
    */
-  async generateTags({ recentMessages, contextualTags, currentStatus, userSettings }) {
+  async generateTags({ recentMessages, contextualTags, currentStatus, userId }) {
     try {
       console.log('🎨 Generating image tags from conversation context...');
+
+      // Get user's Image Tag LLM settings
+      const userSettings = llmSettingsService.getImageTagSettings(userId);
+      console.log(`🎨 Using Image Tag LLM settings:`, {
+        provider: userSettings.provider,
+        model: userSettings.model,
+        temperature: userSettings.temperature,
+        max_tokens: userSettings.max_tokens
+      });
 
       // Extract previous image tags for visual consistency
       const previousImageTags = recentMessages
@@ -56,16 +66,18 @@ class ImageTagGenerationService {
       // Build prompt for LLM with previous image tags
       const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags);
 
-      // Call LLM to generate tags using DeepSeek with reasoning enabled
+      // Call LLM to generate tags using user's configured settings
       const response = await aiService.createBasicCompletion(prompt, {
-        model: 'x-ai/grok-4-fast',
-        temperature: 0.7, // Slightly creative but focused
-        max_tokens: 5000, // Enough for reasoning + tags
-        top_p: 1.0,
-        frequency_penalty: 0.0,
-        presence_penalty: 0.0,
-        reasoning_effort: 'low', // Low reasoning effort (~20% of tokens)
-        messageType: 'image-tags'
+        provider: userSettings.provider,
+        model: userSettings.model,
+        temperature: userSettings.temperature,
+        max_tokens: userSettings.max_tokens,
+        top_p: userSettings.top_p,
+        frequency_penalty: userSettings.frequency_penalty,
+        presence_penalty: userSettings.presence_penalty,
+        reasoning_effort: 'low', // Low reasoning effort (~20% of tokens) if supported
+        messageType: 'image-tags',
+        userId: userId // Pass userId so aiService uses correct provider
       });
 
       // Log full response to see reasoning output

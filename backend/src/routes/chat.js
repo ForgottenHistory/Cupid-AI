@@ -381,24 +381,12 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
         // Get recent messages for context (last 50)
         const recentMessages = imageTagGenerationService.getRecentMessages(conversation.id, db);
 
-        // Fetch user's Content LLM settings for tag generation
-        const userSettings = db.prepare(`
-          SELECT llm_model,
-                 llm_temperature,
-                 llm_max_tokens,
-                 llm_top_p,
-                 llm_frequency_penalty,
-                 llm_presence_penalty,
-                 llm_context_window
-          FROM users WHERE id = ?
-        `).get(userId);
-
-        // Generate context-aware tags using new service
+        // Generate context-aware tags using user's Image Tag LLM settings
         generatedContextTags = await imageTagGenerationService.generateTags({
           recentMessages,
           contextualTags: backendCharacter.contextual_tags || '',
           currentStatus: currentStatusInfo,
-          userSettings
+          userId: userId
         });
 
         console.log(`📍 Current Status: ${currentStatusInfo.status}${currentStatusInfo.activity ? ` (${currentStatusInfo.activity})` : ''}`);

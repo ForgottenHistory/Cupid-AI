@@ -13,27 +13,61 @@ const __dirname = path.dirname(__filename);
 
 class AIService {
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY;
-    this.baseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+    this.openrouterApiKey = process.env.OPENROUTER_API_KEY;
+    this.featherlessApiKey = process.env.FEATHERLESS_API_KEY;
+    this.openrouterBaseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+    this.featherlessBaseUrl = 'https://api.featherless.ai/v1';
 
-    if (!this.apiKey) {
+    if (!this.openrouterApiKey) {
       console.warn('⚠️  OPENROUTER_API_KEY not found in environment variables');
+    }
+    if (!this.featherlessApiKey) {
+      console.warn('⚠️  FEATHERLESS_API_KEY not found in environment variables');
     }
   }
 
   /**
-   * Send a chat completion request to OpenRouter
+   * Get provider configuration (API key and base URL) for a given provider
+   * @param {string} provider - 'openrouter' or 'featherless'
+   * @returns {object} { apiKey, baseUrl, name }
+   */
+  getProviderConfig(provider) {
+    const normalized = provider?.toLowerCase() || 'openrouter';
+
+    switch (normalized) {
+      case 'featherless':
+        return {
+          apiKey: this.featherlessApiKey,
+          baseUrl: this.featherlessBaseUrl,
+          name: 'Featherless'
+        };
+      case 'openrouter':
+      default:
+        return {
+          apiKey: this.openrouterApiKey,
+          baseUrl: this.openrouterBaseUrl,
+          name: 'OpenRouter'
+        };
+    }
+  }
+
+  /**
+   * Send a chat completion request to AI provider (OpenRouter or Featherless)
    */
   async createChatCompletion({ messages, characterData, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false }) {
-    if (!this.apiKey) {
-      throw new Error('OpenRouter API key not configured');
-    }
-
     try {
       const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours);
       const userSettings = llmSettingsService.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
+      const provider = userSettings.provider || 'openrouter';
+
+      // Get provider configuration
+      const providerConfig = this.getProviderConfig(provider);
+
+      if (!providerConfig.apiKey) {
+        throw new Error(`${providerConfig.name} API key not configured`);
+      }
 
       // Trim messages to fit within context window
       const trimmedMessages = tokenService.trimMessagesToContextWindow(
@@ -43,7 +77,8 @@ class AIService {
         effectiveMaxTokens
       );
 
-      console.log('🤖 OpenRouter Request:', {
+      console.log(`🤖 ${providerConfig.name} Request:`, {
+        provider: provider,
         model: selectedModel,
         temperature: userSettings.temperature,
         max_tokens: effectiveMaxTokens,
@@ -126,20 +161,31 @@ class AIService {
       const messageType = isProactive ? `proactive-${proactiveType}${isFirstMessage ? '-first' : ''}` : 'chat';
       const logId = this.savePromptLog(finalMessages, messageType, characterName, logUserName);
 
+      // Build request body (provider-agnostic base parameters)
+      const requestBody = {
+        model: selectedModel,
+        messages: finalMessages,
+        temperature: userSettings.temperature,
+        max_tokens: effectiveMaxTokens,
+        top_p: userSettings.top_p,
+        frequency_penalty: userSettings.frequency_penalty,
+        presence_penalty: userSettings.presence_penalty,
+      };
+
+      // Add Featherless-specific parameters if using Featherless
+      if (provider === 'featherless') {
+        // Featherless supports additional sampling parameters
+        requestBody.repetition_penalty = 1.0; // Default, can be customized later
+        requestBody.top_k = -1; // -1 means consider all tokens (default)
+        requestBody.min_p = 0.0; // Disabled by default
+      }
+
       const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: selectedModel,
-          messages: finalMessages,
-          temperature: userSettings.temperature,
-          max_tokens: effectiveMaxTokens,
-          top_p: userSettings.top_p,
-          frequency_penalty: userSettings.frequency_penalty,
-          presence_penalty: userSettings.presence_penalty,
-        },
+        `${providerConfig.baseUrl}/chat/completions`,
+        requestBody,
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            'Authorization': `Bearer ${providerConfig.apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://localhost:3000',
             'X-Title': 'AI-Dater',
@@ -161,7 +207,8 @@ class AIService {
       // Remove entire lines that contain only bracketed text, or inline brackets
       content = content.replace(/^\[.*?\]\s*$/gm, '').replace(/\[.*?\]/g, '').trim();
 
-      console.log('✅ OpenRouter Response:', {
+      console.log(`✅ ${providerConfig.name} Response:`, {
+        provider: provider,
         model: response.data.model,
         contentLength: content?.length || 0,
         usage: response.data.usage
@@ -176,14 +223,19 @@ class AIService {
         usage: response.data.usage,
       };
     } catch (error) {
-      console.error('❌ OpenRouter API error:', {
+      const userSettings = llmSettingsService.getUserSettings(userId);
+      const provider = userSettings.provider || 'openrouter';
+      const providerConfig = this.getProviderConfig(provider);
+
+      console.error(`❌ ${providerConfig.name} API error:`, {
+        provider: provider,
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
-        model: model || llmSettingsService.getDefaultContentSettings().model
+        model: model || userSettings.model
       });
-      throw new Error(error.response?.data?.error?.message || error.message || 'AI service error');
+      throw new Error(error.response?.data?.error?.message || error.message || `${providerConfig.name} service error`);
     }
   }
 
@@ -216,10 +268,6 @@ class AIService {
    * No character context, just a simple prompt → response
    */
   async createBasicCompletion(prompt, options = {}) {
-    if (!this.apiKey) {
-      throw new Error('OpenRouter API key not configured');
-    }
-
     try {
       // Use user's Content LLM settings if userId provided, otherwise use defaults
       const userSettings = options.userId
@@ -229,6 +277,14 @@ class AIService {
       const model = options.model || userSettings.model;
       const temperature = options.temperature ?? userSettings.temperature;
       const max_tokens = options.max_tokens ?? userSettings.max_tokens;
+      const provider = options.provider || userSettings.provider || 'openrouter';
+
+      // Get provider configuration
+      const providerConfig = this.getProviderConfig(provider);
+
+      if (!providerConfig.apiKey) {
+        throw new Error(`${providerConfig.name} API key not configured`);
+      }
 
       const requestBody = {
         model: model,
@@ -242,8 +298,15 @@ class AIService {
         presence_penalty: options.presence_penalty ?? 0.0,
       };
 
-      // Add reasoning if provided (for DeepSeek reasoning mode)
-      if (options.reasoning_effort) {
+      // Add Featherless-specific parameters if using Featherless
+      if (provider === 'featherless') {
+        requestBody.repetition_penalty = 1.0;
+        requestBody.top_k = -1;
+        requestBody.min_p = 0.0;
+      }
+
+      // Add reasoning if provided (for DeepSeek reasoning mode on OpenRouter)
+      if (options.reasoning_effort && provider === 'openrouter') {
         requestBody.reasoning = {
           effort: options.reasoning_effort
         };
@@ -261,11 +324,11 @@ class AIService {
       }
 
       const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
+        `${providerConfig.baseUrl}/chat/completions`,
         requestBody,
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
+            'Authorization': `Bearer ${providerConfig.apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': 'https://localhost:3000',
             'X-Title': 'AI-Dater',
@@ -296,8 +359,19 @@ class AIService {
         reasoning: message.reasoning || null, // Include reasoning if available
       };
     } catch (error) {
-      console.error('❌ Basic completion error:', error.message);
-      throw new Error(error.response?.data?.error?.message || error.message || 'AI service error');
+      const userSettings = options.userId
+        ? llmSettingsService.getUserSettings(options.userId)
+        : llmSettingsService.getDefaultContentSettings();
+      const provider = userSettings.provider || 'openrouter';
+      const providerConfig = this.getProviderConfig(provider);
+
+      console.error(`❌ ${providerConfig.name} basic completion error:`, {
+        provider: provider,
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      throw new Error(error.response?.data?.error?.message || error.message || `${providerConfig.name} service error`);
     }
   }
 

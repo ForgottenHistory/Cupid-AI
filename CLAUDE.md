@@ -44,7 +44,7 @@
 ## Architecture Overview
 
 **Stack**: React + Vite frontend, Node.js + Express backend, SQLite database
-**AI Provider**: OpenRouter (configurable per-user LLM settings)
+**AI Providers**: OpenRouter and Featherless (configurable per-user LLM settings)
 **Storage**: IndexedDB (frontend) + SQLite (backend)
 
 ## Key Implementation Details
@@ -160,6 +160,21 @@ Auto-run on startup via `database.js`:
 - Adds `is_super_like` column to characters table
 
 ## AI System
+
+### Multi-Provider Architecture
+The system supports multiple AI providers (OpenRouter and Featherless) as alternatives:
+- **Provider selection**: Users can independently choose provider for Content LLM and Decision LLM in Profile settings
+- **Per-user configuration**: Provider settings stored in database (`llm_provider`, `decision_llm_provider` columns)
+- **Dynamic model loading**: ModelSelector component fetches models from selected provider's API
+- **Provider-specific parameters**: Featherless supports additional parameters (repetition_penalty, top_k, min_p)
+- **API key management**: Both API keys configured via environment variables (optional, only needed if using that provider)
+- **Reasoning mode**: DeepSeek reasoning mode only works with OpenRouter (Featherless doesn't support it)
+- **Automatic fallback**: Missing provider API key triggers descriptive error messages
+- **Backend abstraction**: `aiService.js` `getProviderConfig()` method handles provider-specific settings (API key, base URL, name)
+
+**Files involved**:
+- Backend: `aiService.js` (provider routing), `llmSettingsService.js` (settings with provider), `users.js` (routes), `database.js` (migrations)
+- Frontend: `LLMSettingsForm.jsx` (provider dropdown), `ModelSelector.jsx` (provider-aware model fetching), `useLLMSettings.js` (settings state)
 
 ### Dual LLM Architecture
 - **Decision Engine** (small LLM): Analyzes conversation context and makes behavioral decisions
@@ -484,6 +499,7 @@ FRONTEND_URL=http://localhost:5173
 JWT_SECRET=<random-secret>
 OPENROUTER_API_KEY=<your-key>
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+FEATHERLESS_API_KEY=<your-key>  # Optional: Only needed if using Featherless provider
 TTS_SERVER_URL=http://localhost:5000
 SD_SERVER_URL=http://127.0.0.1:7860
 VOICE_MESSAGES_ENABLED=false
