@@ -32,6 +32,9 @@ const Chat = () => {
   // Character image visibility state (default visible)
   const [showCharacterImage, setShowCharacterImage] = useState(true);
 
+  // Image modal state (to hide input when viewing full-screen images)
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+
   // Auto-scroll mode for character images
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -637,6 +640,8 @@ const Chat = () => {
             onSaveEdit={handleSaveEdit}
             onDeleteFrom={handleDeleteFrom}
             messagesEndRef={messagesEndRef}
+            imageModalOpen={imageModalOpen}
+            setImageModalOpen={setImageModalOpen}
           />
 
           {/* Error Display */}
@@ -650,26 +655,28 @@ const Chat = () => {
         </div>
       </div>
 
-      {/* Input */}
-      <div className="relative z-10">
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          sending={sending}
-          displayingMessages={displayingMessages}
-          hasMessages={messages.length > 0}
-          characterName={character?.name}
-          characterId={characterId}
-          character={character}
-          inputRef={inputRef}
-          onSend={handleSend}
-          onRegenerate={handleRegenerateLast}
-          selectedImage={selectedImage}
-          setSelectedImage={setSelectedImage}
-          imageDescription={imageDescription}
-          setImageDescription={setImageDescription}
-        />
-      </div>
+      {/* Input - Hidden when image modal is open */}
+      {!imageModalOpen && (
+        <div className="relative z-10">
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            sending={sending}
+            displayingMessages={displayingMessages}
+            hasMessages={messages.length > 0}
+            characterName={character?.name}
+            characterId={characterId}
+            character={character}
+            inputRef={inputRef}
+            onSend={handleSend}
+            onRegenerate={handleRegenerateLast}
+            selectedImage={selectedImage}
+            setSelectedImage={setSelectedImage}
+            imageDescription={imageDescription}
+            setImageDescription={setImageDescription}
+          />
+        </div>
+      )}
 
       {/* Unmatch Modal */}
       {unmatchData && (

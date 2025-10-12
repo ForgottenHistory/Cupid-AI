@@ -86,11 +86,10 @@ class ImageTagGenerationService {
       const generatedTags = response.content.trim();
       console.log('🤖 LLM generated tags:', generatedTags);
 
-      // Validate and filter tags (pass contextual tags so they're exempt from validation)
-      const validatedTags = this.validateTags(generatedTags, contextualTags);
-      console.log('✅ Validated tags:', validatedTags);
+      // Log validation results but don't filter tags (keeps everything)
+      this.logTagValidation(generatedTags, contextualTags);
 
-      return validatedTags;
+      return generatedTags;
     } catch (error) {
       console.error('❌ Failed to generate image tags:', error.message);
       // Fallback to empty string if generation fails
@@ -177,12 +176,11 @@ Your selected tags:`;
   }
 
   /**
-   * Validate generated tags against the tag library
+   * Log tag validation results (for monitoring) without filtering
    * @param {string} generatedTags - Comma-separated tags from LLM
    * @param {string} contextualTags - Character-specific contextual tags (exempt from validation)
-   * @returns {string} Comma-separated validated tags
    */
-  validateTags(generatedTags, contextualTags = '') {
+  logTagValidation(generatedTags, contextualTags = '') {
     // Common colors that can be prefixed to clothing items
     const validColors = [
       'white', 'black', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
@@ -274,10 +272,10 @@ Your selected tags:`;
     }
 
     if (invalidTags.length > 0) {
-      console.log('⚠️  Discarded invalid tags:', invalidTags.join(', '));
+      console.log('⚠️  Tags not in library (but keeping them):', invalidTags.join(', '));
     }
 
-    return validTags.join(', ');
+    console.log('✅ All tags kept (no filtering)');
   }
 
   /**

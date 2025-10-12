@@ -18,6 +18,8 @@ const MessageList = ({
   onSaveEdit,
   onDeleteFrom,
   messagesEndRef,
+  imageModalOpen,
+  setImageModalOpen,
 }) => {
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
@@ -49,6 +51,8 @@ const MessageList = ({
             onCancelEdit={onCancelEdit}
             onSaveEdit={onSaveEdit}
             onDelete={onDeleteFrom}
+            imageModalOpen={imageModalOpen}
+            setImageModalOpen={setImageModalOpen}
           />
         );
       })}

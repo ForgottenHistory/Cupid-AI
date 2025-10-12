@@ -19,6 +19,8 @@ const MessageBubble = ({
   onCancelEdit,
   onSaveEdit,
   onDelete,
+  imageModalOpen,
+  setImageModalOpen,
 }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [, setUpdateTrigger] = useState(0);
@@ -119,7 +121,10 @@ const MessageBubble = ({
               src={`http://localhost:3000${message.image_url}`}
               alt={message.role === 'user' ? "User uploaded image" : "AI-generated character image"}
               className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 hover:scale-105 transition-all shadow-md"
-              onClick={() => setShowImageModal(true)}
+              onClick={() => {
+                setShowImageModal(true);
+                setImageModalOpen(true);
+              }}
               title="Click to view full size"
             />
             {message.content && (
@@ -182,7 +187,10 @@ const MessageBubble = ({
         <ImageModal
           imageUrl={`http://localhost:3000${message.image_url}`}
           imagePrompt={message.image_prompt}
-          onClose={() => setShowImageModal(false)}
+          onClose={() => {
+            setShowImageModal(false);
+            setImageModalOpen(false);
+          }}
         />
       )}
     </div>
