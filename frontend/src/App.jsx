@@ -11,6 +11,7 @@ import Home from './pages/Home';
 import Feed from './pages/Feed';
 import Library from './pages/Library';
 import VoiceLibrary from './pages/VoiceLibrary';
+import TagLibrary from './pages/TagLibrary';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import CharacterWizard from './pages/CharacterWizard';
@@ -74,6 +75,17 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <VoiceLibrary />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/tags"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <TagLibrary />
                 </MainLayout>
               </ProtectedRoute>
             }

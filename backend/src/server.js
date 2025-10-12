@@ -20,6 +20,7 @@ import debugRoutes from './routes/debug.js';
 import wizardRoutes from './routes/wizard.js';
 import feedRoutes from './routes/feed.js';
 import syncRoutes from './routes/sync.js';
+import tagLibraryRoutes from './routes/tagLibrary.js';
 
 // Import services
 import proactiveMessageService from './services/proactiveMessageService.js';
@@ -90,6 +91,7 @@ app.use('/api/debug', debugRoutes);
 app.use('/api/wizard', wizardRoutes);
 app.use('/api/feed', feedRoutes);
 app.use('/api/sync', syncRoutes);
+app.use('/api/tag-library', tagLibraryRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

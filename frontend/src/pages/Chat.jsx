@@ -126,9 +126,10 @@ const Chat = () => {
     }
   }, [currentThought]);
 
-  // Extract received images from character messages
+  // Extract received images from character messages (last 15 only)
   const receivedImages = messages
     .filter(m => m.role === 'assistant' && m.message_type === 'image' && m.image_url)
+    .slice(-15)
     .map(m => `http://localhost:3000${m.image_url}`);
 
   // Reset states when switching characters

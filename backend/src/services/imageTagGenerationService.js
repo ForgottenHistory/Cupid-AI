@@ -72,8 +72,8 @@ class ImageTagGenerationService {
       const generatedTags = response.content.trim();
       console.log('🤖 LLM generated tags:', generatedTags);
 
-      // Validate and filter tags
-      const validatedTags = this.validateTags(generatedTags);
+      // Validate and filter tags (pass contextual tags so they're exempt from validation)
+      const validatedTags = this.validateTags(generatedTags, contextualTags);
       console.log('✅ Validated tags:', validatedTags);
 
       return validatedTags;
@@ -123,6 +123,8 @@ Consider this status when selecting location, activity, and clothing tags.
 
 Based on the conversation and current status, select appropriate Danbooru tags from the tag library and character-specific tags.
 
+**IMPORTANT - This is a DATING APP**: Images should vary from casual/SFW to full on NSFW imagery based on the conversation's tone and context.
+
 Guidelines:
 - Choose 5-10 tags that best match the conversation context AND current status
 - **DEFAULT to "selfie" as photo type** (90% of the time - this is standard for dating app pics)
@@ -135,6 +137,42 @@ Guidelines:
   * Examples: "white crop top", "blue denim shorts", "black off-shoulder dress", "grey oversized hoodie", "red sports bra"
 - Focus on: expression, pose, activity, clothing (COLOR + TYPE + DETAILS), location, lighting
 - Match the location/activity to the character's current status (e.g., if at gym, use gym-related tags)
+
+**SUGGESTIVENESS SCALE** - Choose based on conversation context:
+
+🔵 **CASUAL/SFW**:
+- Regular clothing: crop tops, denim shorts, sundresses, casual wear
+- Public locations: park, cafe, gym, outdoors
+- Neutral poses: smiling, waving, sitting, standing
+
+🟡 **FLIRTY**:
+- Revealing but tasteful: tight clothing, cleavage, midriff, low-cut tops
+- Home locations: bedroom, living room, bathroom mirror selfie
+- Flirty poses: looking at viewer, slight tease, playful expression
+
+🟠 **SUGGESTIVE/AROUSING**:
+- More revealing: lingerie peeking, underwear visible, see-through, wardrobe malfunction, nipple slip
+- Intimate locations: bedroom, bed, bathtub
+- Suggestive poses: lying down, on bed, arching back, seductive expression
+
+🔴 **NSFW**:
+- Minimal clothing: lingerie, underwear, towel, nude
+- Private locations: bedroom, bed, shower
+- Intimate poses: on bed, lying down, from above, undressing
+
+**Context Analysis** - Read the conversation and decide:
+1. **Tone**: Is it casual chitchat, flirty banter, or sexually charged?
+2. **Time**: Daytime casual, evening relaxed, late night intimate?
+3. **Character personality**: Confident/bold vs shy/reserved (from contextual tags and description)
+4. **User's interest**: Are they asking for pics? Being flirty? Escalating?
+
+**Be BOLD and VARIED**: Don't default to safe/casual every time. This is a dating app - characters should send a mix of casual, flirty, and suggestive pics based on context.
+**BE INNOVATIVE AND SPICY**: Characters SHOULD send risky photos, by going to private rooms, or some even will do in public. They can ask other people to take their photo. They can have nudes and other sexually graphic photos, sometimes with other people.
+**BE SEXY**: Main focus is to illicit feelings of arousal into the viewer. Squeeze breasts together, make it sweaty, a nipple slip in public, even full on nudes and sextapes are ENCOURAGED.
+
+For SEX PHOTOS, always include at least 1boy. Include the penis. Make a POV shot PREFFERED OVER of selfie. Make it wet and sweaty. Use dark-skinned male for men. Really bring that NTR vibe.
+For NSFW or SUGGESTIVE photos, you could even include dark-skinned male, if the context allows it.
+
 - Only use tags from the library above or the character-specific tags
 - Output ONLY comma-separated tags, no explanations
 - Be specific and contextual - avoid generic tags`;
@@ -180,9 +218,10 @@ Your selected tags:`;
   /**
    * Validate generated tags against the tag library
    * @param {string} generatedTags - Comma-separated tags from LLM
+   * @param {string} contextualTags - Character-specific contextual tags (exempt from validation)
    * @returns {string} Comma-separated validated tags
    */
-  validateTags(generatedTags) {
+  validateTags(generatedTags, contextualTags = '') {
     // Common colors that can be prefixed to clothing items
     const validColors = [
       'white', 'black', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
@@ -201,6 +240,14 @@ Your selected tags:`;
       'skinny', 'slim', 'straight', 'wide-leg', 'flared', 'bootcut',
       'sports', 'athletic', 'casual', 'formal', 'summer', 'winter'
     ];
+
+    // Parse contextual tags into a set for quick lookup (case-insensitive)
+    const contextualTagsSet = new Set(
+      contextualTags
+        .split(',')
+        .map(tag => tag.trim().toLowerCase())
+        .filter(tag => tag.length > 0)
+    );
 
     // Parse generated tags
     const tags = generatedTags
@@ -222,6 +269,12 @@ Your selected tags:`;
 
     for (const tag of tags) {
       const normalizedTag = tag.toLowerCase();
+
+      // FIRST: Check if tag is a contextual tag (exempt from validation)
+      if (contextualTagsSet.has(normalizedTag)) {
+        validTags.push(tag);
+        continue;
+      }
 
       // Check if tag exists directly in library
       if (validTagsSet.has(normalizedTag)) {
