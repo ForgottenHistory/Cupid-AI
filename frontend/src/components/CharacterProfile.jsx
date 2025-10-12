@@ -84,11 +84,12 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         character.name
       );
 
-      // Update character in IndexedDB
+      // Update character in IndexedDB, storing previous as backup
       const updatedCardData = {
         ...character.cardData,
         data: {
           ...character.cardData.data,
+          previousDatingProfile: data.datingProfile, // Save current as previous
           datingProfile: profile
         }
       };
@@ -126,11 +127,12 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         character.name
       );
 
-      // Update character in IndexedDB
+      // Update character in IndexedDB, storing previous as backup
       const updatedCardData = {
         ...character.cardData,
         data: {
           ...character.cardData.data,
+          previousSchedule: data.schedule, // Save current as previous
           schedule: schedule
         }
       };
@@ -169,11 +171,12 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         data.personality
       );
 
-      // Update character in IndexedDB
+      // Update character in IndexedDB, storing previous as backup
       const updatedCardData = {
         ...character.cardData,
         data: {
           ...character.cardData.data,
+          previousPersonalityTraits: data.personalityTraits, // Save current as previous
           personalityTraits: personality
         }
       };
@@ -261,6 +264,111 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     } catch (err) {
       console.error('Revert description error:', err);
       setError(err.response?.data?.error || 'Failed to revert description');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRevertDatingProfile = async () => {
+    if (!data.previousDatingProfile) {
+      setError('No previous dating profile found');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Restore previous dating profile
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          datingProfile: data.previousDatingProfile
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Revert dating profile error:', err);
+      setError(err.response?.data?.error || 'Failed to revert dating profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRevertSchedule = async () => {
+    if (!data.previousSchedule) {
+      setError('No previous schedule found');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Restore previous schedule
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          schedule: data.previousSchedule
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Revert schedule error:', err);
+      setError(err.response?.data?.error || 'Failed to revert schedule');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRevertPersonality = async () => {
+    if (!data.previousPersonalityTraits) {
+      setError('No previous personality found');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Restore previous personality
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          personalityTraits: data.previousPersonalityTraits
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Revert personality error:', err);
+      setError(err.response?.data?.error || 'Failed to revert personality');
     } finally {
       setLoading(false);
     }
@@ -359,6 +467,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 data={data}
                 loading={loading}
                 onGenerate={handleGenerateDatingProfile}
+                onRevert={handleRevertDatingProfile}
               />
             )}
 
@@ -367,6 +476,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 data={data}
                 loading={loading}
                 onGenerate={handleGenerateSchedule}
+                onRevert={handleRevertSchedule}
               />
             )}
 
@@ -375,6 +485,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 data={data}
                 loading={loading}
                 onGenerate={handleGeneratePersonality}
+                onRevert={handleRevertPersonality}
               />
             )}
 

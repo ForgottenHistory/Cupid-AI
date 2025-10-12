@@ -1,25 +1,45 @@
 import GenerateButton from '../shared/GenerateButton';
 import EmptyState from '../shared/EmptyState';
 
-const ProfileTab = ({ data, loading, onGenerate }) => {
+const ProfileTab = ({ data, loading, onGenerate, onRevert }) => {
   const icon = (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
     </svg>
   );
 
+  const handleRevert = () => {
+    if (confirm('Are you sure you want to revert to the previous dating profile?')) {
+      onRevert();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Dating Profile</h3>
-        <GenerateButton
-          onClick={onGenerate}
-          loading={loading}
-          disabled={!data.description}
-          label="Generate Profile"
-          icon={icon}
-          gradient="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-        />
+        <div className="flex gap-2">
+          {data.previousDatingProfile && data.datingProfile && (
+            <button
+              onClick={handleRevert}
+              disabled={loading}
+              className="px-3 py-1 text-sm bg-orange-500 dark:bg-orange-600 hover:bg-orange-600 dark:hover:bg-orange-700 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              Revert
+            </button>
+          )}
+          <GenerateButton
+            onClick={onGenerate}
+            loading={loading}
+            disabled={!data.description}
+            label="Generate Profile"
+            icon={icon}
+            gradient="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+          />
+        </div>
       </div>
 
       {data.datingProfile ? (

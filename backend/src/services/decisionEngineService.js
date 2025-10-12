@@ -1,10 +1,20 @@
-import axios from 'axios';
 import llmSettingsService from './llmSettingsService.js';
 
 class DecisionEngineService {
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY;
-    this.baseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+    // aiService will be lazy-loaded to avoid circular dependency
+    this.aiService = null;
+  }
+
+  /**
+   * Lazy-load aiService to avoid circular dependency
+   */
+  async getAIService() {
+    if (!this.aiService) {
+      const module = await import('./aiService.js');
+      this.aiService = module.default;
+    }
+    return this.aiService;
   }
 
   /**
@@ -12,11 +22,8 @@ class DecisionEngineService {
    * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, thought: string|null, imageContext: string|null }
    */
   async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0 }) {
-    if (!this.apiKey) {
-      throw new Error('OpenRouter API key not configured');
-    }
-
     try {
+      const aiService = await this.getAIService();
       // Check mood cooldown (30 minutes)
       const moodCooldownMs = 30 * 60 * 1000; // 30 minutes
       const canChangeMood = !lastMoodChange || (Date.now() - new Date(lastMoodChange).getTime() >= moodCooldownMs);
@@ -122,34 +129,22 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
         max_tokens: decisionSettings.max_tokens
       });
 
-      const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: decisionSettings.model,
-          messages: [
-            { role: 'user', content: decisionPrompt }
-          ],
-          temperature: decisionSettings.temperature,
-          max_tokens: decisionSettings.max_tokens,
-          top_p: decisionSettings.top_p,
-          frequency_penalty: decisionSettings.frequency_penalty,
-          presence_penalty: decisionSettings.presence_penalty,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://localhost:3000',
-            'X-Title': 'AI-Dater Decision Engine',
-          }
-        }
-      );
+      const response = await aiService.createBasicCompletion(decisionPrompt, {
+        model: decisionSettings.model,
+        temperature: decisionSettings.temperature,
+        max_tokens: decisionSettings.max_tokens,
+        top_p: decisionSettings.top_p,
+        frequency_penalty: decisionSettings.frequency_penalty,
+        presence_penalty: decisionSettings.presence_penalty,
+        messageType: 'decision',
+        characterName: characterData.name
+      });
 
-      const content = response.data.choices[0].message.content.trim();
+      const content = response.content.trim();
 
       console.log('✅ Decision Engine Response:', {
-        model: response.data.model,
-        usage: response.data.usage,
+        model: response.model,
+        usage: response.usage,
         rawContent: content // Add raw content for debugging
       });
 
@@ -181,11 +176,8 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
    * Returns: { shouldSend: boolean, messageType: "resume"|"fresh"|"callback" }
    */
   async makeProactiveDecision({ messages, characterData, gapHours, userId }) {
-    if (!this.apiKey) {
-      throw new Error('OpenRouter API key not configured');
-    }
-
     try {
+      const aiService = await this.getAIService();
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
 
       // Build context
@@ -237,30 +229,18 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
         gapHours: gapHours.toFixed(1)
       });
 
-      const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: decisionSettings.model,
-          messages: [
-            { role: 'user', content: decisionPrompt }
-          ],
-          temperature: decisionSettings.temperature,
-          max_tokens: decisionSettings.max_tokens,
-          top_p: decisionSettings.top_p,
-          frequency_penalty: decisionSettings.frequency_penalty,
-          presence_penalty: decisionSettings.presence_penalty,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://localhost:3000',
-            'X-Title': 'AI-Dater Proactive Decision Engine',
-          }
-        }
-      );
+      const response = await aiService.createBasicCompletion(decisionPrompt, {
+        model: decisionSettings.model,
+        temperature: decisionSettings.temperature,
+        max_tokens: decisionSettings.max_tokens,
+        top_p: decisionSettings.top_p,
+        frequency_penalty: decisionSettings.frequency_penalty,
+        presence_penalty: decisionSettings.presence_penalty,
+        messageType: 'decision-proactive',
+        characterName: characterData.name
+      });
 
-      const content = response.data.choices[0].message.content.trim();
+      const content = response.content.trim();
 
       // Parse response
       return this.parseProactiveDecisionResponse(content);

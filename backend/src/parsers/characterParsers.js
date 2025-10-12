@@ -3,7 +3,24 @@
  */
 
 /**
+ * Strip markdown formatting from text to be more forgiving of LLM output
+ */
+function stripMarkdown(text) {
+  let cleaned = text;
+  // Remove bold (**text** or __text__)
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+  cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+  // Remove italic (*text* or _text_)
+  cleaned = cleaned.replace(/\*([^*]+)\*/g, '$1');
+  cleaned = cleaned.replace(/_([^_]+)_/g, '$1');
+  // Remove any remaining stray asterisks/underscores
+  cleaned = cleaned.replace(/[*_]+/g, '');
+  return cleaned;
+}
+
+/**
  * Parse dating profile from plaintext AI response
+ * Forgiving parser that handles markdown formatting and common LLM variations
  */
 export function parseDatingProfileResponse(content) {
   const profileData = {
@@ -19,7 +36,9 @@ export function parseDatingProfileResponse(content) {
   };
 
   try {
-    const lines = content.split('\n');
+    // Strip markdown from entire content first
+    const cleanedContent = stripMarkdown(content);
+    const lines = cleanedContent.split('\n');
     let currentSection = 'bio'; // Start capturing bio from the beginning
     let bioLines = [];
 
@@ -89,14 +108,18 @@ export function parseDatingProfileResponse(content) {
 
 /**
  * Parse schedule from plaintext AI response
+ * Forgiving parser that handles markdown formatting and common LLM variations
  */
 export function parseScheduleFromPlaintext(text) {
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const schedule = {};
 
+  // Strip markdown formatting to be more forgiving
+  const cleanedText = stripMarkdown(text);
+
   // Split by day headers
   const dayRegex = /(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)/gi;
-  const sections = text.split(dayRegex).filter(s => s.trim());
+  const sections = cleanedText.split(dayRegex).filter(s => s.trim());
 
   for (let i = 0; i < sections.length; i += 2) {
     const dayName = sections[i].toLowerCase();
@@ -121,7 +144,10 @@ export function parseScheduleFromPlaintext(text) {
           status: status.toLowerCase()
         };
         if (activity) {
-          block.activity = activity.trim();
+          // Clean up activity text (remove trailing periods, extra markdown)
+          let cleanActivity = activity.trim();
+          cleanActivity = cleanActivity.replace(/\.$/, ''); // Remove trailing period
+          block.activity = cleanActivity;
         }
         blocks.push(block);
       }

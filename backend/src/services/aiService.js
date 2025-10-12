@@ -124,7 +124,7 @@ class AIService {
       // Log prompt for debugging (keep last 5) - log the ACTUAL messages being sent
       const logUserName = userName || 'User';
       const messageType = isProactive ? `proactive-${proactiveType}${isFirstMessage ? '-first' : ''}` : 'chat';
-      this.savePromptLog(finalMessages, messageType, characterName, logUserName);
+      const logId = this.savePromptLog(finalMessages, messageType, characterName, logUserName);
 
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
@@ -166,6 +166,9 @@ class AIService {
         contentLength: content?.length || 0,
         usage: response.data.usage
       });
+
+      // Log response for debugging (matching ID to prompt)
+      this.saveResponseLog(content, messageType, logId, response.data);
 
       return {
         content: content,
@@ -242,6 +245,17 @@ class AIService {
         };
       }
 
+      // Log prompt if messageType provided (keep last 5 per type)
+      let logId = null;
+      if (options.messageType) {
+        logId = this.savePromptLog(
+          requestBody.messages,
+          options.messageType,
+          options.characterName || 'Character',
+          options.userName || 'User'
+        );
+      }
+
       const response = await axios.post(
         `${this.baseUrl}/chat/completions`,
         requestBody,
@@ -266,6 +280,11 @@ class AIService {
         }
       }
 
+      // Log response for debugging (matching ID to prompt)
+      if (logId && options.messageType) {
+        this.saveResponseLog(content, options.messageType, logId, response.data);
+      }
+
       return {
         content: content,
         model: response.data.model,
@@ -281,6 +300,7 @@ class AIService {
   /**
    * Save prompt to log file for debugging (keep last 5)
    * Logs the ACTUAL messages array being sent to the API
+   * Returns the log ID (timestamp) for matching response logs
    */
   savePromptLog(finalMessages, messageType, characterName, userName) {
     try {
@@ -348,8 +368,75 @@ class AIService {
       }
 
       console.log(`📝 Saved prompt log: ${filename}`);
+      return timestamp; // Return timestamp for matching response log
     } catch (error) {
       console.error('Failed to save prompt log:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Save response to log file for debugging (keep last 5)
+   * Uses matching timestamp from prompt log for easy correlation
+   */
+  saveResponseLog(content, messageType, logId, responseData) {
+    try {
+      if (!logId) {
+        console.warn('⚠️  No log ID provided for response log, skipping');
+        return;
+      }
+
+      const logsDir = path.join(__dirname, '../../logs/responses');
+
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+
+      // Use same timestamp as prompt for matching filenames
+      const filename = `${messageType}-${logId}.txt`;
+      const filepath = path.join(logsDir, filename);
+
+      // Build log content
+      const parts = [
+        `RESPONSE LOG`,
+        `Type: ${messageType}`,
+        `Timestamp: ${new Date().toISOString()}`,
+        `Model: ${responseData.model}`,
+        ``,
+        `--- RAW CONTENT ---`,
+        content || '(empty)',
+        ``,
+        `--- USAGE ---`,
+        JSON.stringify(responseData.usage, null, 2)
+      ];
+
+      const logContent = parts.join('\n');
+
+      // Write to file
+      fs.writeFileSync(filepath, logContent, 'utf8');
+
+      // Keep only last 5 files per type
+      const files = fs.readdirSync(logsDir)
+        .filter(f => f.startsWith(messageType.split('-')[0])) // Match by prefix
+        .map(f => ({
+          name: f,
+          path: path.join(logsDir, f),
+          mtime: fs.statSync(path.join(logsDir, f)).mtime
+        }))
+        .sort((a, b) => b.mtime - a.mtime);
+
+      // Delete old files (keep only 5 newest per type)
+      if (files.length > 5) {
+        files.slice(5).forEach(file => {
+          fs.unlinkSync(file.path);
+          console.log(`🗑️  Deleted old response log: ${file.name}`);
+        });
+      }
+
+      console.log(`📝 Saved response log: ${filename}`);
+    } catch (error) {
+      console.error('Failed to save response log:', error.message);
     }
   }
 

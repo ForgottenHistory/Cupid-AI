@@ -64,7 +64,8 @@ class ImageTagGenerationService {
         top_p: 1.0,
         frequency_penalty: 0.0,
         presence_penalty: 0.0,
-        reasoning_effort: 'low' // Low reasoning effort (~20% of tokens)
+        reasoning_effort: 'low', // Low reasoning effort (~20% of tokens)
+        messageType: 'image-tags'
       });
 
       // Log full response to see reasoning output

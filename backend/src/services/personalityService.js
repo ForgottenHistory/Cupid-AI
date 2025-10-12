@@ -1,10 +1,20 @@
-import axios from 'axios';
 import { loadPrompts } from '../routes/prompts.js';
 
 class PersonalityService {
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY;
-    this.baseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+    // aiService will be lazy-loaded to avoid circular dependency
+    this.aiService = null;
+  }
+
+  /**
+   * Lazy-load aiService to avoid circular dependency
+   */
+  async getAIService() {
+    if (!this.aiService) {
+      const module = await import('./aiService.js');
+      this.aiService = module.default;
+    }
+    return this.aiService;
   }
 
   /**
@@ -12,40 +22,27 @@ class PersonalityService {
    * Returns: { openness: 0-100, conscientiousness: 0-100, extraversion: 0-100, agreeableness: 0-100, neuroticism: 0-100 }
    */
   async generatePersonality(characterData) {
-    if (!this.apiKey) {
-      throw new Error('OpenRouter API key not configured');
-    }
-
     try {
+      const aiService = await this.getAIService();
       const prompts = loadPrompts();
       const characterName = characterData.name || 'Character';
       const description = characterData.description || 'N/A';
-      const personality = characterData.personality || 'N/A';
+      const personalityText = characterData.personality || 'N/A';
 
       const prompt = prompts.personalityPrompt
         .replace(/{characterName}/g, characterName)
         .replace(/{description}/g, description)
-        .replace(/{personality}/g, personality);
+        .replace(/{personality}/g, personalityText);
 
-      const response = await axios.post(
-        `${this.baseUrl}/chat/completions`,
-        {
-          model: 'deepseek/deepseek-chat-v3', // Use small model for this
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          max_tokens: 200,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://localhost:3000',
-            'X-Title': 'AI-Dater Personality Generator',
-          }
-        }
-      );
+      const response = await aiService.createBasicCompletion(prompt, {
+        model: 'deepseek/deepseek-chat-v3', // Use small model for this
+        temperature: 0.7,
+        max_tokens: 200,
+        messageType: 'personality',
+        characterName: characterName
+      });
 
-      const content = response.data.choices[0].message.content.trim();
+      const content = response.content.trim();
 
       // Parse response
       const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);

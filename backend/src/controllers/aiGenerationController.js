@@ -14,17 +14,12 @@ export async function cleanupDescription(req, res) {
       return res.status(400).json({ error: 'Description is required' });
     }
 
-    const messages = [
-      {
-        role: 'user',
-        content: buildCleanupDescriptionPrompt(description)
-      }
-    ];
+    const prompt = buildCleanupDescriptionPrompt(description);
 
-    const response = await aiService.createChatCompletion({
-      messages,
-      characterData: { name: 'Assistant' },
-      userId: req.user.id,
+    const response = await aiService.createBasicCompletion(prompt, {
+      temperature: 0.7,
+      max_tokens: 10000,
+      messageType: 'cleanup-description'
     });
 
     res.json({ cleanedDescription: response.content.trim() });
@@ -46,17 +41,13 @@ export async function generateDatingProfile(req, res) {
       return res.status(400).json({ error: 'Description is required' });
     }
 
-    const messages = [
-      {
-        role: 'user',
-        content: buildDatingProfilePrompt(description, name)
-      }
-    ];
+    const prompt = buildDatingProfilePrompt(description, name);
 
-    const response = await aiService.createChatCompletion({
-      messages,
-      characterData: { name: 'Assistant' },
-      userId: req.user.id,
+    const response = await aiService.createBasicCompletion(prompt, {
+      temperature: 0.8,
+      max_tokens: 3000,
+      messageType: 'dating-profile',
+      characterName: name || 'Character'
     });
 
     // Parse plaintext response
@@ -82,19 +73,13 @@ export async function generateSchedule(req, res) {
       return res.status(400).json({ error: 'Description is required' });
     }
 
-    const messages = [
-      {
-        role: 'user',
-        content: buildSchedulePrompt(description, name)
-      }
-    ];
+    const prompt = buildSchedulePrompt(description, name);
 
-    const response = await aiService.createChatCompletion({
-      messages,
-      characterData: { name: 'Assistant' },
-      userId: req.user.id,
-      model: null,
-      maxTokens: 1500,
+    const response = await aiService.createBasicCompletion(prompt, {
+      temperature: 0.7,
+      max_tokens: 5000,
+      messageType: 'schedule',
+      characterName: name || 'Character'
     });
 
     // Parse plaintext response into JSON
