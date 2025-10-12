@@ -24,6 +24,7 @@ const TagLibrary = () => {
     scalePrompt: '',
     contextAnalysisPrompt: '',
     boldnessPrompt: '',
+    varietyPrompt: '',
     closingInstructionsPrompt: '',
     visualConsistencyPrompt: '',
     exampleOutputPrompt: ''
@@ -39,6 +40,11 @@ const TagLibrary = () => {
   }, []);
 
   // ========== TAG LIBRARY FUNCTIONS ==========
+
+  // Calculate approximate token count for tag library (1 token ≈ 4 characters)
+  const calculateTagLibraryTokens = () => {
+    return Math.ceil(tagContent.length / 4);
+  };
 
   const loadTagLibrary = async () => {
     try {
@@ -227,12 +233,19 @@ const TagLibrary = () => {
     setPrompts(prev => ({ ...prev, [key]: value }));
   };
 
+  // Calculate approximate token count (1 token ≈ 4 characters)
+  const calculateTokens = () => {
+    const totalChars = Object.values(prompts).reduce((sum, prompt) => sum + prompt.length, 0);
+    return Math.ceil(totalChars / 4);
+  };
+
   const promptFields = [
     { key: 'systemPrompt', label: 'System Prompt', description: 'Opening instruction for tag selection', rows: 2 },
     { key: 'guidelinesPrompt', label: 'Guidelines', description: 'Tag selection guidelines and clothing specificity rules', rows: 8 },
     { key: 'scalePrompt', label: 'Suggestiveness Scale', description: 'CASUAL/FLIRTY/SUGGESTIVE/NSFW scale with examples', rows: 12 },
     { key: 'contextAnalysisPrompt', label: 'Context Analysis', description: 'How to analyze conversation context', rows: 4 },
     { key: 'boldnessPrompt', label: 'Boldness Instructions', description: 'Instructions for bold/varied/spicy image selection', rows: 6 },
+    { key: 'varietyPrompt', label: 'Variety & Creativity', description: 'Instructions to avoid repetition and maximize creativity in image generation', rows: 14 },
     { key: 'closingInstructionsPrompt', label: 'Closing Instructions', description: 'Final rules (only use library tags, no explanations, etc)', rows: 3 },
     { key: 'visualConsistencyPrompt', label: 'Visual Consistency', description: 'Instructions for maintaining consistency across multiple images', rows: 8 },
     { key: 'exampleOutputPrompt', label: 'Example Output', description: 'Example tag format', rows: 2 }
@@ -291,6 +304,21 @@ const TagLibrary = () => {
         {/* TAG LIBRARY TAB */}
         {activeTab === 'tags' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
+            {/* Token Counter */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                <span className="font-semibold text-blue-800 dark:text-blue-300">
+                  Tag Library Tokens:
+                </span>
+                <span className="text-blue-700 dark:text-blue-400 font-mono">
+                  ~{calculateTagLibraryTokens().toLocaleString()}
+                </span>
+              </div>
+            </div>
+
             {/* Message */}
             {tagMessage && (
               <div className={`mb-6 p-4 rounded-lg ${
@@ -390,6 +418,21 @@ const TagLibrary = () => {
         {/* AI PROMPTS TAB */}
         {activeTab === 'prompts' && (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
+            {/* Token Counter */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="font-semibold text-blue-800 dark:text-blue-300">
+                  Total Prompt Tokens:
+                </span>
+                <span className="text-blue-700 dark:text-blue-400 font-mono">
+                  ~{calculateTokens().toLocaleString()}
+                </span>
+              </div>
+            </div>
+
             {/* Message */}
             {promptsMessage && (
               <div className={`mb-6 p-4 rounded-lg ${

@@ -137,6 +137,8 @@ ${prompts.contextAnalysisPrompt}
 
 ${prompts.boldnessPrompt}
 
+${prompts.varietyPrompt || ''}
+
 ${prompts.closingInstructionsPrompt}`;
 
     // Add previous image tags section if available for VISUAL CONSISTENCY

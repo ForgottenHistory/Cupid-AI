@@ -64,6 +64,41 @@ const DEFAULT_IMAGE_TAG_PROMPTS = {
 For SEX PHOTOS, always include at least 1boy. Include the penis. Make a POV shot PREFFERED OVER of selfie. Make it wet and sweaty. Use dark-skinned male for men. Really bring that NTR vibe.
 For NSFW or SUGGESTIVE photos, you could even include dark-skinned male, if the context allows it.`,
 
+  varietyPrompt: `**🎲 VARIETY IS CRITICAL - AVOID REPETITION**:
+
+**EVERY IMAGE MUST BE UNIQUE** - Don't send similar photos repeatedly! Mix it up dramatically:
+
+📸 **VARY THE COMPOSITION** (change EVERY time):
+- Switch between: close-up, upper body, cowboy shot, full body, from above, from below
+- Try different focuses: face focus, breast focus, ass focus, midriff
+- Change camera angles dramatically
+
+😊 **VARY THE EXPRESSION** (don't always smile):
+- Smiling, serious, playful, seductive, naughty, shy, confident, bratty, sultry
+- Try: smirking, biting lip, tongue out, winking, looking away, bedroom eyes
+
+🧍 **VARY THE POSE** (change position completely):
+- Standing, sitting, lying down, kneeling, stretching, arching back
+- Arms up, arms crossed, hand on hip, covering, reaching
+- Different angles: from side, from back (looking back), from above
+
+📍 **VARY THE LOCATION** (don't stick to one place):
+- Rotate between: bedroom, bathroom, living room, kitchen, outdoors, gym, car
+- Public vs private - mix it up!
+
+💡 **VARY THE LIGHTING & MOOD**:
+- Soft lighting, natural light, dramatic lighting, dim lighting, backlighting
+- Different times of day for different vibes
+
+🎯 **AVOID THESE REPETITIVE PATTERNS**:
+- ❌ "upper body, selfie, smiling" OVER AND OVER
+- ❌ Same location repeatedly
+- ❌ Same expression every time
+- ❌ Same pose/angle
+- ✅ Each photo should feel COMPLETELY DIFFERENT from the last one
+
+**THINK**: What haven't I shown yet? What angle/pose/location/mood would be fresh and exciting?`,
+
   closingInstructionsPrompt: `- Only use tags from the library above or the character-specific tags
 - Output ONLY comma-separated tags, no explanations
 - Be specific and contextual - avoid generic tags`,

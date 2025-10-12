@@ -12,6 +12,7 @@ import Feed from './pages/Feed';
 import Library from './pages/Library';
 import VoiceLibrary from './pages/VoiceLibrary';
 import TagLibrary from './pages/TagLibrary';
+import Prompts from './pages/Prompts';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import CharacterWizard from './pages/CharacterWizard';
@@ -86,6 +87,17 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <TagLibrary />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/prompts"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Prompts />
                 </MainLayout>
               </ProtectedRoute>
             }
