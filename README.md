@@ -1,41 +1,65 @@
 # Cupid AI
 
-A Tinder-style dating app for AI characters. Swipe on character cards, match with your favorites, and have conversations powered by AI.
+AI-powered dating app simulator. Swipe on characters, match, chat, and build relationships with AI personalities.
 
-## Features
+## Core Features
 
-- **Character Cards**: Import PNG character cards (v2 spec) with full personality data
-- **Swipe Interface**: Tinder-style swiping with like/pass actions
-- **AI Conversations**: Chat with matched characters using OpenRouter API
-- **Dating Profiles**: AI-generated dating profiles for each character
-- **Multi-Message System**: Progressive message display with typing indicators
-- **Context Management**: Token-based conversation history trimming
-- **Message Controls**: Edit, delete, and regenerate AI responses
-- **User Settings**: Customizable LLM parameters per user
+**Character Management:**
+- Import PNG character cards (v2 spec)
+- Character Wizard: AI-generated characters (name, description, appearance, image)
+- Dating profiles, weekly schedules, Big Five personality traits
+
+**Chat System:**
+- Triple LLM architecture (Content, Decision, Image Tag)
+- Proactive messaging: characters reach out first after time gaps
+- Schedule-based engagement: realistic online/away/busy/offline patterns
+- Left-on-read follow-ups
+- Message pagination (200 messages per page)
+- Conversation compacting: automatic summarization when context fills
+
+**AI Features:**
+- Multi-provider support (OpenRouter, Featherless)
+- Context-aware image generation (Stable Diffusion)
+- Mood effects: dynamic backgrounds based on conversation tone
+- AI reply suggestions (serious/sarcastic/flirty)
+- Message reactions, editing, regeneration
+
+**Social Features:**
+- Full-screen social media feed (Instagram Stories style)
+- Personality-driven post frequency
+- Character unmatch system
+- Daily swipe limits
 
 ## Tech Stack
 
 **Frontend:**
 - React + Vite
 - Tailwind CSS
-- IndexedDB for client-side storage
-- React Router
+- IndexedDB (character storage)
+- Socket.IO (real-time updates)
 
 **Backend:**
 - Node.js + Express
 - SQLite (better-sqlite3)
 - JWT authentication
-- OpenRouter API integration
+- Socket.IO
+- OpenRouter & Featherless API support
+
+**AI/Image:**
+- LLM: OpenRouter, Featherless
+- Image: Stable Diffusion WebUI
 
 ## Setup
 
 ### Prerequisites
 - Node.js 18+
-- OpenRouter API key
+- OpenRouter API key (required)
+- Featherless API key (optional)
+- Stable Diffusion WebUI (optional, for image generation)
 
 ### Installation
 
-1. Clone the repository
+1. Clone repository
 2. Install dependencies:
 ```bash
 # Backend
@@ -47,35 +71,72 @@ cd ../frontend
 npm install
 ```
 
-3. Configure environment variables:
+3. Configure environment:
 
 Create `backend/.env`:
 ```env
 PORT=3000
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-random-secret-here
+
+# Required
 OPENROUTER_API_KEY=your-openrouter-key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+
+# Optional: Featherless provider
+FEATHERLESS_API_KEY=your-featherless-key
+
+# Optional: Image generation
+SD_SERVER_URL=http://127.0.0.1:7860
+IMAGE_MESSAGES_ENABLED=true
+
+# Disabled features
+VOICE_MESSAGES_ENABLED=false
+TTS_SERVER_URL=http://localhost:5000
 ```
 
-4. Start the servers:
+4. Start servers:
 ```bash
-# Backend (from backend/)
+# Backend (port 3000)
+cd backend
 npm start
 
-# Frontend (from frontend/)
+# Frontend (port 5173)
+cd frontend
 npm run dev
 ```
 
-5. Open http://localhost:5173 in your browser
+5. Open http://localhost:5173
 
 ## Usage
 
-1. **Register/Login**: Create an account or log in
-2. **Import Characters**: Upload PNG character cards in the Library
-3. **Swipe**: Browse characters on the home page, swipe right to like
-4. **Chat**: Click on matches in the sidebar to start conversations
-5. **Settings**: Customize LLM model, temperature, context window, etc.
+1. **Register/Login**: Create account
+2. **Library**: Import character cards or use Character Wizard
+3. **Home**: Swipe on characters (right = like, left = pass)
+4. **Chat**: Talk with matches, view schedules, generate images
+5. **Feed**: Browse character posts
+6. **Profile**: Configure LLM settings (Content/Decision/Image Tag), behavior, SD settings
+
+## Configuration
+
+### LLM Settings (per user)
+- **Content LLM**: Generates character responses
+- **Decision LLM**: Makes behavioral decisions (reactions, moods, unmatch)
+- **Image Tag LLM**: Generates Danbooru tags for images
+
+Each has independent provider/model/temperature/token settings.
+
+### Behavior Settings
+- Proactive messaging frequency and limits
+- Left-on-read triggers
+- Conversation compacting thresholds
+- Emoji limits, pacing style
+
+### SD Settings
+- Steps, CFG scale, sampler, scheduler
+- High-res upscaling
+- ADetailer face fixing
+- Custom prompts and negative prompts
 
 ## Project Structure
 
@@ -83,22 +144,59 @@ npm run dev
 cupid-ai/
 ├── backend/
 │   ├── src/
-│   │   ├── db/         # Database and migrations
-│   │   ├── middleware/ # Auth middleware
-│   │   ├── routes/     # API endpoints
-│   │   └── services/   # AI service, business logic
-│   └── package.json
+│   │   ├── db/              # SQLite database, migrations
+│   │   ├── routes/          # API endpoints
+│   │   ├── services/        # Business logic, AI, queue system
+│   │   ├── middleware/      # Auth
+│   │   └── utils/           # Helpers, logger
+│   ├── logs/                # Auto-cleaning logs (10-min rolling)
+│   └── uploads/             # Generated images
 ├── frontend/
 │   ├── src/
-│   │   ├── components/ # React components
-│   │   ├── context/    # Auth context
-│   │   ├── pages/      # Page components
-│   │   └── services/   # API and storage services
-│   └── package.json
-├── CLAUDE.md           # Technical documentation
-└── PLAN.md            # Feature planning
-
+│   │   ├── components/      # UI components
+│   │   ├── pages/           # Route pages
+│   │   ├── hooks/           # React hooks
+│   │   ├── services/        # API, IndexedDB, WebSocket
+│   │   ├── context/         # Auth, Mood contexts
+│   │   └── utils/           # Helpers
+│   └── public/              # Static assets
+├── CLAUDE.md                # Technical documentation
+├── FILE_REGISTRY.md         # File documentation
+└── IDEAS.md                 # Feature ideas
 ```
+
+## Key Systems
+
+**Proactive Messaging:**
+- Characters message first after 4+ hour gaps
+- Probability: 5% per hour (capped 50%), modified by extraversion
+- Daily limit: 5 proactive messages per user
+- First messages (icebreakers) on match after 14+ hours
+
+**Engagement System:**
+- Online: unlimited conversation
+- Away: 30-60 minute sessions
+- Busy: 15-30 minute sessions
+- Natural departures when time limit reached
+
+**Conversation Compacting:**
+- Triggers at 90% of context window (default 32k tokens)
+- Compacts to 70% target
+- Blocks <15 messages: deleted
+- Blocks ≥15 messages: summarized by Decision LLM
+- Max 5 summary slots (FIFO deletion)
+
+**Queue System:**
+- OpenRouter: 100 concurrent requests
+- Featherless: 1 concurrent request
+- Retry logic with exponential backoff (3 retries)
+
+## Development
+
+- Backend auto-restarts on changes (nodemon)
+- Frontend hot-reload (Vite)
+- Logs: `backend/logs/` (server, prompts, responses)
+- Database: `backend/cupid.db` (SQLite)
 
 ## License
 
