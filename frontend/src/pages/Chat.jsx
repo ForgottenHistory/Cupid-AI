@@ -39,6 +39,7 @@ const Chat = () => {
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const autoScrollIntervalRef = useRef(null);
+  const hasAutoEnabledRef = useRef(false);
 
   // Mood context (persistent per character)
   const { setMoodEffect, clearMoodEffect, closeMoodModal, getMoodForCharacter } = useMood();
@@ -150,9 +151,10 @@ const Chat = () => {
     // Reset image upload state
     setSelectedImage(null);
     setImageDescription('');
-    // Reset auto-scroll state
+    // Reset auto-scroll state and flag
     setAutoScrollEnabled(false);
     setCurrentImageIndex(0);
+    hasAutoEnabledRef.current = false;
   }, [characterId]);
 
   // Auto-scroll timer for cycling through received images
@@ -191,6 +193,15 @@ const Chat = () => {
       setCurrentImageIndex(0);
     }
   }, [autoScrollEnabled]);
+
+  // Auto-enable auto-scroll when images are available (only once per character)
+  useEffect(() => {
+    if (receivedImages.length > 0 && !autoScrollEnabled && !hasAutoEnabledRef.current) {
+      setAutoScrollEnabled(true);
+      hasAutoEnabledRef.current = true;
+      console.log(`🔄 Auto-enabled image scroll (${receivedImages.length} images available)`);
+    }
+  }, [receivedImages.length, autoScrollEnabled]);
 
   // Check for 30-minute time gap when chat first loads and restore mood effects
   useEffect(() => {
@@ -489,6 +500,8 @@ const Chat = () => {
             character={character}
             characterStatus={characterStatus}
             messages={messages}
+            totalMessages={totalMessages}
+            hasMoreMessages={hasMoreMessages}
             onBack={() => navigate('/')}
             onUnmatch={handleUnmatch}
           />

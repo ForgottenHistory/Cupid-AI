@@ -3,11 +3,11 @@ import { useState } from 'react';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch }) => {
+const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMoreMessages, onBack, onUnmatch }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
 
-  // Calculate approximate token count (1 token ≈ 4 characters)
+  // Calculate approximate token count (1 token ≈ 4 characters) for loaded messages
   const calculateTokens = () => {
     if (!messages || messages.length === 0) return 0;
     const totalChars = messages.reduce((sum, msg) => sum + msg.content.length, 0);
@@ -92,7 +92,19 @@ const ChatHeader = ({ character, characterStatus, messages, onBack, onUnmatch })
                     <span>Conversation</span>
                   </div>
                   <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    ~{calculateTokens().toLocaleString()} tokens
+                    {hasMoreMessages ? (
+                      <>
+                        {messages.length.toLocaleString()} of {totalMessages.toLocaleString()} messages loaded
+                        <br />
+                        ~{calculateTokens().toLocaleString()} tokens (loaded)
+                      </>
+                    ) : (
+                      <>
+                        {totalMessages.toLocaleString()} {totalMessages === 1 ? 'message' : 'messages'}
+                        <br />
+                        ~{calculateTokens().toLocaleString()} tokens
+                      </>
+                    )}
                   </div>
                 </div>
                 <button
