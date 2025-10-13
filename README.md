@@ -8,6 +8,7 @@ AI-powered dating app simulator. Swipe on characters, match, chat, and build rel
 - Import PNG character cards (v2 spec)
 - Character Wizard: AI-generated characters (name, description, appearance, image)
 - Dating profiles, weekly schedules, Big Five personality traits
+- Daily swipe limits
 
 **Chat System:**
 - Triple LLM architecture (Content, Decision, Image Tag)
@@ -23,12 +24,7 @@ AI-powered dating app simulator. Swipe on characters, match, chat, and build rel
 - Mood effects: dynamic backgrounds based on conversation tone
 - AI reply suggestions (serious/sarcastic/flirty)
 - Message reactions, editing, regeneration
-
-**Social Features:**
-- Full-screen social media feed (Instagram Stories style)
-- Personality-driven post frequency
 - Character unmatch system
-- Daily swipe limits
 
 ## Tech Stack
 
@@ -124,19 +120,18 @@ npm run dev
 - **Decision LLM**: Makes behavioral decisions (reactions, moods, unmatch)
 - **Image Tag LLM**: Generates Danbooru tags for images
 
-Each has independent provider/model/temperature/token settings.
+Each has independent provider and model configuration.
 
 ### Behavior Settings
-- Proactive messaging frequency and limits
+- Proactive messaging
 - Left-on-read triggers
-- Conversation compacting thresholds
-- Emoji limits, pacing style
+- Conversation compacting
 
 ### SD Settings
-- Steps, CFG scale, sampler, scheduler
+- Sampling parameters
 - High-res upscaling
 - ADetailer face fixing
-- Custom prompts and negative prompts
+- Custom prompts
 
 ## Project Structure
 
@@ -164,32 +159,6 @@ cupid-ai/
 ├── FILE_REGISTRY.md         # File documentation
 └── IDEAS.md                 # Feature ideas
 ```
-
-## Key Systems
-
-**Proactive Messaging:**
-- Characters message first after 4+ hour gaps
-- Probability: 5% per hour (capped 50%), modified by extraversion
-- Daily limit: 5 proactive messages per user
-- First messages (icebreakers) on match after 14+ hours
-
-**Engagement System:**
-- Online: unlimited conversation
-- Away: 30-60 minute sessions
-- Busy: 15-30 minute sessions
-- Natural departures when time limit reached
-
-**Conversation Compacting:**
-- Triggers at 90% of context window (default 32k tokens)
-- Compacts to 70% target
-- Blocks <15 messages: deleted
-- Blocks ≥15 messages: summarized by Decision LLM
-- Max 5 summary slots (FIFO deletion)
-
-**Queue System:**
-- OpenRouter: 100 concurrent requests
-- Featherless: 1 concurrent request
-- Retry logic with exponential backoff (3 retries)
 
 ## Development
 
