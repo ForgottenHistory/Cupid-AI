@@ -66,16 +66,24 @@ router.get('/conversations', authenticateToken, (req, res) => {
 /**
  * GET /api/chat/conversations/:characterId
  * Get or create a conversation with a character
+ * Query params: limit (default 200), offset (default 0)
  */
 router.get('/conversations/:characterId', authenticateToken, (req, res) => {
   try {
     const { characterId } = req.params;
     const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 200;
+    const offset = parseInt(req.query.offset) || 0;
 
     const conversation = conversationService.getOrCreateConversation(userId, characterId);
-    const messages = messageService.getMessages(conversation.id);
+    const result = messageService.getMessagesPaginated(conversation.id, limit, offset);
 
-    res.json({ conversation, messages });
+    res.json({
+      conversation,
+      messages: result.messages,
+      total: result.total,
+      hasMore: result.hasMore
+    });
   } catch (error) {
     console.error('Get conversation error:', error);
     res.status(500).json({ error: 'Failed to get conversation' });

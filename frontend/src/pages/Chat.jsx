@@ -59,6 +59,10 @@ const Chat = () => {
     characterStatus,
     messagesEndRef,
     isMountedRef,
+    totalMessages,
+    hasMoreMessages,
+    loadingMore,
+    loadMoreMessages,
   } = useChat(characterId, user);
 
   // Message display and animation
@@ -646,6 +650,10 @@ const Chat = () => {
             messagesEndRef={messagesEndRef}
             imageModalOpen={imageModalOpen}
             setImageModalOpen={setImageModalOpen}
+            hasMoreMessages={hasMoreMessages}
+            loadingMore={loadingMore}
+            onLoadMore={loadMoreMessages}
+            totalMessages={totalMessages}
           />
 
           {/* Error Display */}

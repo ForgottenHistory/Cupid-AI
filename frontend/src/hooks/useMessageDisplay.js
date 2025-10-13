@@ -11,10 +11,23 @@ export const useMessageDisplay = (messages, messagesEndRef, showTypingIndicator)
   const [newMessageIds, setNewMessageIds] = useState(new Set());
   const [displayingMessages, setDisplayingMessages] = useState(false);
   const displayTimeoutsRef = useRef([]);
+  const previousFirstMessageIdRef = useRef(null);
 
-  // Scroll to bottom when messages or typing indicator changes
+  // Scroll to bottom when NEW messages are added (not when loading older messages)
   useEffect(() => {
-    scrollToBottom();
+    // Get the ID of the first message
+    const currentFirstMessageId = messages.length > 0 ? messages[0]?.id : null;
+    const previousFirstMessageId = previousFirstMessageIdRef.current;
+
+    // Only auto-scroll if:
+    // 1. First message ID hasn't changed (messages were appended, not prepended)
+    // 2. Or this is the initial load (previousFirstMessageId is null)
+    if (previousFirstMessageId === null || currentFirstMessageId === previousFirstMessageId) {
+      scrollToBottom();
+    }
+
+    // Update the ref for next comparison
+    previousFirstMessageIdRef.current = currentFirstMessageId;
   }, [messages, showTypingIndicator]);
 
   // Remove message IDs from newMessageIds after animation completes

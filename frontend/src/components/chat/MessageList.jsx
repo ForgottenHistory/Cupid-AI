@@ -1,3 +1,4 @@
+import { useRef, useEffect, useLayoutEffect } from 'react';
 import MessageBubble from './MessageBubble';
 import SystemMessage from './SystemMessage';
 import TypingIndicator from './TypingIndicator';
@@ -20,9 +21,91 @@ const MessageList = ({
   messagesEndRef,
   imageModalOpen,
   setImageModalOpen,
+  hasMoreMessages = false,
+  loadingMore = false,
+  onLoadMore,
+  totalMessages = 0,
 }) => {
+  const containerRef = useRef(null);
+  const scrollPositionRef = useRef({ scrollTop: 0, scrollHeight: 0, messagesLength: 0 });
+  const isLoadingMoreRef = useRef(false);
+
+  // Preserve scroll position when loading older messages
+  // Use useLayoutEffect to run synchronously before browser paint
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Check if messages were prepended (length increased and we're loading more)
+    const previousLength = scrollPositionRef.current.messagesLength;
+    if (isLoadingMoreRef.current && previousLength > 0 && messages.length > previousLength) {
+      // Messages were added - restore scroll position adjusted for new content
+      const oldScrollHeight = scrollPositionRef.current.scrollHeight;
+      const oldScrollTop = scrollPositionRef.current.scrollTop;
+      const newScrollHeight = container.scrollHeight;
+      const heightDiff = newScrollHeight - oldScrollHeight;
+
+      // Restore position: add the height difference to previous scroll position
+      container.scrollTop = oldScrollTop + heightDiff;
+
+      console.log(`📜 Scroll preserved: was ${oldScrollTop}, now ${container.scrollTop} (added ${heightDiff}px)`);
+
+      // Reset flag
+      isLoadingMoreRef.current = false;
+    }
+
+    // Update stored values
+    scrollPositionRef.current = {
+      scrollTop: container.scrollTop,
+      scrollHeight: container.scrollHeight,
+      messagesLength: messages.length
+    };
+  }, [messages]);
+
+  const handleLoadMore = () => {
+    if (onLoadMore && !loadingMore && hasMoreMessages) {
+      // Store current scroll position BEFORE loading
+      const container = containerRef.current;
+      if (container) {
+        scrollPositionRef.current = {
+          scrollTop: container.scrollTop,
+          scrollHeight: container.scrollHeight,
+          messagesLength: messages.length
+        };
+        // Set flag to indicate we're loading more (so we know to preserve scroll)
+        isLoadingMoreRef.current = true;
+      }
+      onLoadMore();
+    }
+  };
+
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+    <div ref={containerRef} className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
+      {/* Load More Button */}
+      {hasMoreMessages && (
+        <div className="flex justify-center py-4">
+          <button
+            onClick={handleLoadMore}
+            disabled={loadingMore}
+            className="px-6 py-2.5 bg-white dark:bg-gray-800 border-2 border-purple-500 dark:border-purple-600 text-purple-600 dark:text-purple-400 rounded-full font-medium shadow-md hover:bg-purple-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+          >
+            {loadingMore ? (
+              <>
+                <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+                <span>Loading...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                <span>Load 200 more messages ({messages.length}/{totalMessages})</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {messages.map((message, index) => {
         // Render system messages as centered notifications
         if (message.role === 'system') {

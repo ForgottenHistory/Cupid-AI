@@ -12,8 +12,10 @@ class ChatService {
   /**
    * Get or create conversation with character
    */
-  async getConversation(characterId) {
-    const response = await api.get(`/chat/conversations/${characterId}`);
+  async getConversation(characterId, limit = 200, offset = 0) {
+    const response = await api.get(`/chat/conversations/${characterId}`, {
+      params: { limit, offset }
+    });
     return response.data;
   }
 

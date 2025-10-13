@@ -29,6 +29,45 @@ class MessageService {
   }
 
   /**
+   * Get paginated messages for a conversation (for frontend display)
+   * Returns the LATEST messages by default, or older messages when offset is provided
+   * @param {number} conversationId - Conversation ID
+   * @param {number} limit - Number of messages to fetch (default 200)
+   * @param {number} offset - Number of messages to skip from the end (default 0)
+   * @returns {object} { messages: array, total: number, hasMore: boolean }
+   */
+  getMessagesPaginated(conversationId, limit = 200, offset = 0) {
+    // Get total message count
+    const countResult = db.prepare(`
+      SELECT COUNT(*) as total FROM messages WHERE conversation_id = ?
+    `).get(conversationId);
+    const total = countResult.total;
+
+    // Get messages in reverse order (newest first), skip offset, take limit
+    const messages = db.prepare(`
+      SELECT * FROM messages
+      WHERE conversation_id = ?
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(conversationId, limit, offset);
+
+    // Reverse to get chronological order (oldest first in the array)
+    messages.reverse();
+
+    // Convert timestamps to ISO format
+    const formattedMessages = messages.map(msg => ({
+      ...msg,
+      created_at: this.formatTimestamp(msg.created_at)
+    }));
+
+    return {
+      messages: formattedMessages,
+      total: total,
+      hasMore: (offset + limit) < total
+    };
+  }
+
+  /**
    * Get message by ID
    */
   getMessage(messageId) {

@@ -77,18 +77,25 @@ class PromptBuilderService {
 
     parts.push(`Current date and time: ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}`);
 
-    if (characterData.name) {
-      parts.push(`\nYou are ${characterData.name}.`);
+    // Handle v2 card format (nested under .data) or flat format
+    const name = characterData.data?.name || characterData.name;
+    const description = characterData.data?.description || characterData.description;
+
+    if (name) {
+      parts.push(`\nYou are ${name}.`);
     }
 
-    if (characterData.description) {
-      parts.push(`\nDescription: ${characterData.description}`);
+    if (description) {
+      parts.push(`\nDescription: ${description}`);
     }
 
-    if (characterData.datingProfile) {
+    // Handle v2 card format (nested under .data.datingProfile) or flat format
+    const datingProfile = characterData.data?.datingProfile || characterData.datingProfile;
+
+    if (datingProfile) {
       // Handle dating profile object or string
-      if (typeof characterData.datingProfile === 'object') {
-        const profile = characterData.datingProfile;
+      if (typeof datingProfile === 'object') {
+        const profile = datingProfile;
         const profileParts = [];
 
         if (profile.bio) profileParts.push(`Bio: ${profile.bio}`);
@@ -109,7 +116,7 @@ class PromptBuilderService {
           parts.push(`\nDating Profile:\n${profileParts.join('\n')}`);
         }
       } else {
-        parts.push(`\nDating Profile: ${characterData.datingProfile}`);
+        parts.push(`\nDating Profile: ${datingProfile}`);
       }
     }
 

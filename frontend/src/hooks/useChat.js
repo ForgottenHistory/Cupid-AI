@@ -18,6 +18,11 @@ export const useChat = (characterId, user) => {
   const messagesEndRef = useRef(null);
   const isMountedRef = useRef(true);
 
+  // Pagination state
+  const [totalMessages, setTotalMessages] = useState(0);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   useEffect(() => {
     isMountedRef.current = true;
     loadCharacterAndChat();
@@ -83,12 +88,12 @@ export const useChat = (characterId, user) => {
         }
       }
 
-      // Load conversation and messages
-      const { conversation: conv, messages: msgs } = await chatService.getConversation(characterId);
+      // Load conversation and messages (latest 200 by default)
+      const { conversation: conv, messages: msgs, total, hasMore } = await chatService.getConversation(characterId, 200, 0);
       setConversation(conv);
-
-      // Messages are already split on the backend - just display them as-is
       setMessages(msgs);
+      setTotalMessages(total);
+      setHasMoreMessages(hasMore);
 
       // Mark messages as read
       if (msgs.length > 0) {
@@ -109,6 +114,32 @@ export const useChat = (characterId, user) => {
     }
   };
 
+  const loadMoreMessages = async () => {
+    if (loadingMore || !hasMoreMessages) return;
+
+    setLoadingMore(true);
+    setError('');
+
+    try {
+      // Calculate offset: total messages - currently loaded messages
+      const currentOffset = messages.length;
+      const { messages: olderMsgs, hasMore } = await chatService.getConversation(characterId, 200, currentOffset);
+
+      if (!isMountedRef.current) return;
+
+      // Prepend older messages to the beginning
+      setMessages(prev => [...olderMsgs, ...prev]);
+      setHasMoreMessages(hasMore);
+
+      console.log(`📜 Loaded ${olderMsgs.length} more messages (${messages.length + olderMsgs.length}/${totalMessages})`);
+    } catch (err) {
+      console.error('Load more messages error:', err);
+      setError('Failed to load older messages');
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   return {
     character,
     setCharacter,
@@ -123,5 +154,10 @@ export const useChat = (characterId, user) => {
     messagesEndRef,
     isMountedRef,
     loadCharacterAndChat,
+    // Pagination
+    totalMessages,
+    hasMoreMessages,
+    loadingMore,
+    loadMoreMessages,
   };
 };
