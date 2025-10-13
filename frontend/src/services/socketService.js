@@ -13,7 +13,13 @@ class SocketService {
       return;
     }
 
-    this.socket = io('http://localhost:3000', {
+    // Dynamically determine backend URL based on current host
+    const currentHost = window.location.hostname;
+    const backendUrl = (currentHost !== 'localhost' && currentHost !== '127.0.0.1')
+      ? `http://${currentHost}:3000`
+      : 'http://localhost:3000';
+
+    this.socket = io(backendUrl, {
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,

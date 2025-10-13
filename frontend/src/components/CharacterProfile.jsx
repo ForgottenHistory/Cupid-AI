@@ -304,6 +304,39 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     }
   };
 
+  const handleSaveSchedule = async (updatedSchedule) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Update character in IndexedDB, storing previous as backup
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          previousSchedule: data.schedule, // Save current as previous
+          schedule: updatedSchedule
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+
+      alert('Schedule saved successfully!');
+    } catch (err) {
+      console.error('Save schedule error:', err);
+      setError(err.response?.data?.error || 'Failed to save schedule');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRevertSchedule = async () => {
     if (!data.previousSchedule) {
       setError('No previous schedule found');
@@ -477,6 +510,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 loading={loading}
                 onGenerate={handleGenerateSchedule}
                 onRevert={handleRevertSchedule}
+                onSave={handleSaveSchedule}
               />
             )}
 

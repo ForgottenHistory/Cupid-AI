@@ -367,6 +367,87 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
       reason: 'Decision engine error - defaulting to not sending'
     };
   }
+
+  /**
+   * Left-On-Read Decision Engine: Decide if character should follow up when user reads but doesn't respond
+   * Returns: { shouldSend: boolean, messageType: "left_on_read", reason: string }
+   */
+  async makeLeftOnReadDecision({ messages, characterData, personality, minutesSinceRead, userId }) {
+    try {
+      const aiService = await this.getAIService();
+      const decisionSettings = llmSettingsService.getDecisionSettings(userId);
+
+      // Build context
+      const lastMessages = messages.slice(-5);
+
+      // Calculate personality influence on probability
+      const extraversion = personality?.extraversion || 50;
+      const neuroticism = personality?.neuroticism || 50;
+
+      // High extraversion/neuroticism = more likely to follow up
+      let personalityGuidance = '';
+      if (extraversion > 70 || neuroticism > 70) {
+        personalityGuidance = '\nYour personality: High extraversion/anxiety - you\'re more likely to check in when left on read.';
+      } else if (extraversion < 30 && neuroticism < 30) {
+        personalityGuidance = '\nYour personality: Low extraversion/anxiety - you\'re more chill about being left on read.';
+      } else {
+        personalityGuidance = '\nYour personality: Moderate - you might check in if something feels off.';
+      }
+
+      const decisionPrompt = `You are deciding if this character should send a follow-up message on a dating app.
+
+Character: ${characterData.name}
+Description: ${characterData.description || 'N/A'}${personalityGuidance}
+
+Situation: You sent a message ${minutesSinceRead} minutes ago. They opened the chat and read it, but haven't responded yet.
+
+Recent conversation:
+${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
+
+Should you follow up? Consider:
+- Your personality (are you the type to double-text?)
+- The conversation context (did you ask a question? was it heavy?)
+- The time gap (${minutesSinceRead} min is pretty short)
+- Their pattern (have they done this before?)
+
+IMPORTANT: Don't be needy or annoying. Only follow up if it feels natural for your personality.
+
+Output your decision in this EXACT format:
+
+Should Send: [yes/no]
+Message Type: left_on_read
+Reason: [brief explanation in one sentence]
+
+Output ONLY the three lines in the exact format shown above, nothing else.`;
+
+      console.log('🎯 Left-On-Read Decision Engine Request:', {
+        model: decisionSettings.model,
+        minutesSinceRead,
+        extraversion,
+        neuroticism
+      });
+
+      const response = await aiService.createBasicCompletion(decisionPrompt, {
+        model: decisionSettings.model,
+        temperature: decisionSettings.temperature,
+        max_tokens: decisionSettings.max_tokens,
+        top_p: decisionSettings.top_p,
+        frequency_penalty: decisionSettings.frequency_penalty,
+        presence_penalty: decisionSettings.presence_penalty,
+        messageType: 'decision-left-on-read',
+        characterName: characterData.name
+      });
+
+      const content = response.content.trim();
+
+      // Parse response
+      return this.parseProactiveDecisionResponse(content);
+    } catch (error) {
+      console.error('❌ Left-On-Read Decision Engine error:', error.message);
+      // On error, don't send
+      return this.getDefaultProactiveDecision();
+    }
+  }
 }
 
 export default new DecisionEngineService();

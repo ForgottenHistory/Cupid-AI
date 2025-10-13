@@ -40,7 +40,13 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      /^http:\/\/192\.168\.0\.\d+:517[3-9]$/, // Allow ports 5173-5179
+      /^http:\/\/192\.168\.0\.\d+:518[0-5]$/ // Allow ports 5180-5185
+    ],
     credentials: true
   }
 });
@@ -73,7 +79,13 @@ if (!existsSync(uploadsDir)) {
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:5173',
+    'http://localhost:5174',
+    'http://localhost:5175',
+    /^http:\/\/192\.168\.0\.\d+:517[3-9]$/, // Allow ports 5173-5179
+    /^http:\/\/192\.168\.0\.\d+:518[0-5]$/ // Allow ports 5180-5185
+  ],
   credentials: true
 }));
 

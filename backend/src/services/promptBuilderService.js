@@ -226,6 +226,13 @@ class PromptBuilderService {
       return parts.join('');
     }
 
+    // Special handling for left-on-read
+    if (proactiveType === 'left_on_read') {
+      parts.push(`👀 LEFT ON READ: They read your message but haven't responded yet. It's been a few minutes.`);
+      parts.push(`\n\n${prompts.leftOnReadPrompt}`);
+      return parts.join('');
+    }
+
     // Normal proactive message handling (continuing conversation)
     const timeGapText = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since their last message.` : ' Some time has passed.';
     parts.push(`💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);

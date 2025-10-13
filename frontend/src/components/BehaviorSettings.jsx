@@ -9,6 +9,8 @@ const BehaviorSettings = ({ onClose }) => {
     proactiveAwayChance: 50,
     proactiveBusyChance: 10,
     proactiveCheckInterval: 5,
+    maxConsecutiveProactive: 4,
+    proactiveCooldownMultiplier: 2.0,
     dailyLeftOnReadLimit: 10,
     leftOnReadTriggerMin: 5,
     leftOnReadTriggerMax: 15,
@@ -70,6 +72,8 @@ const BehaviorSettings = ({ onClose }) => {
       proactiveAwayChance: 50,
       proactiveBusyChance: 10,
       proactiveCheckInterval: 5,
+      maxConsecutiveProactive: 4,
+      proactiveCooldownMultiplier: 2.0,
       dailyLeftOnReadLimit: 10,
       leftOnReadTriggerMin: 5,
       leftOnReadTriggerMax: 15,
@@ -256,6 +260,50 @@ const BehaviorSettings = ({ onClose }) => {
                 <span>Always</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Chance characters send proactive messages when status is BUSY</p>
+            </div>
+
+            {/* Max Consecutive Proactive */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Max Consecutive Proactive</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.maxConsecutiveProactive} messages</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={settings.maxConsecutiveProactive}
+                onChange={(e) => updateSetting('maxConsecutiveProactive', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>1</span>
+                <span>10</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum unanswered proactive messages before character unmatches. Cooldown doubles after each message.</p>
+            </div>
+
+            {/* Proactive Cooldown Multiplier */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Cooldown Multiplier</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveCooldownMultiplier.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="1.0"
+                max="5.0"
+                step="0.1"
+                value={settings.proactiveCooldownMultiplier}
+                onChange={(e) => updateSetting('proactiveCooldownMultiplier', parseFloat(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>1.0x (slow)</span>
+                <span>5.0x (fast)</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">How quickly cooldown increases after each proactive message (base: 60 min × multiplier ^ count). Higher = faster escalation.</p>
             </div>
 
             {/* Left-On-Read Section Header */}

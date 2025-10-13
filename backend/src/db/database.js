@@ -394,6 +394,34 @@ function runMigrations() {
       console.log('✅ Image Tag LLM settings columns added to users table');
     }
 
+    // Migration: Add consecutive proactive tracking columns to characters table
+    // Refresh charactersColumnNames before checking
+    const charactersColumnsRefresh = db.pragma('table_info(characters)');
+    const charactersColumnNamesRefresh = charactersColumnsRefresh.map(col => col.name);
+
+    if (!charactersColumnNamesRefresh.includes('consecutive_proactive_count')) {
+      db.exec(`
+        ALTER TABLE characters ADD COLUMN consecutive_proactive_count INTEGER DEFAULT 0;
+        ALTER TABLE characters ADD COLUMN current_proactive_cooldown INTEGER DEFAULT 60;
+      `);
+      console.log('✅ consecutive_proactive_count and current_proactive_cooldown columns added to characters table');
+    }
+
+    // Migration: Add max consecutive proactive limit to users table
+    // Refresh userColumnNames before checking
+    const userColumnsRefresh = db.pragma('table_info(users)');
+    const userColumnNamesRefresh = userColumnsRefresh.map(col => col.name);
+
+    if (!userColumnNamesRefresh.includes('max_consecutive_proactive')) {
+      db.exec(`ALTER TABLE users ADD COLUMN max_consecutive_proactive INTEGER DEFAULT 4;`);
+      console.log('✅ max_consecutive_proactive column added to users table');
+    }
+
+    if (!userColumnNamesRefresh.includes('proactive_cooldown_multiplier')) {
+      db.exec(`ALTER TABLE users ADD COLUMN proactive_cooldown_multiplier REAL DEFAULT 2.0;`);
+      console.log('✅ proactive_cooldown_multiplier column added to users table');
+    }
+
     // Migration: Update messages table to allow 'system' role
     // Check if the constraint needs updating
     const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();

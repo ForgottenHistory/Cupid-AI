@@ -60,7 +60,7 @@ class ConversationService {
   }
 
   /**
-   * Mark conversation as read (reset unread count)
+   * Mark conversation as read (reset unread count and track when chat was opened)
    */
   markAsRead(userId, characterId) {
     const conversation = this.getConversation(userId, characterId);
@@ -71,7 +71,8 @@ class ConversationService {
 
     db.prepare(`
       UPDATE conversations
-      SET unread_count = 0
+      SET unread_count = 0,
+          last_opened_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(conversation.id);
 

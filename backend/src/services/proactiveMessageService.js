@@ -33,7 +33,7 @@ class ProactiveMessageService {
     const candidates = [];
 
     // Get all users with their last global proactive timestamp and behavior settings
-    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_away_chance, proactive_busy_chance, proactive_messages_today, last_proactive_date, proactive_check_interval, last_proactive_check_at, left_on_read_messages_today, last_left_on_read_date, daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown FROM users').all();
+    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_away_chance, proactive_busy_chance, proactive_messages_today, last_proactive_date, proactive_check_interval, last_proactive_check_at, left_on_read_messages_today, last_left_on_read_date, daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown, max_consecutive_proactive, proactive_cooldown_multiplier FROM users').all();
 
     for (const user of users) {
       // Check if enough time has passed since last check for this user
@@ -69,14 +69,16 @@ class ProactiveMessageService {
       }
 
       // Check global rate limit: 30 minutes between ANY proactive messages
+      // NOTE: Left-on-read messages bypass this check (they're reactive, not proactive)
+      let onGlobalCooldown = false;
       if (user.last_global_proactive_at) {
         const lastGlobalTime = new Date(user.last_global_proactive_at);
         const now = new Date();
         const minutesSinceGlobal = (now - lastGlobalTime) / (1000 * 60);
 
         if (minutesSinceGlobal < 30) {
-          console.log(`⏱️  User ${user.id} on global cooldown (${(30 - minutesSinceGlobal).toFixed(1)} min remaining)`);
-          continue; // Skip this user entirely - too soon since last proactive
+          onGlobalCooldown = true;
+          console.log(`⏱️  User ${user.id} on global cooldown (${(30 - minutesSinceGlobal).toFixed(1)} min remaining) - checking left-on-read only`);
         }
       }
 
@@ -91,13 +93,17 @@ class ProactiveMessageService {
       for (const character of characters) {
         if (!character.conversation_id) continue;
 
-        // Check per-character rate limit: 1 hour between proactive messages from same character
+        // Check per-character rate limit: Dynamic cooldown based on consecutive proactive count
+        // Cooldown = 60 * (multiplier ^ consecutiveCount)
+        // Default multiplier 2.0: 1st: 60min, 2nd: 120min, 3rd: 240min, 4th: 480min (unmatch at max)
+        const currentCooldown = character.current_proactive_cooldown || 60;
+
         if (character.last_proactive_at) {
           const lastCharacterTime = new Date(character.last_proactive_at);
           const now = new Date();
           const minutesSinceCharacter = (now - lastCharacterTime) / (1000 * 60);
 
-          if (minutesSinceCharacter < 60) {
+          if (minutesSinceCharacter < currentCooldown) {
             // Parse character name for logging
             let characterName = 'Character';
             try {
@@ -105,7 +111,8 @@ class ProactiveMessageService {
               characterName = cardData.data?.name || cardData.name || 'Character';
             } catch (e) {}
 
-            console.log(`⏱️  ${characterName} on character cooldown (${(60 - minutesSinceCharacter).toFixed(1)} min remaining)`);
+            const cooldownDisplay = currentCooldown >= 60 ? `${(currentCooldown / 60).toFixed(1)}h` : `${currentCooldown}min`;
+            console.log(`⏱️  ${characterName} on character cooldown (${(currentCooldown - minutesSinceCharacter).toFixed(1)} min remaining, total: ${cooldownDisplay})`);
             continue; // Skip this character - too soon since last proactive
           }
         }
@@ -140,6 +147,28 @@ class ProactiveMessageService {
           ORDER BY created_at DESC
           LIMIT 1
         `).get(character.conversation_id);
+
+        // Check consecutive proactive count
+        // If user replied, reset the counter
+        const consecutiveCount = character.consecutive_proactive_count || 0;
+        if (lastUserMessage && lastMessage && lastMessage.role === 'assistant' && lastMessage.is_proactive) {
+          // User replied after a proactive message - reset consecutive count
+          if (new Date(lastUserMessage.created_at) > new Date(lastMessage.created_at)) {
+            db.prepare(`
+              UPDATE characters
+              SET consecutive_proactive_count = 0, current_proactive_cooldown = 60
+              WHERE id = ? AND user_id = ?
+            `).run(character.id, user.id);
+            character.consecutive_proactive_count = 0;
+            character.current_proactive_cooldown = 60;
+          }
+        }
+
+        // Block if consecutive count exceeds max (should have already unmatched, but safety check)
+        const maxConsecutive = user.max_consecutive_proactive || 4;
+        if (consecutiveCount >= maxConsecutive) {
+          continue;
+        }
 
         // Calculate time gap: either from user's last message OR from match time (if no messages)
         let gapHours;
@@ -264,7 +293,7 @@ class ProactiveMessageService {
                   }
 
                   if (canSendLeftOnRead) {
-                    // Add as left-on-read candidate
+                    // Add as left-on-read candidate (BYPASSES global cooldown)
                     const characterName = characterData.data?.name || characterData.name || 'Character';
                     console.log(`👀 Left-on-read candidate: ${characterName} (read ${minutesSinceRead.toFixed(1)} min ago)`);
 
@@ -294,6 +323,11 @@ class ProactiveMessageService {
           }
         }
 
+        // Skip normal proactive candidates if on global cooldown
+        if (onGlobalCooldown) {
+          continue;
+        }
+
         // Add to candidates with user settings (normal proactive)
         candidates.push({
           userId: user.id,
@@ -308,7 +342,9 @@ class ProactiveMessageService {
           userSettings: {
             dailyProactiveLimit: user.daily_proactive_limit || 5,
             proactiveAwayChance: user.proactive_away_chance || 50,
-            proactiveBusyChance: user.proactive_busy_chance || 10
+            proactiveBusyChance: user.proactive_busy_chance || 10,
+            maxConsecutiveProactive: user.max_consecutive_proactive || 4,
+            proactiveCooldownMultiplier: user.proactive_cooldown_multiplier || 2.0
           }
         });
       }
@@ -322,7 +358,7 @@ class ProactiveMessageService {
    */
   async processCandidate(candidate, io, debugMode = false) {
     try {
-      const { userId, characterId, conversationId, gapHours, characterData, personality, schedule, isFirstMessage, triggerType, minutesSinceRead } = candidate;
+      const { userId, characterId, conversationId, gapHours, characterData, personality, schedule, isFirstMessage, triggerType, minutesSinceRead, userSettings } = candidate;
 
       // Extract character name (handle v2 card format)
       const characterName = characterData.data?.name || characterData.name || 'Character';
@@ -418,7 +454,7 @@ class ProactiveMessageService {
       });
 
       // Clean up em dashes (replace with periods)
-      const cleanedContent = aiResponse.content.replace(/—/g, '.');
+      const cleanedContent = aiResponse.content.replace(/—/g, '. ');
 
       // Split content by newlines to create separate messages
       const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
@@ -474,12 +510,50 @@ class ProactiveMessageService {
       } else {
         // Normal proactive rate limits
         db.prepare('UPDATE users SET last_global_proactive_at = ?, proactive_messages_today = proactive_messages_today + 1 WHERE id = ?').run(now, userId);
-        db.prepare('UPDATE characters SET last_proactive_at = ? WHERE id = ? AND user_id = ?').run(now, characterId, userId);
 
-        // Get updated count for logging
+        // Get current consecutive count and increment it
+        const currentChar = db.prepare('SELECT consecutive_proactive_count, current_proactive_cooldown FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+        const newConsecutiveCount = (currentChar.consecutive_proactive_count || 0) + 1;
+
+        // Calculate new cooldown using multiplier (base 60 min, then multiply each time)
+        const multiplier = userSettings?.proactiveCooldownMultiplier || 2.0;
+        const baseCooldown = 60;
+        const newCooldown = baseCooldown * Math.pow(multiplier, newConsecutiveCount);
+
+        // Update character with new consecutive count and cooldown
+        db.prepare(`
+          UPDATE characters
+          SET last_proactive_at = ?,
+              consecutive_proactive_count = ?,
+              current_proactive_cooldown = ?
+          WHERE id = ? AND user_id = ?
+        `).run(now, newConsecutiveCount, newCooldown, characterId, userId);
+
+        // Log the update
         const userCount = db.prepare('SELECT proactive_messages_today, daily_proactive_limit FROM users WHERE id = ?').get(userId);
-        console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (60 min) started`);
+        const cooldownDisplay = newCooldown >= 60 ? `${(newCooldown / 60).toFixed(1)}h` : `${newCooldown}min`;
+        const maxConsecutive = userSettings?.maxConsecutiveProactive || 4;
+        console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (${cooldownDisplay}) started`);
+        console.log(`📊 Consecutive proactive count: ${newConsecutiveCount}/${maxConsecutive} (next cooldown: ${cooldownDisplay}, multiplier: ${multiplier}x)`);
         console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
+
+        // CHECK FOR UNMATCH: If this exceeds the max consecutive proactive messages
+        if (newConsecutiveCount >= maxConsecutive) {
+          console.log(`💔 ${characterName} sent ${maxConsecutive} consecutive proactive messages - triggering unmatch for user ${userId}`);
+
+          // Delete character and conversation (CASCADE will handle messages)
+          db.prepare('DELETE FROM characters WHERE id = ? AND user_id = ?').run(characterId, userId);
+
+          // Emit unmatch event to frontend
+          io.to(`user:${userId}`).emit('unmatch', {
+            characterId: characterId,
+            characterName: characterName,
+            reason: `Character unmatched after ${maxConsecutive} consecutive unanswered messages`
+          });
+
+          console.log(`✅ Unmatch complete for ${characterName} and user ${userId}`);
+          return true; // Message was sent, but unmatch occurred
+        }
       }
 
       // Emit all messages to frontend via WebSocket

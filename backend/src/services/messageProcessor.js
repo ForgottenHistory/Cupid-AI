@@ -349,7 +349,7 @@ class MessageProcessor {
       // Save AI response with reaction
       if (aiResponse) {
         // Clean up em dashes (replace with periods)
-        let cleanedContent = aiResponse.content.replace(/—/g, '.');
+        let cleanedContent = aiResponse.content.replace(/—/g, '. ');
 
         // Strip emojis from every 3rd assistant message to reduce repetition
         const assistantMessageCount = db.prepare(`

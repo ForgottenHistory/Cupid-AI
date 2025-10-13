@@ -1,7 +1,32 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// Dynamically determine backend URL based on current host
+const getBackendUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    console.log('🌐 Using env variable:', import.meta.env.VITE_API_URL);
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // If accessing from network (not localhost), use the same host IP
+  const currentHost = window.location.hostname;
+  console.log('🌐 Current hostname:', currentHost);
+  console.log('🌐 Full location:', window.location.href);
+
+  if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+    const url = `http://${currentHost}:3000/api`;
+    console.log('🌐 ✅ Using network backend URL:', url);
+    return url;
+  }
+
+  console.log('🌐 ⚠️ Using localhost backend URL');
+  return 'http://localhost:3000/api';
+};
+
+const API_BASE_URL = getBackendUrl();
 const BACKEND_URL = API_BASE_URL.replace('/api', '');
+console.log('🔧 Final API configuration:');
+console.log('   - API Base URL:', API_BASE_URL);
+console.log('   - Backend URL:', BACKEND_URL);
 
 // Helper function to get full image URL
 export const getImageUrl = (path) => {

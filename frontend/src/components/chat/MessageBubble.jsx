@@ -103,7 +103,7 @@ const MessageBubble = ({
       <div
         className={`relative ${message.message_type === 'image' ? 'w-fit' : 'max-w-[70%]'} rounded-2xl px-5 py-3 ${
           message.role === 'user'
-            ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-200/50 dark:shadow-pink-900/30'
+            ? 'bg-gradient-to-r from-pink-500 to-purple-600 dark:from-purple-800 dark:to-purple-900 text-white shadow-lg shadow-pink-200/50 dark:shadow-purple-900/50 border border-pink-300/20 dark:border-purple-700/50'
             : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
         }`}
       >

@@ -625,6 +625,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
     const settings = db.prepare(`
       SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
+             max_consecutive_proactive, proactive_cooldown_multiplier,
              daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown
       FROM users WHERE id = ?
     `).get(req.user.id);
@@ -641,6 +642,8 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style,
       proactiveCheckInterval: settings.proactive_check_interval,
+      maxConsecutiveProactive: settings.max_consecutive_proactive,
+      proactiveCooldownMultiplier: settings.proactive_cooldown_multiplier,
       dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
       leftOnReadTriggerMin: settings.left_on_read_trigger_min,
       leftOnReadTriggerMax: settings.left_on_read_trigger_max,
@@ -658,7 +661,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown } = req.body;
+    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -695,6 +698,12 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     if (leftOnReadCharacterCooldown !== undefined && (leftOnReadCharacterCooldown < 30 || leftOnReadCharacterCooldown > 480)) {
       return res.status(400).json({ error: 'Left-on-read character cooldown must be between 30 and 480 minutes' });
     }
+    if (maxConsecutiveProactive !== undefined && (maxConsecutiveProactive < 1 || maxConsecutiveProactive > 10)) {
+      return res.status(400).json({ error: 'Max consecutive proactive must be between 1 and 10' });
+    }
+    if (proactiveCooldownMultiplier !== undefined && (proactiveCooldownMultiplier < 1.0 || proactiveCooldownMultiplier > 5.0)) {
+      return res.status(400).json({ error: 'Proactive cooldown multiplier must be between 1.0 and 5.0' });
+    }
 
     // Build update query dynamically
     const updates = [];
@@ -728,6 +737,14 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('proactive_check_interval = ?');
       values.push(proactiveCheckInterval);
     }
+    if (maxConsecutiveProactive !== undefined) {
+      updates.push('max_consecutive_proactive = ?');
+      values.push(maxConsecutiveProactive);
+    }
+    if (proactiveCooldownMultiplier !== undefined) {
+      updates.push('proactive_cooldown_multiplier = ?');
+      values.push(proactiveCooldownMultiplier);
+    }
     if (dailyLeftOnReadLimit !== undefined) {
       updates.push('daily_left_on_read_limit = ?');
       values.push(dailyLeftOnReadLimit);
@@ -759,6 +776,7 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     const settings = db.prepare(`
       SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
+             max_consecutive_proactive, proactive_cooldown_multiplier,
              daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown
       FROM users WHERE id = ?
     `).get(userId);
@@ -771,6 +789,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style,
       proactiveCheckInterval: settings.proactive_check_interval,
+      maxConsecutiveProactive: settings.max_consecutive_proactive,
+      proactiveCooldownMultiplier: settings.proactive_cooldown_multiplier,
       dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
       leftOnReadTriggerMin: settings.left_on_read_trigger_min,
       leftOnReadTriggerMax: settings.left_on_read_trigger_max,

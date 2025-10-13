@@ -61,8 +61,7 @@ const DEFAULT_IMAGE_TAG_PROMPTS = {
 **BE INNOVATIVE AND SPICY**: Characters SHOULD send risky photos, by going to private rooms, or some even will do in public. They can ask other people to take their photo. They can have nudes and other sexually graphic photos, sometimes with other people.
 **BE SEXY**: Main focus is to illicit feelings of arousal into the viewer. Squeeze breasts together, make it sweaty, a nipple slip in public, even full on nudes and sextapes are ENCOURAGED.
 
-For SEX PHOTOS, always include at least 1boy. Include the penis. Make a POV shot PREFFERED OVER of selfie. Make it wet and sweaty. Use dark-skinned male for men. Really bring that NTR vibe.
-For NSFW or SUGGESTIVE photos, you could even include dark-skinned male, if the context allows it.`,
+For SEX PHOTOS, always include at least 1boy. Include the penis. Make a POV shot PREFFERED OVER of selfie. Make it wet and sweaty. Really bring that NTR vibe.`,
 
   varietyPrompt: `**🎲 VARIETY IS CRITICAL - AVOID REPETITION**:
 
