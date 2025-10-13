@@ -150,6 +150,94 @@ class MessageService {
   }
 
   /**
+   * Find the oldest compactable block in a conversation
+   * Returns block boundaries for compacting
+   * @param {number} conversationId - Conversation ID
+   * @param {number} keepRecentN - Number of recent messages to preserve uncompacted
+   * @param {number} minBlockSize - Minimum messages required to consider a block for compacting
+   * @returns {object|null} { startMessageId, endMessageId, messageCount, blockIndex } or null if no suitable block
+   */
+  findOldestCompactableBlock(conversationId, keepRecentN = 30, minBlockSize = 15) {
+    // Get all messages in chronological order
+    const messages = db.prepare(`
+      SELECT id, role, content, message_type, created_at
+      FROM messages
+      WHERE conversation_id = ?
+      ORDER BY created_at ASC
+    `).all(conversationId);
+
+    if (messages.length <= keepRecentN) {
+      // Not enough messages to compact
+      return null;
+    }
+
+    // Identify blocks separated by TIME GAP markers or SUMMARY messages
+    const blocks = [];
+    let currentBlock = [];
+
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i];
+
+      // TIME GAP or SUMMARY messages act as block boundaries
+      if (msg.message_type === 'summary' || msg.content?.startsWith('[TIME GAP:')) {
+        // Save current block if it has messages
+        if (currentBlock.length > 0) {
+          blocks.push([...currentBlock]);
+          currentBlock = [];
+        }
+        // Don't include TIME GAP/SUMMARY in blocks (they stay separate)
+      } else {
+        currentBlock.push(msg);
+      }
+    }
+
+    // Add final block if any
+    if (currentBlock.length > 0) {
+      blocks.push(currentBlock);
+    }
+
+    if (blocks.length === 0) {
+      return null;
+    }
+
+    // Calculate how many messages from the end to protect
+    const protectedMessages = Math.min(keepRecentN, messages.length);
+
+    // Find how many blocks from the end we need to keep to protect recent messages
+    let messagesFromEnd = 0;
+    let blocksToKeep = 0;
+
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      messagesFromEnd += blocks[i].length;
+      blocksToKeep++;
+
+      if (messagesFromEnd >= protectedMessages) {
+        break;
+      }
+    }
+
+    // Find oldest block that meets minimum size requirement
+    const compactableBlocks = blocks.slice(0, blocks.length - blocksToKeep);
+
+    for (let i = 0; i < compactableBlocks.length; i++) {
+      const block = compactableBlocks[i];
+
+      if (block.length >= minBlockSize) {
+        // Found a suitable block to compact
+        return {
+          startMessageId: block[0].id,
+          endMessageId: block[block.length - 1].id,
+          messageCount: block.length,
+          blockIndex: i
+        };
+      }
+    }
+
+    // No suitable block found (all blocks too small)
+    return null;
+  }
+
+  /**
    * Delete a message and all messages after it
    */
   deleteFromMessage(messageId, userId) {

@@ -28,6 +28,31 @@ class AIService {
   }
 
   /**
+   * Estimate token count for a messages array
+   * Uses rough estimation: 1 token ≈ 4 characters (75% accuracy)
+   * @param {Array} messages - Array of message objects with content
+   * @returns {number} Estimated token count
+   */
+  estimateTokenCount(messages) {
+    if (!messages || messages.length === 0) {
+      return 0;
+    }
+
+    let totalChars = 0;
+
+    for (const msg of messages) {
+      if (msg.content) {
+        totalChars += msg.content.length;
+      }
+      // Add overhead for role and structure (~10 chars per message)
+      totalChars += 10;
+    }
+
+    // 1 token ≈ 4 characters
+    return Math.ceil(totalChars / 4);
+  }
+
+  /**
    * Get provider configuration (API key and base URL) for a given provider
    * @param {string} provider - 'openrouter' or 'featherless'
    * @returns {object} { apiKey, baseUrl, name }

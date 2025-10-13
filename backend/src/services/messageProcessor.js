@@ -3,6 +3,7 @@ import aiService from './aiService.js';
 import engagementService from './engagementService.js';
 import conversationService from './conversationService.js';
 import messageService from './messageService.js';
+import compactService from './compactService.js';
 import ttsService from './ttsService.js';
 import sdService from './sdService.js';
 import imageTagGenerationService from './imageTagGenerationService.js';
@@ -14,6 +15,9 @@ class MessageProcessor {
    */
   async processMessage(io, userId, characterId, conversationId, characterData) {
     try {
+      // Check if conversation needs compacting before generating response
+      await compactService.compactIfNeeded(conversationId, userId);
+
       // Get conversation history
       const aiMessages = messageService.getConversationHistory(conversationId);
       const userMessage = aiMessages[aiMessages.length - 1]?.content || '';

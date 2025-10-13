@@ -470,6 +470,17 @@ function runMigrations() {
 
       console.log('✅ messages table updated to allow system role');
     }
+
+    // Migration: Add conversation compacting settings to users table
+    if (!userColumnNamesRefresh.includes('compact_threshold')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN compact_threshold INTEGER DEFAULT 26000;
+        ALTER TABLE users ADD COLUMN compact_target INTEGER DEFAULT 20000;
+        ALTER TABLE users ADD COLUMN keep_uncompacted_messages INTEGER DEFAULT 30;
+        ALTER TABLE users ADD COLUMN max_summaries INTEGER DEFAULT 5;
+      `);
+      console.log('✅ Conversation compacting settings columns added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }
