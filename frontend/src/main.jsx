@@ -9,6 +9,9 @@ initDB().catch(error => {
   console.error('Failed to initialize IndexedDB:', error);
 });
 
+// Import debug helpers (makes them available on window object)
+import './utils/debugCompact.js';
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

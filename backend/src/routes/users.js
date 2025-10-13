@@ -626,7 +626,8 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
-             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown
+             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown,
+             compact_threshold_percent, compact_target_percent, keep_uncompacted_messages
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -647,7 +648,10 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
       leftOnReadTriggerMin: settings.left_on_read_trigger_min,
       leftOnReadTriggerMax: settings.left_on_read_trigger_max,
-      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown
+      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown,
+      compactThresholdPercent: settings.compact_threshold_percent,
+      compactTargetPercent: settings.compact_target_percent,
+      keepUncompactedMessages: settings.keep_uncompacted_messages
     });
   } catch (error) {
     console.error('Get behavior settings error:', error);
@@ -661,7 +665,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown } = req.body;
+    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -703,6 +707,15 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     }
     if (proactiveCooldownMultiplier !== undefined && (proactiveCooldownMultiplier < 1.0 || proactiveCooldownMultiplier > 5.0)) {
       return res.status(400).json({ error: 'Proactive cooldown multiplier must be between 1.0 and 5.0' });
+    }
+    if (compactThresholdPercent !== undefined && (compactThresholdPercent < 50 || compactThresholdPercent > 100)) {
+      return res.status(400).json({ error: 'Compact threshold must be between 50 and 100 percent' });
+    }
+    if (compactTargetPercent !== undefined && (compactTargetPercent < 30 || compactTargetPercent > 90)) {
+      return res.status(400).json({ error: 'Compact target must be between 30 and 90 percent' });
+    }
+    if (keepUncompactedMessages !== undefined && (keepUncompactedMessages < 10 || keepUncompactedMessages > 100)) {
+      return res.status(400).json({ error: 'Keep uncompacted messages must be between 10 and 100' });
     }
 
     // Build update query dynamically
@@ -761,6 +774,18 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('left_on_read_character_cooldown = ?');
       values.push(leftOnReadCharacterCooldown);
     }
+    if (compactThresholdPercent !== undefined) {
+      updates.push('compact_threshold_percent = ?');
+      values.push(compactThresholdPercent);
+    }
+    if (compactTargetPercent !== undefined) {
+      updates.push('compact_target_percent = ?');
+      values.push(compactTargetPercent);
+    }
+    if (keepUncompactedMessages !== undefined) {
+      updates.push('keep_uncompacted_messages = ?');
+      values.push(keepUncompactedMessages);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -777,7 +802,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
-             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown
+             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown,
+             compact_threshold_percent, compact_target_percent, keep_uncompacted_messages
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -794,7 +820,10 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
       leftOnReadTriggerMin: settings.left_on_read_trigger_min,
       leftOnReadTriggerMax: settings.left_on_read_trigger_max,
-      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown
+      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown,
+      compactThresholdPercent: settings.compact_threshold_percent,
+      compactTargetPercent: settings.compact_target_percent,
+      keepUncompactedMessages: settings.keep_uncompacted_messages
     });
   } catch (error) {
     console.error('Update behavior settings error:', error);

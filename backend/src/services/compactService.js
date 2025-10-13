@@ -22,40 +22,33 @@ class CompactService {
     const conversationText = conversationLines.join('\n');
 
     // Build summary prompt
-    const prompt = `You are reviewing a past conversation between ${userName} and ${characterName} in a dating simulation.
+    const prompt = `You are ${characterName}, reviewing a past conversation with ${userName} in a dating app chat.
 
-Your task: Create a concise summary (2-4 sentences) that preserves:
+Your task: Create a concise summary (2-4 sentences) FROM YOUR PERSPECTIVE (first person as ${characterName}) that preserves:
 - Key facts shared (names, events, plans, promises)
 - Emotional moments and relationship dynamics
 - Important decisions or agreements
 - The overall narrative flow
 
+CRITICAL: Write as ${characterName} (use "I", "me", "my"). Refer to ${userName} as "they" or "them".
+
 Do not:
-- Use phrases like "in this conversation" or "they discussed" (state facts directly as if recalling)
+- Use phrases like "in this conversation" or "we discussed" (state facts directly as if recalling)
 - Include timestamps or meta-commentary
 - Lose critical personal information
+- Write in third person or describe yourself as "${characterName}"
 
 Conversation to summarize:
 ${conversationText}
 
 Output format:
-A natural, flowing summary as if the character is recalling what happened.
+A natural, flowing summary as if YOU (${characterName}) are recalling what happened.
 
-Example:
-"We talked about their stressful week at work. They opened up about feeling overwhelmed with deadlines and worried about letting their team down. I reassured them that asking for help is a strength, not a weakness. We made plans to do something relaxing this weekend to decompress."`;
+Example (if you are Sarah talking to Mike):
+"I told them about my stressful week at work. They opened up about feeling overwhelmed with deadlines and worried about letting their team down. I reassured them that asking for help is a strength, not a weakness. We made plans to do something relaxing this weekend to decompress."`;
 
     try {
-      // Use Decision LLM for summary generation
-      const response = await aiService.makeDecision({
-        messages: [], // Not used for this type of decision
-        characterData: null,
-        userId: userId,
-        decisionType: 'summary',
-        customPrompt: prompt
-      });
-
-      // makeDecision returns an object, but for summary we just need the raw text
-      // Fall back to calling Decision LLM directly
+      // Call Decision LLM directly (independent of Decision Engine)
       const userSettings = llmSettingsService.getUserSettings(userId);
       const decisionSettings = userSettings.decision || userSettings;
 
@@ -76,6 +69,44 @@ Example:
   }
 
   /**
+   * Delete a small conversation block (< 15 messages)
+   * Counts as a summary slot but doesn't create a summary message
+   * @param {number} conversationId - Conversation ID
+   * @param {number} startMessageId - First message ID in block
+   * @param {number} endMessageId - Last message ID in block
+   * @returns {boolean} Success
+   */
+  deleteBlock(conversationId, startMessageId, endMessageId) {
+    try {
+      console.log(`🗑️  Deleting small block in conversation ${conversationId} (messages ${startMessageId}-${endMessageId})`);
+
+      // Check if we need to delete oldest summary first (enforce 5-slot cap)
+      const summaryCount = messageService.countSummarySlots(conversationId);
+
+      if (summaryCount >= 5) {
+        const oldestSummary = messageService.getOldestSummary(conversationId);
+        if (oldestSummary) {
+          messageService.deleteMessage(oldestSummary.id);
+          console.log(`🗑️  Deleted oldest summary (ID: ${oldestSummary.id}) to make room - enforcing 5-slot cap`);
+        }
+      }
+
+      // Delete the messages in the block
+      const deleteResult = db.prepare(`
+        DELETE FROM messages
+        WHERE conversation_id = ? AND id BETWEEN ? AND ?
+      `).run(conversationId, startMessageId, endMessageId);
+
+      console.log(`🗑️  Deleted ${deleteResult.changes} messages from small block (no summary created)`);
+
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to delete block:', error);
+      return false;
+    }
+  }
+
+  /**
    * Compact a conversation block by replacing messages with a summary
    * @param {number} conversationId - Conversation ID
    * @param {number} startMessageId - First message ID in block
@@ -86,6 +117,17 @@ Example:
   async compactBlock(conversationId, startMessageId, endMessageId, userId) {
     try {
       console.log(`🗜️  Compacting conversation ${conversationId} block (messages ${startMessageId}-${endMessageId})`);
+
+      // Check if we need to delete oldest summary first (enforce 5-slot cap)
+      const summaryCount = messageService.countSummarySlots(conversationId);
+
+      if (summaryCount >= 5) {
+        const oldestSummary = messageService.getOldestSummary(conversationId);
+        if (oldestSummary) {
+          messageService.deleteMessage(oldestSummary.id);
+          console.log(`🗑️  Deleted oldest summary (ID: ${oldestSummary.id}) to make room - enforcing 5-slot cap`);
+        }
+      }
 
       // Get messages in the block
       const messages = db.prepare(`
@@ -138,22 +180,7 @@ Example:
         VALUES (?, 'system', ?, 'summary', ?)
       `).run(conversationId, summaryContent, blockTimestamp);
 
-      console.log(`✅ Inserted summary message`);
-
-      // Enforce 5-summary limit: Keep only 5 most recent summaries
-      const summaries = db.prepare(`
-        SELECT id FROM messages
-        WHERE conversation_id = ? AND message_type = 'summary'
-        ORDER BY created_at DESC
-      `).all(conversationId);
-
-      if (summaries.length > 5) {
-        const toDelete = summaries.slice(5); // Get all after the 5th
-        toDelete.forEach(s => {
-          db.prepare('DELETE FROM messages WHERE id = ?').run(s.id);
-          console.log(`🗑️  Deleted old summary (ID: ${s.id}) - keeping only 5 most recent`);
-        });
-      }
+      console.log(`✅ Inserted summary message (slot ${summaryCount >= 5 ? 5 : summaryCount + 1}/5)`);
 
       return true;
     } catch (error) {
@@ -171,21 +198,30 @@ Example:
    */
   async compactIfNeeded(conversationId, userId) {
     try {
-      // Get user's compacting settings
+      // Get user's compacting settings (percentages) and context window
       const userSettings = db.prepare(`
-        SELECT compact_threshold, compact_target, keep_uncompacted_messages
+        SELECT
+          compact_threshold_percent,
+          compact_target_percent,
+          keep_uncompacted_messages,
+          llm_context_window
         FROM users WHERE id = ?
       `).get(userId);
 
-      const compactThreshold = userSettings?.compact_threshold || 26000;
-      const compactTarget = userSettings?.compact_target || 20000;
+      const thresholdPercent = userSettings?.compact_threshold_percent || 90;
+      const targetPercent = userSettings?.compact_target_percent || 70;
+      const contextWindow = userSettings?.llm_context_window || 32000;
       const keepUncompacted = userSettings?.keep_uncompacted_messages || 30;
+
+      // Calculate actual token values from percentages
+      const compactThreshold = Math.floor(contextWindow * (thresholdPercent / 100));
+      const compactTarget = Math.floor(contextWindow * (targetPercent / 100));
 
       // Get conversation history and estimate token count
       const messages = messageService.getConversationHistory(conversationId);
       const tokenCount = aiService.estimateTokenCount(messages);
 
-      console.log(`📊 Conversation ${conversationId} token count: ${tokenCount} (threshold: ${compactThreshold})`);
+      console.log(`📊 Conversation ${conversationId} token count: ${tokenCount} (threshold: ${compactThreshold} = ${thresholdPercent}% of ${contextWindow})`);
 
       if (tokenCount < compactThreshold) {
         // No compacting needed
@@ -202,26 +238,37 @@ Example:
       while (attempts < maxAttempts) {
         attempts++;
 
-        // Find oldest compactable block
+        // Find oldest processable block (could be delete or compact)
         const block = messageService.findOldestCompactableBlock(conversationId, keepUncompacted);
 
         if (!block) {
-          console.log(`⚠️  No more compactable blocks found`);
+          console.log(`⚠️  No more processable blocks found`);
           break;
         }
 
-        console.log(`🔍 Found compactable block: ${block.messageCount} messages (IDs ${block.startMessageId}-${block.endMessageId})`);
+        console.log(`🔍 Found block: ${block.messageCount} messages (IDs ${block.startMessageId}-${block.endMessageId}) - action: ${block.action.toUpperCase()}`);
 
-        // Compact the block
-        const success = await this.compactBlock(
-          conversationId,
-          block.startMessageId,
-          block.endMessageId,
-          userId
-        );
+        let success = false;
+
+        if (block.action === 'delete') {
+          // Delete small block (< 15 messages) without creating summary
+          success = this.deleteBlock(
+            conversationId,
+            block.startMessageId,
+            block.endMessageId
+          );
+        } else {
+          // Compact large block (>= 15 messages) with summary
+          success = await this.compactBlock(
+            conversationId,
+            block.startMessageId,
+            block.endMessageId,
+            userId
+          );
+        }
 
         if (!success) {
-          console.error(`❌ Failed to compact block, stopping`);
+          console.error(`❌ Failed to ${block.action} block, stopping`);
           break;
         }
 
@@ -231,7 +278,7 @@ Example:
         const updatedMessages = messageService.getConversationHistory(conversationId);
         const updatedTokenCount = aiService.estimateTokenCount(updatedMessages);
 
-        console.log(`📊 Token count after compacting: ${updatedTokenCount} (target: ${compactTarget})`);
+        console.log(`📊 Token count after ${block.action}: ${updatedTokenCount} (target: ${compactTarget})`);
 
         if (updatedTokenCount < compactTarget) {
           console.log(`✅ Reached target token count, stopping compacting`);

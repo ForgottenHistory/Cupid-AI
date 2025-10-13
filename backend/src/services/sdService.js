@@ -13,6 +13,24 @@ class SDService {
   }
 
   /**
+   * Helper to check if an error is retryable
+   */
+  isRetryableError(error) {
+    const status = error.response?.status;
+    const code = error.code;
+    // Retry on: 429 (rate limit), 500, 502, 503, 504 (server errors), ECONNRESET, ETIMEDOUT
+    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504 ||
+           code === 'ECONNRESET' || code === 'ETIMEDOUT' || code === 'ECONNREFUSED';
+  }
+
+  /**
+   * Helper to wait/sleep for a duration
+   */
+  async sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
    * Generate image using Stable Diffusion with Highres fix and ADetailer
    * @param {Object} params
    * @param {string} params.characterTags - Character-specific Danbooru tags
@@ -249,12 +267,47 @@ class SDService {
         payload.hr_resize_y = 1216 * settings.sd_hr_scale;
       }
 
-      // Make request to SD server
-      const response = await axios.post(
-        `${this.baseUrl}/sdapi/v1/txt2img`,
-        payload,
-        { timeout: 300000 } // 5 minute timeout
-      );
+      // Make request to SD server with retry logic
+      const maxRetries = 3;
+      let lastError = null;
+      let response = null;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          response = await axios.post(
+            `${this.baseUrl}/sdapi/v1/txt2img`,
+            payload,
+            { timeout: 300000 } // 5 minute timeout
+          );
+
+          // Success! Break out of retry loop
+          if (attempt > 0) {
+            console.log(`✅ SD image generation succeeded after ${attempt} ${attempt === 1 ? 'retry' : 'retries'}`);
+          }
+          break;
+        } catch (error) {
+          lastError = error;
+          const status = error.response?.status;
+          const code = error.code;
+
+          // Check if error is retryable
+          if (attempt < maxRetries && this.isRetryableError(error)) {
+            // Calculate exponential backoff: 2s, 4s, 8s (longer delays for image generation)
+            const delayMs = Math.pow(2, attempt + 1) * 1000;
+            console.warn(`⚠️  SD image generation failed (${status || code}), retrying in ${delayMs}ms... (attempt ${attempt + 1}/${maxRetries})`);
+            await this.sleep(delayMs);
+            continue; // Retry
+          }
+
+          // Non-retryable error or max retries exceeded
+          throw error;
+        }
+      }
+
+      // If we exhausted retries without success
+      if (!response) {
+        throw lastError;
+      }
 
       if (!response.data || !response.data.images || response.data.images.length === 0) {
         throw new Error('No images returned from SD server');

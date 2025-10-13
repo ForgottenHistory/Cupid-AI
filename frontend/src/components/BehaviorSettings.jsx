@@ -15,7 +15,10 @@ const BehaviorSettings = ({ onClose }) => {
     leftOnReadTriggerMin: 5,
     leftOnReadTriggerMax: 15,
     leftOnReadCharacterCooldown: 120,
-    pacingStyle: 'balanced'
+    pacingStyle: 'balanced',
+    compactThresholdPercent: 90,
+    compactTargetPercent: 70,
+    keepUncompactedMessages: 30
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -78,7 +81,10 @@ const BehaviorSettings = ({ onClose }) => {
       leftOnReadTriggerMin: 5,
       leftOnReadTriggerMax: 15,
       leftOnReadCharacterCooldown: 120,
-      pacingStyle: 'balanced'
+      pacingStyle: 'balanced',
+      compactThresholdPercent: 90,
+      compactTargetPercent: 70,
+      keepUncompactedMessages: 30
     });
     setSuccess('');
     setError('');
@@ -417,6 +423,78 @@ const BehaviorSettings = ({ onClose }) => {
                 <option value="forward">Forward - More direct and receptive from the start</option>
               </select>
               <p className="text-sm text-gray-600 dark:text-gray-400">How characters pace romantic/intimate development</p>
+            </div>
+
+            {/* Conversation Compacting Section Header */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Conversation Compacting</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Automatically summarize old messages to manage context window</p>
+            </div>
+
+            {/* Compact Threshold Percent */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Compact Threshold</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.compactThresholdPercent}% of context</span>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="100"
+                step="5"
+                value={settings.compactThresholdPercent}
+                onChange={(e) => updateSetting('compactThresholdPercent', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>50%</span>
+                <span>100%</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When conversation reaches this % of context window, start compacting old messages</p>
+            </div>
+
+            {/* Compact Target Percent */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Compact Target</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.compactTargetPercent}% of context</span>
+              </div>
+              <input
+                type="range"
+                min="30"
+                max="90"
+                step="5"
+                value={settings.compactTargetPercent}
+                onChange={(e) => updateSetting('compactTargetPercent', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>30%</span>
+                <span>90%</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Keep compacting until conversation is reduced to this % of context window</p>
+            </div>
+
+            {/* Keep Uncompacted Messages */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Keep Recent Messages</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.keepUncompactedMessages} messages</span>
+              </div>
+              <input
+                type="range"
+                min="10"
+                max="100"
+                step="5"
+                value={settings.keepUncompactedMessages}
+                onChange={(e) => updateSetting('keepUncompactedMessages', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-orange-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>10</span>
+                <span>100</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Always keep this many recent messages uncompacted for context</p>
             </div>
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">

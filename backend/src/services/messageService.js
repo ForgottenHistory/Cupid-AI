@@ -151,18 +151,18 @@ class MessageService {
 
   /**
    * Find the oldest compactable block in a conversation
-   * Returns block boundaries for compacting
+   * Returns block boundaries for compacting OR deleting
    * @param {number} conversationId - Conversation ID
    * @param {number} keepRecentN - Number of recent messages to preserve uncompacted
-   * @param {number} minBlockSize - Minimum messages required to consider a block for compacting
-   * @returns {object|null} { startMessageId, endMessageId, messageCount, blockIndex } or null if no suitable block
+   * @param {number} minBlockSize - Minimum messages required to generate a summary (otherwise just delete)
+   * @returns {object|null} { startMessageId, endMessageId, messageCount, blockIndex, action: 'compact'|'delete' } or null if no suitable block
    */
   findOldestCompactableBlock(conversationId, keepRecentN = 30, minBlockSize = 15) {
-    // Get all messages in chronological order
+    // Get all messages in chronological order (exclude system messages like TIME GAP/SUMMARY)
     const messages = db.prepare(`
       SELECT id, role, content, message_type, created_at
       FROM messages
-      WHERE conversation_id = ?
+      WHERE conversation_id = ? AND role != 'system'
       ORDER BY created_at ASC
     `).all(conversationId);
 
@@ -171,24 +171,29 @@ class MessageService {
       return null;
     }
 
-    // Identify blocks separated by TIME GAP markers or SUMMARY messages
+    // Identify blocks by calculating time gaps between messages
+    const SESSION_GAP_THRESHOLD = 30 * 60 * 1000; // 30 minutes in milliseconds
     const blocks = [];
     let currentBlock = [];
 
     for (let i = 0; i < messages.length; i++) {
       const msg = messages[i];
 
-      // TIME GAP or SUMMARY messages act as block boundaries
-      if (msg.message_type === 'summary' || msg.content?.startsWith('[TIME GAP:')) {
-        // Save current block if it has messages
-        if (currentBlock.length > 0) {
+      // Check if there's a time gap from previous message
+      if (i > 0 && currentBlock.length > 0) {
+        const prevMsg = messages[i - 1];
+        const prevTime = new Date(prevMsg.created_at).getTime();
+        const currentTime = new Date(msg.created_at).getTime();
+        const gapMs = currentTime - prevTime;
+
+        // If gap is significant (30+ minutes), start a new block
+        if (gapMs >= SESSION_GAP_THRESHOLD) {
           blocks.push([...currentBlock]);
           currentBlock = [];
         }
-        // Don't include TIME GAP/SUMMARY in blocks (they stay separate)
-      } else {
-        currentBlock.push(msg);
       }
+
+      currentBlock.push(msg);
     }
 
     // Add final block if any
@@ -216,25 +221,65 @@ class MessageService {
       }
     }
 
-    // Find oldest block that meets minimum size requirement
+    // Find oldest unprotected block (small or large, doesn't matter)
     const compactableBlocks = blocks.slice(0, blocks.length - blocksToKeep);
 
-    for (let i = 0; i < compactableBlocks.length; i++) {
-      const block = compactableBlocks[i];
-
-      if (block.length >= minBlockSize) {
-        // Found a suitable block to compact
-        return {
-          startMessageId: block[0].id,
-          endMessageId: block[block.length - 1].id,
-          messageCount: block.length,
-          blockIndex: i
-        };
-      }
+    if (compactableBlocks.length === 0) {
+      return null;
     }
 
-    // No suitable block found (all blocks too small)
-    return null;
+    // Return the oldest block with appropriate action
+    const oldestBlock = compactableBlocks[0];
+    const action = oldestBlock.length >= minBlockSize ? 'compact' : 'delete';
+
+    return {
+      startMessageId: oldestBlock[0].id,
+      endMessageId: oldestBlock[oldestBlock.length - 1].id,
+      messageCount: oldestBlock.length,
+      blockIndex: 0,
+      action: action
+    };
+  }
+
+  /**
+   * Count existing summary slots in a conversation
+   * Both actual summary messages and deleted blocks count as slots
+   * @param {number} conversationId - Conversation ID
+   * @returns {number} Number of summary slots used
+   */
+  countSummarySlots(conversationId) {
+    const result = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM messages
+      WHERE conversation_id = ? AND message_type = 'summary'
+    `).get(conversationId);
+
+    return result.count || 0;
+  }
+
+  /**
+   * Get the oldest summary message in a conversation
+   * @param {number} conversationId - Conversation ID
+   * @returns {object|null} Oldest summary message or null
+   */
+  getOldestSummary(conversationId) {
+    return db.prepare(`
+      SELECT *
+      FROM messages
+      WHERE conversation_id = ? AND message_type = 'summary'
+      ORDER BY created_at ASC
+      LIMIT 1
+    `).get(conversationId);
+  }
+
+  /**
+   * Delete a specific message
+   * @param {number} messageId - Message ID to delete
+   */
+  deleteMessage(messageId) {
+    db.prepare(`
+      DELETE FROM messages WHERE id = ?
+    `).run(messageId);
   }
 
   /**

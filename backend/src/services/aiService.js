@@ -224,21 +224,65 @@ class AIService {
         requestBody.min_p = 0.0; // Disabled by default
       }
 
-      // Execute request through queue to respect concurrency limits
-      const response = await queueService.enqueue(provider, async () => {
-        return await axios.post(
-          `${providerConfig.baseUrl}/chat/completions`,
-          requestBody,
-          {
-            headers: {
-              'Authorization': `Bearer ${providerConfig.apiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://localhost:3000',
-              'X-Title': 'AI-Dater',
-            }
+      // Execute request with retry logic
+      const maxRetries = 3;
+      let lastError = null;
+      let response = null;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          // Execute request through queue to respect concurrency limits
+          response = await queueService.enqueue(provider, async () => {
+            return await axios.post(
+              `${providerConfig.baseUrl}/chat/completions`,
+              requestBody,
+              {
+                headers: {
+                  'Authorization': `Bearer ${providerConfig.apiKey}`,
+                  'Content-Type': 'application/json',
+                  'HTTP-Referer': 'https://localhost:3000',
+                  'X-Title': 'AI-Dater',
+                },
+                timeout: 120000 // 120 second timeout
+              }
+            );
+          });
+
+          // Success! Break out of retry loop
+          if (attempt > 0) {
+            console.log(`✅ ${providerConfig.name} chat request succeeded after ${attempt} ${attempt === 1 ? 'retry' : 'retries'}`);
           }
-        );
-      });
+          break;
+        } catch (error) {
+          lastError = error;
+          const status = error.response?.status;
+
+          // Check if error is retryable
+          if (attempt < maxRetries && this.isRetryableError(error)) {
+            // Calculate exponential backoff: 1s, 2s, 4s
+            const delayMs = Math.pow(2, attempt) * 1000;
+            console.warn(`⚠️  ${providerConfig.name} chat request failed (${status || error.code}), retrying in ${delayMs}ms... (attempt ${attempt + 1}/${maxRetries})`);
+            await this.sleep(delayMs);
+            continue; // Retry
+          }
+
+          // Non-retryable error or max retries exceeded
+          console.error(`❌ ${providerConfig.name} API error (after ${attempt} ${attempt === 1 ? 'retry' : 'retries'}):`, {
+            provider: provider,
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            model: model || userSettings.model
+          });
+          throw new Error(error.response?.data?.error?.message || error.message || `${providerConfig.name} service error`);
+        }
+      }
+
+      // If we exhausted retries without success
+      if (!response) {
+        throw new Error(lastError.response?.data?.error?.message || lastError.message || `${providerConfig.name} service error after ${maxRetries} retries`);
+      }
 
       let content = response.data.choices[0].message.content;
 
@@ -311,118 +355,157 @@ class AIService {
   }
 
   /**
+   * Helper to check if an error is retryable
+   */
+  isRetryableError(error) {
+    const status = error.response?.status;
+    // Retry on: 429 (rate limit), 500, 502, 503, 504 (server errors)
+    return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+  }
+
+  /**
+   * Helper to wait/sleep for a duration
+   */
+  async sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
    * Basic completion for simple tasks (post generation, etc.)
    * No character context, just a simple prompt → response
+   * Includes retry logic with exponential backoff for reliability
    */
   async createBasicCompletion(prompt, options = {}) {
-    try {
-      // Use user's Content LLM settings if userId provided, otherwise use defaults
-      const userSettings = options.userId
-        ? llmSettingsService.getUserSettings(options.userId)
-        : llmSettingsService.getDefaultContentSettings();
+    // Use user's Content LLM settings if userId provided, otherwise use defaults
+    const userSettings = options.userId
+      ? llmSettingsService.getUserSettings(options.userId)
+      : llmSettingsService.getDefaultContentSettings();
 
-      const model = options.model || userSettings.model;
-      const temperature = options.temperature ?? userSettings.temperature;
-      const max_tokens = options.max_tokens ?? userSettings.max_tokens;
-      const provider = options.provider || userSettings.provider || 'openrouter';
+    const model = options.model || userSettings.model;
+    const temperature = options.temperature ?? userSettings.temperature;
+    const max_tokens = options.max_tokens ?? userSettings.max_tokens;
+    const provider = options.provider || userSettings.provider || 'openrouter';
 
-      // Get provider configuration
-      const providerConfig = this.getProviderConfig(provider);
+    // Get provider configuration
+    const providerConfig = this.getProviderConfig(provider);
 
-      if (!providerConfig.apiKey) {
-        throw new Error(`${providerConfig.name} API key not configured`);
-      }
-
-      const requestBody = {
-        model: model,
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        temperature: temperature,
-        max_tokens: max_tokens,
-        top_p: options.top_p ?? 1.0,
-        frequency_penalty: options.frequency_penalty ?? 0.0,
-        presence_penalty: options.presence_penalty ?? 0.0,
-      };
-
-      // Add Featherless-specific parameters if using Featherless
-      if (provider === 'featherless') {
-        requestBody.repetition_penalty = 1.0;
-        requestBody.top_k = -1;
-        requestBody.min_p = 0.0;
-      }
-
-      // Add reasoning if provided (for DeepSeek reasoning mode on OpenRouter)
-      if (options.reasoning_effort && provider === 'openrouter') {
-        requestBody.reasoning = {
-          effort: options.reasoning_effort
-        };
-      }
-
-      // Log prompt if messageType provided (keep last 5 per type)
-      let logId = null;
-      if (options.messageType) {
-        logId = this.savePromptLog(
-          requestBody.messages,
-          options.messageType,
-          options.characterName || 'Character',
-          options.userName || 'User'
-        );
-      }
-
-      // Execute request through queue to respect concurrency limits
-      const response = await queueService.enqueue(provider, async () => {
-        return await axios.post(
-          `${providerConfig.baseUrl}/chat/completions`,
-          requestBody,
-          {
-            headers: {
-              'Authorization': `Bearer ${providerConfig.apiKey}`,
-              'Content-Type': 'application/json',
-              'HTTP-Referer': 'https://localhost:3000',
-              'X-Title': 'AI-Dater',
-            }
-          }
-        );
-      });
-
-      const message = response.data.choices[0].message;
-      const content = message.content;
-
-      // Log raw response for debugging reasoning mode
-      if (options.reasoning_effort) {
-        console.log('🧠 RAW MESSAGE:', JSON.stringify(message, null, 2));
-        if (message.reasoning) {
-          console.log('🧠 REASONING:', message.reasoning);
-        }
-      }
-
-      // Log response for debugging (matching ID to prompt)
-      if (logId && options.messageType) {
-        this.saveResponseLog(content, options.messageType, logId, response.data);
-      }
-
-      return {
-        content: content,
-        model: response.data.model,
-        usage: response.data.usage,
-        reasoning: message.reasoning || null, // Include reasoning if available
-      };
-    } catch (error) {
-      const userSettings = options.userId
-        ? llmSettingsService.getUserSettings(options.userId)
-        : llmSettingsService.getDefaultContentSettings();
-      const provider = userSettings.provider || 'openrouter';
-      const providerConfig = this.getProviderConfig(provider);
-
-      console.error(`❌ ${providerConfig.name} basic completion error:`, {
-        provider: provider,
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data
-      });
-      throw new Error(error.response?.data?.error?.message || error.message || `${providerConfig.name} service error`);
+    if (!providerConfig.apiKey) {
+      throw new Error(`${providerConfig.name} API key not configured`);
     }
+
+    const requestBody = {
+      model: model,
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      temperature: temperature,
+      max_tokens: max_tokens,
+      top_p: options.top_p ?? 1.0,
+      frequency_penalty: options.frequency_penalty ?? 0.0,
+      presence_penalty: options.presence_penalty ?? 0.0,
+    };
+
+    // Add Featherless-specific parameters if using Featherless
+    if (provider === 'featherless') {
+      requestBody.repetition_penalty = 1.0;
+      requestBody.top_k = -1;
+      requestBody.min_p = 0.0;
+    }
+
+    // Add reasoning if provided (for DeepSeek reasoning mode on OpenRouter)
+    if (options.reasoning_effort && provider === 'openrouter') {
+      requestBody.reasoning = {
+        effort: options.reasoning_effort
+      };
+    }
+
+    // Log prompt if messageType provided (keep last 5 per type)
+    let logId = null;
+    if (options.messageType) {
+      logId = this.savePromptLog(
+        requestBody.messages,
+        options.messageType,
+        options.characterName || 'Character',
+        options.userName || 'User'
+      );
+    }
+
+    // Retry configuration
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Execute request through queue to respect concurrency limits
+        const response = await queueService.enqueue(provider, async () => {
+          return await axios.post(
+            `${providerConfig.baseUrl}/chat/completions`,
+            requestBody,
+            {
+              headers: {
+                'Authorization': `Bearer ${providerConfig.apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://localhost:3000',
+                'X-Title': 'AI-Dater',
+              },
+              timeout: 120000 // 120 second timeout
+            }
+          );
+        });
+
+        const message = response.data.choices[0].message;
+        const content = message.content;
+
+        // Log raw response for debugging reasoning mode
+        if (options.reasoning_effort) {
+          console.log('🧠 RAW MESSAGE:', JSON.stringify(message, null, 2));
+          if (message.reasoning) {
+            console.log('🧠 REASONING:', message.reasoning);
+          }
+        }
+
+        // Log response for debugging (matching ID to prompt)
+        if (logId && options.messageType) {
+          this.saveResponseLog(content, options.messageType, logId, response.data);
+        }
+
+        // Success! Return result
+        if (attempt > 0) {
+          console.log(`✅ ${providerConfig.name} request succeeded after ${attempt} ${attempt === 1 ? 'retry' : 'retries'}`);
+        }
+
+        return {
+          content: content,
+          model: response.data.model,
+          usage: response.data.usage,
+          reasoning: message.reasoning || null, // Include reasoning if available
+        };
+      } catch (error) {
+        lastError = error;
+        const status = error.response?.status;
+
+        // Check if error is retryable
+        if (attempt < maxRetries && this.isRetryableError(error)) {
+          // Calculate exponential backoff: 1s, 2s, 4s
+          const delayMs = Math.pow(2, attempt) * 1000;
+          console.warn(`⚠️  ${providerConfig.name} request failed (${status || error.code}), retrying in ${delayMs}ms... (attempt ${attempt + 1}/${maxRetries})`);
+          await this.sleep(delayMs);
+          continue; // Retry
+        }
+
+        // Non-retryable error or max retries exceeded
+        break;
+      }
+    }
+
+    // All retries failed
+    console.error(`❌ ${providerConfig.name} basic completion error (after ${maxRetries} retries):`, {
+      provider: provider,
+      message: lastError.message,
+      status: lastError.response?.status,
+      data: lastError.response?.data
+    });
+    throw new Error(lastError.response?.data?.error?.message || lastError.message || `${providerConfig.name} service error`);
   }
 
   /**
@@ -571,38 +654,86 @@ class AIService {
   /**
    * Stream chat completion (for future implementation)
    */
-  async createChatCompletionStream({ messages, characterData, model = null, currentStatus = null, userBio = null, schedule = null }) {
-    if (!this.apiKey) {
-      throw new Error('OpenRouter API key not configured');
+  async createChatCompletionStream({ messages, characterData, model = null, userId = null, currentStatus = null, userBio = null, schedule = null }) {
+    const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
+    const userSettings = llmSettingsService.getUserSettings(userId);
+    const selectedModel = model || userSettings.model;
+    const provider = userSettings.provider || 'openrouter';
+
+    // Get provider configuration
+    const providerConfig = this.getProviderConfig(provider);
+
+    if (!providerConfig.apiKey) {
+      throw new Error(`${providerConfig.name} API key not configured`);
     }
 
-    const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
-    const userSettings = llmSettingsService.getUserSettings(null);
+    const requestBody = {
+      model: selectedModel,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ],
+      temperature: userSettings.temperature,
+      max_tokens: userSettings.max_tokens,
+      stream: true,
+    };
 
-    const response = await axios.post(
-      `${this.baseUrl}/chat/completions`,
-      {
-        model: model || userSettings.model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...messages
-        ],
-        temperature: 0.8,
-        max_tokens: 800,
-        stream: true,
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://localhost:3000',
-          'X-Title': 'AI-Dater',
-        },
-        responseType: 'stream',
+    // Retry configuration
+    const maxRetries = 3;
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        // Execute request through queue to respect concurrency limits
+        const response = await queueService.enqueue(provider, async () => {
+          return await axios.post(
+            `${providerConfig.baseUrl}/chat/completions`,
+            requestBody,
+            {
+              headers: {
+                'Authorization': `Bearer ${providerConfig.apiKey}`,
+                'Content-Type': 'application/json',
+                'HTTP-Referer': 'https://localhost:3000',
+                'X-Title': 'AI-Dater',
+              },
+              responseType: 'stream',
+              timeout: 120000 // 120 second timeout
+            }
+          );
+        });
+
+        // Success! Break out of retry loop
+        if (attempt > 0) {
+          console.log(`✅ ${providerConfig.name} stream request succeeded after ${attempt} ${attempt === 1 ? 'retry' : 'retries'}`);
+        }
+
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        const status = error.response?.status;
+
+        // Check if error is retryable
+        if (attempt < maxRetries && this.isRetryableError(error)) {
+          // Calculate exponential backoff: 1s, 2s, 4s
+          const delayMs = Math.pow(2, attempt) * 1000;
+          console.warn(`⚠️  ${providerConfig.name} stream request failed (${status || error.code}), retrying in ${delayMs}ms... (attempt ${attempt + 1}/${maxRetries})`);
+          await this.sleep(delayMs);
+          continue; // Retry
+        }
+
+        // Non-retryable error or max retries exceeded
+        break;
       }
-    );
+    }
 
-    return response.data;
+    // All retries failed
+    console.error(`❌ ${providerConfig.name} stream error (after ${maxRetries} retries):`, {
+      provider: provider,
+      message: lastError.message,
+      status: lastError.response?.status,
+      data: lastError.response?.data
+    });
+    throw new Error(lastError.response?.data?.error?.message || lastError.message || `${providerConfig.name} service error`);
   }
 }
 

@@ -481,6 +481,15 @@ function runMigrations() {
       `);
       console.log('✅ Conversation compacting settings columns added to users table');
     }
+
+    // Migration: Convert compact threshold/target to percentages
+    if (!userColumnNamesRefresh.includes('compact_threshold_percent')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN compact_threshold_percent INTEGER DEFAULT 90;
+        ALTER TABLE users ADD COLUMN compact_target_percent INTEGER DEFAULT 70;
+      `);
+      console.log('✅ Converted compact settings to percentages');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

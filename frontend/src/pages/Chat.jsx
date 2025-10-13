@@ -242,6 +242,9 @@ const Chat = () => {
   // Debug function for testing unmatch modal
   useEffect(() => {
     if (character) {
+      // Expose conversation ID for debug functions
+      window.__currentConversationId = conversation?.id || null;
+
       window.debugUnmatch = () => {
         console.log('🐛 Debug: Triggering unmatch modal');
         setUnmatchData({
@@ -380,9 +383,10 @@ const Chat = () => {
       delete window.debugGenerateImage;
       delete window.debugChatBackground;
       delete window.debugMood;
+      delete window.__currentConversationId;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [character]);
+  }, [character, conversation]);
 
   // Handle unmatch
   const handleUnmatch = async () => {
