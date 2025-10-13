@@ -12,7 +12,7 @@ export function getCurrentStatusFromSchedule(schedule) {
   const currentDay = dayNames[now.getDay()];
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  console.log(`📅 Schedule check: ${currentDay} ${currentTime}`);
+  //console.log(`📅 Schedule check: ${currentDay} ${currentTime}`);
 
   const todaySchedule = schedule.schedule[currentDay];
   if (!todaySchedule || todaySchedule.length === 0) {
@@ -30,15 +30,15 @@ export function getCurrentStatusFromSchedule(schedule) {
       // For midnight wraparound: current time is in block if it's >= start OR < end
       // e.g., 20:00-03:00 matches 21:00, 22:00, 23:00, 00:00, 01:00, 02:00
       isInBlock = currentTime >= block.start || currentTime < block.end;
-      console.log(`🌙 Midnight block: ${block.start}-${block.end} (${block.status}) | current: ${currentTime} | crosses: true | match: ${isInBlock}`);
+      //console.log(`🌙 Midnight block: ${block.start}-${block.end} (${block.status}) | current: ${currentTime} | crosses: true | match: ${isInBlock}`);
     } else {
       // Normal case: current time must be between start and end
       isInBlock = currentTime >= block.start && currentTime < block.end;
-      console.log(`⏰ Normal block: ${block.start}-${block.end} (${block.status}) | current: ${currentTime} | crosses: false | match: ${isInBlock}`);
+      //console.log(`⏰ Normal block: ${block.start}-${block.end} (${block.status}) | current: ${currentTime} | crosses: false | match: ${isInBlock}`);
     }
 
     if (isInBlock) {
-      console.log(`✅ Match found: ${block.status} (${block.activity || 'no activity'})`);
+      //console.log(`✅ Match found: ${block.status} (${block.activity || 'no activity'})`);
       return {
         status: block.status,
         activity: block.activity || null,

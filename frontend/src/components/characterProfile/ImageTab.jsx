@@ -55,11 +55,36 @@ const ImageTab = ({ character, onUpdate }) => {
 
       console.log(`💾 Saving image tags for character ${character.id}:`, imageTags.trim());
       console.log(`💾 Saving contextual tags for character ${character.id}:`, contextualTags.trim());
-      const response = await api.put(`/characters/${character.id}/image-tags`, {
-        image_tags: imageTags.trim() || null,
-        contextual_tags: contextualTags.trim() || null
-      });
-      console.log('✅ Save response:', response.data);
+
+      // Save to IndexedDB first (this is the source of truth)
+      const updates = {
+        cardData: {
+          ...character.cardData,
+          data: {
+            ...character.cardData.data,
+            imageTags: imageTags.trim() || '',
+            contextualTags: contextualTags.trim() || ''
+          }
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, updates);
+      console.log('✅ Tags saved to IndexedDB');
+
+      // Then try to save to backend (if character is synced)
+      try {
+        const response = await api.put(`/characters/${character.id}/image-tags`, {
+          image_tags: imageTags.trim() || null,
+          contextual_tags: contextualTags.trim() || null
+        });
+        console.log('✅ Tags saved to backend:', response.data);
+      } catch (err) {
+        if (err.response?.status === 404) {
+          console.log('⚠️ Character not synced to backend yet, saved to IndexedDB only');
+        } else {
+          throw err;
+        }
+      }
 
       setSuccess('Tags saved successfully!');
       setTimeout(() => setSuccess(null), 3000);

@@ -363,7 +363,41 @@ class ProactiveMessageService {
       // Extract character name (handle v2 card format)
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
+      // Check if we need to insert a TIME GAP marker BEFORE getting conversation history
+      // This represents the gap from the last message to NOW (when we're generating the proactive message)
+      const lastMessage = db.prepare(`
+        SELECT created_at, content FROM messages
+        WHERE conversation_id = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).get(conversationId);
+
+      if (lastMessage && !lastMessage.content?.startsWith('[TIME GAP:')) {
+        const lastTime = new Date(lastMessage.created_at).getTime();
+        const now = new Date().getTime();
+        const gapMs = now - lastTime;
+        const SESSION_GAP_THRESHOLD = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+        // If gap is significant, insert TIME GAP marker BEFORE generating the proactive message
+        if (gapMs >= SESSION_GAP_THRESHOLD) {
+          const gapHours = (gapMs / (1000 * 60 * 60)).toFixed(1);
+          messageService.saveMessage(
+            conversationId,
+            'system',
+            `[TIME GAP: ${gapHours} hours - NEW CONVERSATION SESSION]`,
+            null, // No reaction
+            'text', // messageType
+            null, // audioUrl
+            null, // imageUrl
+            null, // imageTags
+            false // Not proactive (it's a system message)
+          );
+          console.log(`⏰ Inserted TIME GAP marker BEFORE generating proactive message: ${gapHours} hours`);
+        }
+      }
+
       // Get conversation history
+      // Note: getConversationHistory() will skip re-calculating gaps for TIME GAP markers we just inserted
       const messages = messageService.getConversationHistory(conversationId);
 
       // Handle different trigger types

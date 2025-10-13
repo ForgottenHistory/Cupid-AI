@@ -190,6 +190,17 @@ const MainLayout = ({ children }) => {
     return () => clearInterval(interval);
   }, [matches.length]);
 
+  // Update browser tab title with unread count
+  useEffect(() => {
+    const totalUnread = conversations.reduce((sum, conv) => sum + (conv.unread_count || 0), 0);
+
+    if (totalUnread > 0) {
+      document.title = `(${totalUnread}) Cupid AI`;
+    } else {
+      document.title = 'Cupid AI';
+    }
+  }, [conversations]);
+
   // NOTE: WebSocket message handling is done in useChatWebSocket.js
   // That hook dispatches 'characterUpdated' events which we listen to below
   // No need for separate socket connection here

@@ -70,13 +70,14 @@ class MessageService {
 
     messages.forEach((msg, index) => {
       // Check for time gap with previous message
-      if (index > 0) {
+      // Skip if current message is already a TIME GAP marker (to avoid duplicates)
+      if (index > 0 && !msg.content?.startsWith('[TIME GAP:')) {
         const prevMsg = messages[index - 1];
         const prevTime = new Date(prevMsg.created_at).getTime();
         const currentTime = new Date(msg.created_at).getTime();
         const gapMs = currentTime - prevTime;
 
-        // If gap is significant (1+ hours), insert session marker
+        // If gap is significant (30+ minutes), insert session marker
         if (gapMs >= SESSION_GAP_THRESHOLD) {
           const gapHours = (gapMs / (1000 * 60 * 60)).toFixed(1);
 
