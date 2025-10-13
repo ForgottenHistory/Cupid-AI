@@ -286,6 +286,9 @@ class AIService {
 
       let content = response.data.choices[0].message.content;
 
+      // Strip any <think></think> tags (reasoning/thinking output from some models)
+      content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
       // Strip any leading "Name: " pattern (AI priming artifact)
       // Example: "Jane Doe: message" -> "message"
       // Only matches names (letters, spaces, hyphens, apostrophes), NOT brackets or special chars
@@ -454,7 +457,10 @@ class AIService {
         });
 
         const message = response.data.choices[0].message;
-        const content = message.content;
+        let content = message.content;
+
+        // Strip any <think></think> tags (reasoning/thinking output from some models)
+        content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
         // Log raw response for debugging reasoning mode
         if (options.reasoning_effort) {
