@@ -24,10 +24,10 @@
 - `MoodContext.jsx` - Mood effects (30-min auto-clear)
 
 ## Hooks
-- `useChat.js` - Main chat hook: messages, sending, engagement, mood
+- `useChat.js` - Main chat hook: messages, pagination (200/page), sending, engagement, mood
 - `useChatWebSocket.js` - WebSocket: new messages, typing, offline, unmatch
 - `useMessageActions.js` - Edit, delete, regenerate messages
-- `useMessageDisplay.js` - Progressive display, animations, new message tracking
+- `useMessageDisplay.js` - Progressive display, smart auto-scroll (prepend detection), animations
 - `useLLMSettings.js` - Load/save/update/reset LLM settings
 - `useDarkMode.js` - Dark mode toggle
 
@@ -36,7 +36,7 @@
 - `authService.js` - Login, signup, token refresh
 - `characterService.js` - IndexedDB CRUD for characters
 - `characterStorage.js` - Low-level IndexedDB operations
-- `chatService.js` - Backend API for conversations/messages
+- `chatService.js` - Backend API for conversations/messages, pagination support
 - `socketService.js` - Socket.IO client, typing state tracking
 - `db.js` - IndexedDB initialization
 
@@ -50,7 +50,7 @@
 ## Components - Chat
 - `ChatHeader.jsx` - Header with status, name, back button
 - `ChatInput.jsx` - Message input, AI reply suggestions, image upload
-- `MessageList.jsx` - Scrollable message list
+- `MessageList.jsx` - Scrollable message list, Load More button, scroll preservation
 - `MessageBubble.jsx` - Individual message with reactions, edit/delete
 - `TypingIndicator.jsx` - Text-based typing indicator
 - `SystemMessage.jsx` - System messages (departures, moods)

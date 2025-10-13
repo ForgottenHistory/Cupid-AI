@@ -23,7 +23,7 @@
 - `aiService.js` - OpenRouter API, chat completions, prompt logging
 - `messageProcessor.js` - Async message processing, engagement, mood, AI orchestration
 - `conversationService.js` - Conversation CRUD, unread counts
-- `messageService.js` - Message CRUD, history, edit/delete
+- `messageService.js` - Message CRUD, history, pagination (200/page), edit/delete
 - `decisionEngineService.js` - Decision LLM: reactions, moods, unmatch, media, proactive
 - `engagementService.js` - Time-based engagement, departures, cooldowns
 - `proactiveMessageService.js` - Background proactive: candidates, probability, first messages
@@ -32,7 +32,7 @@
 - `personalityService.js` - Big Five (OCEAN) generation
 - `sdService.js` - Stable Diffusion image generation
 - `ttsService.js` - ChatterBox TTS (DISABLED)
-- `promptBuilderService.js` - System prompt construction, schedule/proactive context
+- `promptBuilderService.js` - System prompt construction, v2 card format support, schedule/proactive context
 - `llmSettingsService.js` - User LLM settings, Content/Decision defaults
 - `tokenService.js` - Token counting, context trimming (gpt-tokenizer)
 - `authService.js` - JWT, bcrypt password hashing
