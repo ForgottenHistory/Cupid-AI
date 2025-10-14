@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * Chat header component with banner, character info, and menu
  */
 const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMoreMessages, onBack, onUnmatch }) => {
   const [showMenu, setShowMenu] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
   const [collapsed, setCollapsed] = useState(true);
 
   // Calculate approximate token count (1 token ≈ 4 characters) for loaded messages
@@ -35,6 +38,66 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
     const displayHours = hours % 12 || 12;
     return `until ${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
   };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return null;
+    // timeString is in 24-hour format (HH:MM)
+    const [hours, minutes] = timeString.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+  };
+
+  // Get upcoming activities from schedule
+  const getUpcomingActivities = () => {
+    if (!character?.cardData?.data?.schedule?.schedule) {
+      return [];
+    }
+
+    const schedule = character.cardData.data.schedule.schedule;
+    const now = new Date();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const currentDay = dayNames[now.getDay()];
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    const upcoming = [];
+    const todaySchedule = schedule[currentDay] || [];
+
+    // Find activities later today
+    for (const block of todaySchedule) {
+      if (block.start > currentTime) {
+        upcoming.push({
+          time: block.start,
+          status: block.status,
+          activity: block.activity,
+          day: 'Today'
+        });
+      }
+    }
+
+    // If we have less than 3 upcoming activities, check tomorrow
+    if (upcoming.length < 3) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowDay = dayNames[tomorrow.getDay()];
+      const tomorrowSchedule = schedule[tomorrowDay] || [];
+
+      for (const block of tomorrowSchedule) {
+        if (upcoming.length < 3) {
+          upcoming.push({
+            time: block.start,
+            status: block.status,
+            activity: block.activity,
+            day: 'Tomorrow'
+          });
+        }
+      }
+    }
+
+    return upcoming.slice(0, 3); // Return max 3 upcoming activities
+  };
+
+  const upcomingActivities = getUpcomingActivities();
 
   return (
     <div className="relative flex-shrink-0">
@@ -139,11 +202,76 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
                 </div>
               </div>
               <h2 className="text-lg font-bold drop-shadow-2xl">{character.name}</h2>
-              <span className="text-xs font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20">
-                {characterStatus.status}
-                {characterStatus.activity && ` • ${characterStatus.activity}`}
-                {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
-              </span>
+              <div className="relative">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!showSchedule) {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setDropdownPosition({ x: rect.left, y: rect.bottom + 8 });
+                    }
+                    setShowSchedule(!showSchedule);
+                  }}
+                  className="text-xs font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 hover:bg-black/30 transition-all cursor-pointer flex items-center gap-1"
+                >
+                  {characterStatus.status}
+                  {characterStatus.activity && ` • ${characterStatus.activity}`}
+                  {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
+                  {upcomingActivities.length > 0 && (
+                    <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Schedule Dropdown */}
+                {showSchedule && upcomingActivities.length > 0 && createPortal(
+                  <>
+                    <div
+                      className="fixed inset-0 z-[998]"
+                      onClick={() => setShowSchedule(false)}
+                    />
+                    <div
+                      className="fixed bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-2 min-w-[280px] z-[999]"
+                      style={{
+                        left: `${dropdownPosition.x}px`,
+                        top: `${dropdownPosition.y}px`
+                      }}
+                    >
+                      <div className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs border-b border-purple-100/50 dark:border-purple-900/50">
+                        <div className="flex items-center gap-2 font-semibold">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span>Upcoming Schedule</span>
+                        </div>
+                      </div>
+                      <div className="py-1">
+                        {upcomingActivities.map((activity, index) => (
+                          <div
+                            key={index}
+                            className="px-3 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 ${getStatusColor(activity.status)} rounded-full flex-shrink-0`}></div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100 capitalize">
+                                  {activity.status}
+                                  {activity.activity && ` • ${activity.activity}`}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  {activity.day} at {formatTime(activity.time)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>,
+                  document.body
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -173,11 +301,76 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
               <div className="flex-1 pb-2">
                 <h2 className="text-2xl font-bold drop-shadow-2xl mb-1">{character.name}</h2>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20">
-                    {characterStatus.status}
-                    {characterStatus.activity && ` • ${characterStatus.activity}`}
-                    {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
-                  </span>
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!showSchedule) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setDropdownPosition({ x: rect.left, y: rect.bottom + 8 });
+                        }
+                        setShowSchedule(!showSchedule);
+                      }}
+                      className="text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20 hover:bg-black/30 transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      {characterStatus.status}
+                      {characterStatus.activity && ` • ${characterStatus.activity}`}
+                      {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
+                      {upcomingActivities.length > 0 && (
+                        <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      )}
+                    </button>
+
+                    {/* Schedule Dropdown */}
+                    {showSchedule && upcomingActivities.length > 0 && createPortal(
+                      <>
+                        <div
+                          className="fixed inset-0 z-[998]"
+                          onClick={() => setShowSchedule(false)}
+                        />
+                        <div
+                          className="fixed bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-2 min-w-[280px] z-[999]"
+                          style={{
+                            left: `${dropdownPosition.x}px`,
+                            top: `${dropdownPosition.y}px`
+                          }}
+                        >
+                          <div className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs border-b border-purple-100/50 dark:border-purple-900/50">
+                            <div className="flex items-center gap-2 font-semibold">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <span>Upcoming Schedule</span>
+                            </div>
+                          </div>
+                          <div className="py-1">
+                            {upcomingActivities.map((activity, index) => (
+                              <div
+                                key={index}
+                                className="px-3 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className={`w-2 h-2 ${getStatusColor(activity.status)} rounded-full flex-shrink-0`}></div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-medium text-gray-900 dark:text-gray-100 capitalize">
+                                      {activity.status}
+                                      {activity.activity && ` • ${activity.activity}`}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      {activity.day} at {formatTime(activity.time)}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>,
+                      document.body
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
