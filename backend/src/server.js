@@ -27,6 +27,7 @@ import imageTagPromptsRoutes from './routes/imageTagPrompts.js';
 // Import services
 import proactiveMessageService from './services/proactiveMessageService.js';
 import postGenerationService from './services/postGenerationService.js';
+import autoUnmatchService from './services/autoUnmatchService.js';
 
 // Import database to initialize it
 import './db/database.js';
@@ -148,6 +149,14 @@ httpServer.listen(PORT, () => {
       console.error('Proactive message service error:', error);
     });
   }, 5 * 60 * 1000); // 5 minutes
+
+  // Start auto-unmatch checker (runs every 60 minutes)
+  console.log('💔 Auto-unmatch service started (checks every 60 minutes)');
+  setInterval(() => {
+    autoUnmatchService.checkAndUnmatch(io).catch(error => {
+      console.error('Auto-unmatch service error:', error);
+    });
+  }, 60 * 60 * 1000); // 60 minutes
 
   // Start post generation service (runs every 60 minutes)
   // DISABLED - Feed feature disabled

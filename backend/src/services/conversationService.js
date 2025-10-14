@@ -3,6 +3,7 @@ import db from '../db/database.js';
 class ConversationService {
   /**
    * Get all conversations for a user
+   * Only returns conversations where the character is still matched (exists in characters table)
    */
   getConversations(userId) {
     return db.prepare(`
@@ -17,6 +18,7 @@ class ConversationService {
         (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
         (SELECT created_at FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at
       FROM conversations c
+      INNER JOIN characters ch ON ch.id = c.character_id AND ch.user_id = c.user_id
       WHERE c.user_id = ?
       ORDER BY c.updated_at DESC
     `).all(userId);
@@ -43,17 +45,42 @@ class ConversationService {
 
   /**
    * Get or create a conversation
+   * Detects rematch scenarios (existing conversation with messages) and adds REMATCH separator
    */
   getOrCreateConversation(userId, characterId, characterName = 'Character') {
     let conversation = this.getConversation(userId, characterId);
 
     if (!conversation) {
+      // New match - create conversation
       const result = db.prepare(`
         INSERT INTO conversations (user_id, character_id, character_name)
         VALUES (?, ?, ?)
       `).run(userId, characterId, characterName);
 
       conversation = this.getConversationById(result.lastInsertRowid);
+    } else {
+      // Conversation already exists - check if this is a rematch scenario
+      // A rematch occurs when the conversation has an UNMATCH separator as the last system message
+      const lastSystemMessage = db.prepare(`
+        SELECT content FROM messages
+        WHERE conversation_id = ? AND role = 'system'
+        ORDER BY created_at DESC
+        LIMIT 1
+      `).get(conversation.id);
+
+      // Check if last system message is an UNMATCH separator
+      if (lastSystemMessage && lastSystemMessage.content.startsWith('[UNMATCH:')) {
+        // This is a REMATCH - add separator
+        const rematchSeparator = `[REMATCH: You matched with ${characterName} again!]`;
+
+        // Note: We can't use async/await here, so we insert the message directly
+        db.prepare(`
+          INSERT INTO messages (conversation_id, role, content, message_type, is_proactive)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(conversation.id, 'system', rematchSeparator, 'text', 0);
+
+        console.log(`✅ Added REMATCH separator: ${rematchSeparator}`);
+      }
     }
 
     return conversation;

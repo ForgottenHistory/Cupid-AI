@@ -18,7 +18,8 @@ const BehaviorSettings = ({ onClose }) => {
     pacingStyle: 'balanced',
     compactThresholdPercent: 90,
     compactTargetPercent: 70,
-    keepUncompactedMessages: 30
+    keepUncompactedMessages: 30,
+    autoUnmatchInactiveDays: 0
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -84,7 +85,8 @@ const BehaviorSettings = ({ onClose }) => {
       pacingStyle: 'balanced',
       compactThresholdPercent: 90,
       compactTargetPercent: 70,
-      keepUncompactedMessages: 30
+      keepUncompactedMessages: 30,
+      autoUnmatchInactiveDays: 0
     });
     setSuccess('');
     setError('');
@@ -495,6 +497,36 @@ const BehaviorSettings = ({ onClose }) => {
                 <span>100</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Always keep this many recent messages uncompacted for context</p>
+            </div>
+
+            {/* Auto-Unmatch Section Header */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Auto-Unmatch Inactive Matches</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Automatically unmatch characters after a period of inactivity</p>
+            </div>
+
+            {/* Auto-Unmatch After Days */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Auto-Unmatch After</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.autoUnmatchInactiveDays === 0 ? 'Disabled' : `${settings.autoUnmatchInactiveDays} days`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="90"
+                step="1"
+                value={settings.autoUnmatchInactiveDays}
+                onChange={(e) => updateSetting('autoUnmatchInactiveDays', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Disabled</span>
+                <span>90 days</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Automatically unmatch characters after this many days with no messages from either party (0 = disabled)</p>
             </div>
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">

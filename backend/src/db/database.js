@@ -490,6 +490,12 @@ function runMigrations() {
       `);
       console.log('✅ Converted compact settings to percentages');
     }
+
+    // Migration: Add auto-unmatch inactive conversations setting
+    if (!userColumnNamesRefresh.includes('auto_unmatch_inactive_days')) {
+      db.exec(`ALTER TABLE users ADD COLUMN auto_unmatch_inactive_days INTEGER DEFAULT 0;`);
+      console.log('✅ auto_unmatch_inactive_days column added to users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

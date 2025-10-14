@@ -221,22 +221,38 @@ class MessageProcessor {
       if (decision.shouldUnmatch) {
         console.log(`💔 Character ${characterId} has decided to unmatch user ${userId}`);
 
-        // Delete character from backend (removes match)
+        const characterName = characterData.name || 'Character';
+        const unmatchReason = 'The character has decided to unmatch with you.';
+
+        // Add UNMATCH separator to conversation history (preserve memory)
+        const unmatchSeparator = `[UNMATCH: ${characterName} unmatched - ${unmatchReason}]`;
+        messageService.saveMessage(
+          conversationId,
+          'system',
+          unmatchSeparator,
+          null, // no reaction
+          'text',
+          null, // no audio
+          null, // no image
+          null, // no image tags
+          false, // not proactive
+          null  // no image prompt
+        );
+        console.log(`✅ Added UNMATCH separator: ${unmatchSeparator}`);
+
+        // Delete character from backend (removes match, but keeps conversation)
         db.prepare(`
           DELETE FROM characters WHERE id = ? AND user_id = ?
         `).run(characterId, userId);
 
-        // Delete conversation and messages
-        conversationService.deleteConversation(userId, conversationId);
-
         // Emit unmatch event to frontend
         io.to(`user:${userId}`).emit('character_unmatched', {
           characterId,
-          characterName: characterData.name || 'Character',
-          reason: 'The character has decided to unmatch with you.'
+          characterName: characterName,
+          reason: unmatchReason
         });
 
-        console.log(`✅ Character ${characterId} successfully unmatched user ${userId}`);
+        console.log(`✅ Character ${characterId} successfully unmatched user ${userId} (conversation preserved)`);
         return; // Don't generate response, end processing
       }
 

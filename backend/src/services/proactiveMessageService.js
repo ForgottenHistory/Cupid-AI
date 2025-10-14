@@ -575,17 +575,35 @@ class ProactiveMessageService {
         if (newConsecutiveCount >= maxConsecutive) {
           console.log(`💔 ${characterName} sent ${maxConsecutive} consecutive proactive messages - triggering unmatch for user ${userId}`);
 
-          // Delete character and conversation (CASCADE will handle messages)
+          const unmatchReason = `Character unmatched after ${maxConsecutive} consecutive unanswered messages`;
+
+          // Add UNMATCH separator to conversation history (preserve memory)
+          const unmatchSeparator = `[UNMATCH: ${characterName} unmatched - ${unmatchReason}]`;
+          messageService.saveMessage(
+            conversationId,
+            'system',
+            unmatchSeparator,
+            null, // no reaction
+            'text',
+            null, // no audio
+            null, // no image
+            null, // no image tags
+            false, // not proactive
+            null  // no image prompt
+          );
+          console.log(`✅ Added UNMATCH separator: ${unmatchSeparator}`);
+
+          // Delete character from backend (removes match, but keeps conversation)
           db.prepare('DELETE FROM characters WHERE id = ? AND user_id = ?').run(characterId, userId);
 
           // Emit unmatch event to frontend
-          io.to(`user:${userId}`).emit('unmatch', {
+          io.to(`user:${userId}`).emit('character_unmatched', {
             characterId: characterId,
             characterName: characterName,
-            reason: `Character unmatched after ${maxConsecutive} consecutive unanswered messages`
+            reason: unmatchReason
           });
 
-          console.log(`✅ Unmatch complete for ${characterName} and user ${userId}`);
+          console.log(`✅ Unmatch complete for ${characterName} and user ${userId} (conversation preserved)`);
           return true; // Message was sent, but unmatch occurred
         }
       }
