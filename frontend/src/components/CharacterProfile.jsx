@@ -112,7 +112,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     }
   };
 
-  const handleGenerateSchedule = async () => {
+  const handleGenerateSchedule = async (day = null) => {
     if (!data.description) {
       setError('Need a description to generate schedule');
       return;
@@ -124,16 +124,29 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     try {
       const schedule = await characterService.generateSchedule(
         data.description,
-        character.name
+        character.name,
+        day
       );
 
-      // Update character in IndexedDB, storing previous as backup
+      // If generating a specific day, merge with existing schedule
+      let finalSchedule = schedule;
+      if (day && data.schedule?.schedule) {
+        finalSchedule = {
+          ...data.schedule,
+          schedule: {
+            ...data.schedule.schedule,
+            ...schedule.schedule
+          }
+        };
+      }
+
+      // Update character in IndexedDB, storing previous as backup (only when generating full week)
       const updatedCardData = {
         ...character.cardData,
         data: {
           ...character.cardData.data,
-          previousSchedule: data.schedule, // Save current as previous
-          schedule: schedule
+          previousSchedule: !day ? data.schedule : data.previousSchedule, // Only save previous when generating full week
+          schedule: finalSchedule
         }
       };
 
@@ -146,7 +159,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         onUpdate();
       }
 
-      alert('Schedule generated successfully!');
+      alert(day ? `${day.charAt(0) + day.slice(1).toLowerCase()} schedule generated!` : 'Schedule generated successfully!');
     } catch (err) {
       console.error('Generate schedule error:', err);
       setError(err.response?.data?.error || 'Failed to generate schedule');

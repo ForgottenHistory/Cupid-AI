@@ -65,22 +65,30 @@ export async function generateDatingProfile(req, res) {
 
 /**
  * POST /api/characters/generate-schedule
- * Use AI to generate a realistic weekly schedule from character description
+ * Use AI to generate a realistic weekly schedule (or single day) from character description
+ * Optional query param: ?day=MONDAY (generates only that day)
  */
 export async function generateSchedule(req, res) {
   try {
     const { description, name } = req.body;
+    const { day } = req.query; // Optional: MONDAY, TUESDAY, etc.
 
     if (!description || !description.trim()) {
       return res.status(400).json({ error: 'Description is required' });
     }
 
-    const prompt = buildSchedulePrompt(description, name);
+    // Validate day if provided
+    const validDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+    if (day && !validDays.includes(day.toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid day. Must be one of: MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY' });
+    }
+
+    const prompt = buildSchedulePrompt(description, name, day ? day.toUpperCase() : null);
 
     const response = await aiService.createBasicCompletion(prompt, {
-      temperature: 0.7,
-      max_tokens: 10000,
-      messageType: 'schedule',
+      temperature: 0.5,
+      max_tokens: day ? 2000 : 10000, // Less tokens needed for single day
+      messageType: day ? `schedule-${day.toLowerCase()}` : 'schedule',
       characterName: name || 'Character',
       userId: req.user.id
     });

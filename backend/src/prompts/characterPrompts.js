@@ -27,12 +27,24 @@ export function buildDatingProfilePrompt(description, name) {
 
 /**
  * Build prompt for generating weekly schedule
+ * @param {string} description - Character description
+ * @param {string} name - Character name
+ * @param {string} day - Optional specific day (MONDAY, TUESDAY, etc). If not provided, generates all 7 days.
  */
-export function buildSchedulePrompt(description, name) {
+export function buildSchedulePrompt(description, name, day = null) {
   const prompts = loadPrompts();
   const characterName = name || 'this character';
 
-  return prompts.schedulePrompt
-    .replace(/{characterName}/g, characterName)
-    .replace(/{description}/g, description);
+  if (day) {
+    // Generate single day
+    return prompts.scheduleDayPrompt
+      .replace(/{characterName}/g, characterName)
+      .replace(/{description}/g, description)
+      .replace(/{day}/g, day);
+  } else {
+    // Generate all 7 days
+    return prompts.schedulePrompt
+      .replace(/{characterName}/g, characterName)
+      .replace(/{description}/g, description);
+  }
 }
