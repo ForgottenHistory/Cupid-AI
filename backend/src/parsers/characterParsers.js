@@ -165,12 +165,24 @@ export function parseScheduleFromPlaintext(text) {
         }
         blocks.push(block);
       } else {
-        // Log lines that failed to parse with hex dump for debugging
-        const hexDump = Array.from(trimmedLine).map(c =>
-          `${c}(${c.charCodeAt(0).toString(16)})`
-        ).join(' ');
-        console.log(`⚠️  Failed to parse schedule line: "${trimmedLine}"`);
-        console.log(`   Hex dump: ${hexDump.substring(0, 200)}...`);
+        // If this line doesn't match the time block format, it might be a continuation of the previous block's activity
+        if (blocks.length > 0) {
+          const lastBlock = blocks[blocks.length - 1];
+          // Append to previous block's activity (handling case where activity was empty)
+          if (lastBlock.activity) {
+            lastBlock.activity += ' ' + trimmedLine;
+          } else {
+            lastBlock.activity = trimmedLine;
+          }
+          console.log(`📎 Appended continuation line to previous block: "${trimmedLine}"`);
+        } else {
+          // Log lines that failed to parse with hex dump for debugging
+          const hexDump = Array.from(trimmedLine).map(c =>
+            `${c}(${c.charCodeAt(0).toString(16)})`
+          ).join(' ');
+          console.log(`⚠️  Failed to parse schedule line: "${trimmedLine}"`);
+          console.log(`   Hex dump: ${hexDump.substring(0, 200)}...`);
+        }
       }
     }
 
