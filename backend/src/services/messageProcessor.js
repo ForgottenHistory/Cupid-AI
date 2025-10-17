@@ -457,7 +457,8 @@ class MessageProcessor {
           imageUrl,
           imageTagsToStore,
           false, // isProactive
-          imagePrompt // imagePrompt
+          imagePrompt, // imagePrompt
+          aiResponse.reasoning // reasoning
         );
 
         const allSavedMessages = [savedMessage];
@@ -474,7 +475,8 @@ class MessageProcessor {
             null, // no image
             null, // no image tags
             false, // not proactive
-            null // no image prompt
+            null, // no image prompt
+            null // no reasoning (only on first message)
           );
           allSavedMessages.push(additionalMessage);
         }
@@ -499,7 +501,8 @@ class MessageProcessor {
               reaction: msg.reaction,
               messageType: msg.message_type,
               audioUrl: msg.audio_url,
-              imageUrl: msg.image_url
+              imageUrl: msg.image_url,
+              reasoning: msg.reasoning // include reasoning if available
             }
           });
         });

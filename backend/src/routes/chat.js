@@ -201,9 +201,26 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
     // Split content by newlines to create separate messages
     const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
 
-    // Save each part as a separate message
-    for (const part of contentParts) {
-      messageService.saveMessage(conversation.id, 'assistant', part);
+    // Save first message with reasoning if available
+    if (contentParts.length > 0) {
+      messageService.saveMessage(
+        conversation.id,
+        'assistant',
+        contentParts[0],
+        null, // no reaction
+        'text', // messageType
+        null, // audioUrl
+        null, // imageUrl
+        null, // imageTags
+        false, // isProactive
+        null, // imagePrompt
+        aiResponse.reasoning // reasoning
+      );
+
+      // Save subsequent parts without reasoning
+      for (let i = 1; i < contentParts.length; i++) {
+        messageService.saveMessage(conversation.id, 'assistant', contentParts[i]);
+      }
     }
 
     // Update conversation timestamp and increment unread count
@@ -336,6 +353,20 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
     }
+
+    // Check if the last AI message was proactive (so we can preserve that flag)
+    const lastAIMessage = db.prepare(`
+      SELECT is_proactive FROM messages
+      WHERE conversation_id = ? AND role = 'assistant'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).get(conversation.id);
+
+    const isProactive = lastAIMessage?.is_proactive === 1;
+    // For regeneration of proactive messages, default to 'fresh' type
+    const proactiveType = isProactive ? 'fresh' : null;
+
+    console.log(`🔄 Regenerating ${isProactive ? 'proactive' : 'normal'} message${isProactive ? ' (type: fresh)' : ''}`);
 
     // Get conversation history for context
     const aiMessages = messageService.getConversationHistory(conversation.id);
@@ -479,7 +510,9 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       currentStatus: currentStatusInfo,
       userBio: userBio,
       schedule: characterData.schedule,
-      decision: decision  // Pass decision with image tags
+      decision: decision,  // Pass decision with image tags
+      isProactive: isProactive,  // Preserve proactive flag
+      proactiveType: proactiveType  // Use 'fresh' type for proactive regeneration
     });
 
     // Clean up em dashes (replace with periods)
@@ -509,8 +542,9 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       null, // audioUrl
       imageUrl,
       generatedContextTags || null,
-      false, // isProactive
-      imagePrompt // imagePrompt
+      isProactive, // Preserve proactive flag on regenerate
+      imagePrompt, // imagePrompt
+      aiResponse.reasoning // reasoning
     );
 
     // Save subsequent parts as separate text messages
@@ -524,8 +558,9 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
         null, // no audio
         null, // no image
         null, // no image tags
-        false, // not proactive
-        null  // no image prompt
+        isProactive, // Preserve proactive flag on regenerate
+        null, // no image prompt
+        null // no reasoning (only on first message)
       );
     }
 

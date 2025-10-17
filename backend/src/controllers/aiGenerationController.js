@@ -79,7 +79,7 @@ export async function generateSchedule(req, res) {
 
     const response = await aiService.createBasicCompletion(prompt, {
       temperature: 0.7,
-      max_tokens: 4000,
+      max_tokens: 10000,
       messageType: 'schedule',
       characterName: name || 'Character',
       userId: req.user.id

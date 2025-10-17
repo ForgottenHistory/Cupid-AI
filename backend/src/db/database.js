@@ -269,6 +269,12 @@ function runMigrations() {
       console.log('✅ image_prompt column added to messages table');
     }
 
+    // Migration: Add reasoning column to messages table (for reasoning models)
+    if (!messagesColumnNames.includes('reasoning')) {
+      db.exec(`ALTER TABLE messages ADD COLUMN reasoning TEXT;`);
+      console.log('✅ reasoning column added to messages table');
+    }
+
     // Migration: Add Stable Diffusion settings columns to users table
     if (!userColumnNames.includes('sd_steps')) {
       db.exec(`
@@ -448,6 +454,7 @@ function runMigrations() {
           image_tags TEXT,
           is_proactive INTEGER DEFAULT 0,
           image_prompt TEXT,
+          reasoning TEXT,
           FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
         );
 

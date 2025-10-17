@@ -284,10 +284,22 @@ class AIService {
         throw new Error(lastError.response?.data?.error?.message || lastError.message || `${providerConfig.name} service error after ${maxRetries} retries`);
       }
 
-      let content = response.data.choices[0].message.content;
+      const message = response.data.choices[0].message;
+      const rawContent = message.content; // Save raw content before processing
+      let content = message.content;
 
-      // Strip any <think></think> tags (reasoning/thinking output from some models)
+      // Extract reasoning if present (separate field for some models like DeepSeek)
+      const reasoning = message.reasoning || null;
+
+      // Strip any <think></think> tags (reasoning/thinking output from models that use tags)
+      // First remove complete pairs, then remove any stray opening or closing tags
       content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+      content = content.replace(/<\/?think>/gi, '').trim();
+
+      // Log reasoning for debugging if present
+      if (reasoning) {
+        console.log('🧠 REASONING DETECTED:', reasoning);
+      }
 
       // Strip any leading "Name: " pattern (AI priming artifact)
       // Example: "Jane Doe: message" -> "message"
@@ -305,16 +317,18 @@ class AIService {
         provider: provider,
         model: response.data.model,
         contentLength: content?.length || 0,
-        usage: response.data.usage
+        usage: response.data.usage,
+        hasReasoning: !!reasoning
       });
 
-      // Log response for debugging (matching ID to prompt)
-      this.saveResponseLog(content, messageType, logId, response.data);
+      // Log response for debugging (matching ID to prompt) - include both raw and processed
+      this.saveResponseLog(content, rawContent, messageType, logId, response.data);
 
       return {
         content: content,
         model: response.data.model,
         usage: response.data.usage,
+        reasoning: reasoning, // Include reasoning if available
       };
     } catch (error) {
       const userSettings = llmSettingsService.getUserSettings(userId);
@@ -457,10 +471,13 @@ class AIService {
         });
 
         const message = response.data.choices[0].message;
+        const rawContent = message.content; // Save raw content before processing
         let content = message.content;
 
         // Strip any <think></think> tags (reasoning/thinking output from some models)
+        // First remove complete pairs, then remove any stray opening or closing tags
         content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+        content = content.replace(/<\/?think>/gi, '').trim();
 
         // Log raw response for debugging reasoning mode
         if (options.reasoning_effort) {
@@ -470,9 +487,9 @@ class AIService {
           }
         }
 
-        // Log response for debugging (matching ID to prompt)
+        // Log response for debugging (matching ID to prompt) - include both raw and processed
         if (logId && options.messageType) {
-          this.saveResponseLog(content, options.messageType, logId, response.data);
+          this.saveResponseLog(content, rawContent, options.messageType, logId, response.data);
         }
 
         // Success! Return result
@@ -596,7 +613,7 @@ class AIService {
    * Save response to log file for debugging (keep last 5)
    * Uses matching timestamp from prompt log for easy correlation
    */
-  saveResponseLog(content, messageType, logId, responseData) {
+  saveResponseLog(processedContent, rawContent, messageType, logId, responseData) {
     try {
       if (!logId) {
         console.warn('⚠️  No log ID provided for response log, skipping');
@@ -621,8 +638,11 @@ class AIService {
         `Timestamp: ${new Date().toISOString()}`,
         `Model: ${responseData.model}`,
         ``,
-        `--- RAW CONTENT ---`,
-        content || '(empty)',
+        `--- RAW CONTENT (from API) ---`,
+        rawContent || '(empty)',
+        ``,
+        `--- PROCESSED CONTENT (after stripping) ---`,
+        processedContent || '(empty)',
         ``,
         `--- USAGE ---`,
         JSON.stringify(responseData.usage, null, 2)

@@ -23,6 +23,7 @@ const MessageBubble = ({
   setImageModalOpen,
 }) => {
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showReasoning, setShowReasoning] = useState(false);
   const [, setUpdateTrigger] = useState(0);
 
   // Update timestamps every minute
@@ -137,6 +138,34 @@ const MessageBubble = ({
           </div>
         ) : (
           <Emoji emoji={message.content} className="break-words leading-relaxed" size="1.25em" />
+        )}
+
+        {/* Reasoning Display (only for assistant messages with reasoning) */}
+        {message.role === 'assistant' && message.reasoning && (
+          <div className="mt-3">
+            <button
+              onClick={() => setShowReasoning(!showReasoning)}
+              className="flex items-center gap-1.5 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors"
+            >
+              <svg
+                className={`w-3 h-3 transform transition-transform ${showReasoning ? 'rotate-90' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              {showReasoning ? 'Hide Reasoning' : 'View Reasoning'}
+            </button>
+
+            {showReasoning && (
+              <div className="mt-2 p-3 bg-purple-50/50 dark:bg-purple-900/20 border border-purple-200/50 dark:border-purple-700/30 rounded-lg">
+                <p className="text-xs text-purple-900 dark:text-purple-200 whitespace-pre-wrap break-words font-mono">
+                  {message.reasoning}
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Show timestamp for user messages or last part of assistant multi-messages */}

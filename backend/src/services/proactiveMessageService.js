@@ -93,6 +93,60 @@ class ProactiveMessageService {
       for (const character of characters) {
         if (!character.conversation_id) continue;
 
+        // Get conversation details
+        const conversation = db.prepare(`
+          SELECT created_at FROM conversations WHERE id = ?
+        `).get(character.conversation_id);
+
+        if (!conversation) {
+          continue;
+        }
+
+        // Get last message
+        const lastMessage = db.prepare(`
+          SELECT * FROM messages
+          WHERE conversation_id = ?
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).get(character.conversation_id);
+
+        // Get last message from user
+        const lastUserMessage = db.prepare(`
+          SELECT * FROM messages
+          WHERE conversation_id = ? AND role = 'user'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).get(character.conversation_id);
+
+        // Check consecutive proactive count FIRST (before cooldown check)
+        // Reset if: (1) user replied, OR (2) character sent normal (non-proactive) response
+        // Only consecutive PROACTIVE messages should count
+        const consecutiveCount = character.consecutive_proactive_count || 0;
+        const shouldReset = lastMessage && consecutiveCount > 0 && (
+          lastMessage.role === 'user' ||
+          (lastMessage.role === 'assistant' && !lastMessage.is_proactive)
+        );
+
+        if (shouldReset) {
+          db.prepare(`
+            UPDATE characters
+            SET consecutive_proactive_count = 0, current_proactive_cooldown = 60
+            WHERE id = ? AND user_id = ?
+          `).run(character.id, user.id);
+          character.consecutive_proactive_count = 0;
+          character.current_proactive_cooldown = 60;
+
+          // Log the reset for debugging
+          let characterName = 'Character';
+          try {
+            const cardData = JSON.parse(character.card_data);
+            characterName = cardData.data?.name || cardData.name || 'Character';
+          } catch (e) {}
+
+          const resetReason = lastMessage.role === 'user' ? 'user replied' : 'normal response sent';
+          console.log(`🔄 ${characterName}: Reset consecutive count (was ${consecutiveCount}) - reason: ${resetReason}`);
+        }
+
         // Check per-character rate limit: Dynamic cooldown based on consecutive proactive count
         // Cooldown = 60 * (multiplier ^ consecutiveCount)
         // Default multiplier 2.0: 1st: 60min, 2nd: 120min, 3rd: 240min, 4th: 480min (unmatch at max)
@@ -112,61 +166,23 @@ class ProactiveMessageService {
             } catch (e) {}
 
             const cooldownDisplay = currentCooldown >= 60 ? `${(currentCooldown / 60).toFixed(1)}h` : `${currentCooldown}min`;
-            console.log(`⏱️  ${characterName} on character cooldown (${(currentCooldown - minutesSinceCharacter).toFixed(1)} min remaining, total: ${cooldownDisplay})`);
+            const maxConsecutive = user.max_consecutive_proactive || 4;
+            console.log(`⏱️  ${characterName} on character cooldown (${(currentCooldown - minutesSinceCharacter).toFixed(1)} min remaining, total: ${cooldownDisplay}) [consecutive: ${character.consecutive_proactive_count}/${maxConsecutive}]`);
             continue; // Skip this character - too soon since last proactive
-          }
-        }
-
-        // Get conversation details
-        const conversation = db.prepare(`
-          SELECT created_at FROM conversations WHERE id = ?
-        `).get(character.conversation_id);
-
-        if (!conversation) {
-          continue;
-        }
-
-        // Get last message
-        const lastMessage = db.prepare(`
-          SELECT * FROM messages
-          WHERE conversation_id = ?
-          ORDER BY created_at DESC
-          LIMIT 1
-        `).get(character.conversation_id);
-
-        // Block if last message was a proactive message from assistant
-        // This enforces "no two proactive messages in a row"
-        if (lastMessage && lastMessage.role === 'assistant' && lastMessage.is_proactive) {
-          continue;
-        }
-
-        // Get last message from user
-        const lastUserMessage = db.prepare(`
-          SELECT * FROM messages
-          WHERE conversation_id = ? AND role = 'user'
-          ORDER BY created_at DESC
-          LIMIT 1
-        `).get(character.conversation_id);
-
-        // Check consecutive proactive count
-        // If user replied, reset the counter
-        const consecutiveCount = character.consecutive_proactive_count || 0;
-        if (lastUserMessage && lastMessage && lastMessage.role === 'assistant' && lastMessage.is_proactive) {
-          // User replied after a proactive message - reset consecutive count
-          if (new Date(lastUserMessage.created_at) > new Date(lastMessage.created_at)) {
-            db.prepare(`
-              UPDATE characters
-              SET consecutive_proactive_count = 0, current_proactive_cooldown = 60
-              WHERE id = ? AND user_id = ?
-            `).run(character.id, user.id);
-            character.consecutive_proactive_count = 0;
-            character.current_proactive_cooldown = 60;
           }
         }
 
         // Block if consecutive count exceeds max (should have already unmatched, but safety check)
         const maxConsecutive = user.max_consecutive_proactive || 4;
-        if (consecutiveCount >= maxConsecutive) {
+        if (character.consecutive_proactive_count >= maxConsecutive) {
+          // Parse character name for logging
+          let characterName = 'Character';
+          try {
+            const cardData = JSON.parse(character.card_data);
+            characterName = cardData.data?.name || cardData.name || 'Character';
+          } catch (e) {}
+
+          console.log(`🚫 ${characterName} at consecutive cap (${character.consecutive_proactive_count}/${maxConsecutive}) - should be unmatched`);
           continue;
         }
 
@@ -655,17 +671,23 @@ class ProactiveMessageService {
         }
       }
 
-      // Process each candidate
+      // Process each candidate (but only send ONE proactive message per check)
       let sent = 0;
       for (const candidate of targetCandidates) {
         const didSend = await this.processCandidate(candidate, io, !!debugCharacterId);
         if (didSend) {
           sent++;
+          // Only send one proactive message per check (respects check interval)
+          // Left-on-read messages are separate and can send in addition
+          if (candidate.triggerType === 'normal') {
+            console.log(`✅ Sent 1 proactive message - stopping to respect check interval`);
+            break;
+          }
         }
       }
 
       if (sent > 0) {
-        console.log(`✅ Sent ${sent} proactive message(s)`);
+        console.log(`✅ Sent ${sent} message(s) total`);
       }
     } catch (error) {
       console.error('Proactive message checker error:', error);
