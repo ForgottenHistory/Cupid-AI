@@ -173,7 +173,7 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
 
   /**
    * Proactive Decision Engine: Decide if character should send proactive message
-   * Returns: { shouldSend: boolean, messageType: "resume"|"fresh"|"callback" }
+   * Returns: { shouldSend: boolean, messageType: "fresh", reason: string }
    */
   async makeProactiveDecision({ messages, characterData, gapHours, userId }) {
     try {
@@ -205,7 +205,6 @@ If NONE of these apply → Say YES (the character wants to reach out!)
 Output your decision in this EXACT format:
 
 Should Send: [yes/no]
-Message Type: [resume/fresh/callback]
 Reason: [brief explanation in one sentence]
 
 Guidelines:
@@ -214,15 +213,11 @@ Guidelines:
   * NO ONLY if either person set a specific timing expectation that hasn't been met
   * NO ONLY if either person said they'll reach out first and not enough time has passed
   * Don't overthink it - if there's no explicit reason to wait, say YES
-- "Message Type":
-  * "resume" - Continue the previous topic (if conversation was mid-flow)
-  * "fresh" - Start a new conversation (if enough time has passed or topic ended)
-  * "callback" - Reference something from earlier (if there was an interesting point to revisit)
 - "Reason":
   * Explain why you decided to send or not send
   * Keep it brief (one sentence)
 
-Output ONLY the three lines in the exact format shown above, nothing else.`;
+Output ONLY the two lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Proactive Decision Engine Request:', {
         model: decisionSettings.model,
@@ -242,7 +237,7 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
 
       const content = response.content.trim();
 
-      // Parse response
+      // Parse response - always returns 'fresh' message type
       return this.parseProactiveDecisionResponse(content);
     } catch (error) {
       console.error('❌ Proactive Decision Engine error:', error.message);
@@ -320,7 +315,7 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
     const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const decision = {
       shouldSend: false,
-      messageType: 'fresh',
+      messageType: 'fresh', // Always 'fresh' now
       reason: 'No reason provided'
     };
 
@@ -328,11 +323,6 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
       if (line.startsWith('Should Send:')) {
         const value = line.substring('Should Send:'.length).trim().toLowerCase();
         decision.shouldSend = value === 'yes';
-      } else if (line.startsWith('Message Type:')) {
-        const value = line.substring('Message Type:'.length).trim().toLowerCase();
-        if (['resume', 'fresh', 'callback'].includes(value)) {
-          decision.messageType = value;
-        }
       } else if (line.startsWith('Reason:')) {
         decision.reason = line.substring('Reason:'.length).trim();
       }

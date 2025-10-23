@@ -240,18 +240,12 @@ class PromptBuilderService {
       return parts.join('');
     }
 
-    // Normal proactive message handling (continuing conversation)
+    // Normal proactive message handling - always start fresh
     const timeGapText = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since their last message.` : ' Some time has passed.';
     parts.push(`💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
 
-    if (proactiveType === 'resume') {
-      parts.push(`\n\n${prompts.proactiveResumePrompt}`);
-    } else if (proactiveType === 'fresh') {
-      parts.push(`\n\n${prompts.proactiveFreshPrompt}`);
-    } else if (proactiveType === 'callback') {
-      parts.push(`\n\n${prompts.proactiveCallbackPrompt}`);
-    }
-
+    // Always use fresh prompt
+    parts.push(`\n\n${prompts.proactiveFreshPrompt}`);
     parts.push(`\n\n${prompts.proactiveClosingPrompt}`);
 
     // Add time-specific guidance

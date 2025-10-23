@@ -8,9 +8,7 @@ const Prompts = () => {
     departingPrompt: '',
     voiceMessagePrompt: '',
     proactiveFirstMessagePrompt: '',
-    proactiveResumePrompt: '',
     proactiveFreshPrompt: '',
-    proactiveCallbackPrompt: '',
     proactiveClosingPrompt: '',
     cleanupDescriptionPrompt: '',
     datingProfilePrompt: '',
@@ -157,21 +155,9 @@ const Prompts = () => {
       rows: 5
     },
     {
-      key: 'proactiveResumePrompt',
-      label: 'Proactive Resume',
-      description: 'Instructions to continue previous conversation',
-      rows: 2
-    },
-    {
       key: 'proactiveFreshPrompt',
       label: 'Proactive Fresh Start',
-      description: 'Instructions to start a completely new conversation',
-      rows: 2
-    },
-    {
-      key: 'proactiveCallbackPrompt',
-      label: 'Proactive Callback',
-      description: 'Instructions to reference something from earlier',
+      description: 'Instructions to start a completely new conversation (only message type used)',
       rows: 2
     },
     {
