@@ -17,7 +17,7 @@ class MessageProcessor {
   async processMessage(io, userId, characterId, conversationId, characterData) {
     try {
       // Check if conversation needs compacting before generating response
-      await compactService.compactIfNeeded(conversationId, userId);
+      await compactService.compactIfNeeded(conversationId, userId, io, characterId);
 
       // Check and insert TIME GAP marker if needed (e.g., user messages after long gaps)
       timeGapService.checkAndInsertTimeGap(conversationId);

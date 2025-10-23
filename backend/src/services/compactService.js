@@ -219,9 +219,11 @@ Example (if you are Sarah talking to Mike):
    * Keeps compacting until token count is below target
    * @param {number} conversationId - Conversation ID
    * @param {number} userId - User ID for settings and LLM
+   * @param {object} io - Socket.io instance for emitting events (optional)
+   * @param {string} characterId - Character ID for character-specific events (optional)
    * @returns {boolean} Whether any compacting was performed
    */
-  async compactIfNeeded(conversationId, userId) {
+  async compactIfNeeded(conversationId, userId, io = null, characterId = null) {
     try {
       // Get user's compacting settings (percentages) and context window
       const userSettings = db.prepare(`
@@ -254,6 +256,11 @@ Example (if you are Sarah talking to Mike):
       }
 
       console.log(`⚠️  Token count exceeds threshold, starting compacting...`);
+
+      // Emit compacting_start event to lock the chat UI
+      if (io && characterId) {
+        io.to(`user:${userId}`).emit('compacting_start', { characterId });
+      }
 
       let compactedAny = false;
       let attempts = 0;
@@ -316,9 +323,20 @@ Example (if you are Sarah talking to Mike):
         console.log(`✅ Compacting complete for conversation ${conversationId}`);
       }
 
+      // Emit compacting_end event to unlock the chat UI
+      if (io && characterId) {
+        io.to(`user:${userId}`).emit('compacting_end', { characterId });
+      }
+
       return compactedAny;
     } catch (error) {
       console.error('❌ compactIfNeeded error:', error);
+
+      // Always emit compacting_end even on error to unlock UI
+      if (io && characterId) {
+        io.to(`user:${userId}`).emit('compacting_end', { characterId });
+      }
+
       return false;
     }
   }

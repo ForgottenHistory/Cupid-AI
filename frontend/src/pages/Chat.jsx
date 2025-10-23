@@ -112,7 +112,7 @@ const Chat = () => {
   });
 
   // WebSocket real-time messaging
-  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData, currentThought } = useChatWebSocket({
+  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData, currentThought, isCompacting } = useChatWebSocket({
     characterId,
     user,
     isMountedRef,
@@ -680,13 +680,30 @@ const Chat = () => {
         </div>
       </div>
 
+      {/* Compacting Overlay */}
+      {isCompacting && (
+        <div className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl border border-purple-200/50 dark:border-purple-800/50 max-w-md mx-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Compacting conversation...</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Extracting memories and summarizing messages
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Input - Hidden when image modal is open */}
       {!imageModalOpen && (
         <div className="relative z-10">
           <ChatInput
             input={input}
             setInput={setInput}
-            sending={sending}
+            sending={sending || isCompacting}
             displayingMessages={displayingMessages}
             hasMessages={messages.length > 0}
             characterName={character?.name}

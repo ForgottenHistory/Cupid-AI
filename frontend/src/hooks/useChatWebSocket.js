@@ -32,6 +32,7 @@ export const useChatWebSocket = ({
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [unmatchData, setUnmatchData] = useState(null);
   const [currentThought, setCurrentThought] = useState(null);
+  const [isCompacting, setIsCompacting] = useState(false);
   const { setMoodEffect, clearMoodEffect} = useMood();
 
   // Use ref to track current characterId to prevent stale closures
@@ -225,6 +226,22 @@ export const useChatWebSocket = ({
       }, 8000);
     };
 
+    const handleCompactingStart = (data) => {
+      // Only show compacting UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+
+      console.log('🗜️ Compacting started for character:', data.characterId);
+      setIsCompacting(true);
+    };
+
+    const handleCompactingEnd = (data) => {
+      // Only update UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+
+      console.log('✅ Compacting finished for character:', data.characterId);
+      setIsCompacting(false);
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
@@ -232,6 +249,8 @@ export const useChatWebSocket = ({
     socketService.on('character_unmatched', handleCharacterUnmatched);
     socketService.on('mood_change', handleMoodChange);
     socketService.on('character_thought', handleCharacterThought);
+    socketService.on('compacting_start', handleCompactingStart);
+    socketService.on('compacting_end', handleCompactingEnd);
 
     // Cleanup
     return () => {
@@ -242,6 +261,8 @@ export const useChatWebSocket = ({
       socketService.off('character_unmatched', handleCharacterUnmatched);
       socketService.off('mood_change', handleMoodChange);
       socketService.off('character_thought', handleCharacterThought);
+      socketService.off('compacting_start', handleCompactingStart);
+      socketService.off('compacting_end', handleCompactingEnd);
     };
   }, [user, characterId, setMoodEffect]);
 
@@ -251,5 +272,6 @@ export const useChatWebSocket = ({
     unmatchData,
     setUnmatchData,
     currentThought,
+    isCompacting,
   };
 };
