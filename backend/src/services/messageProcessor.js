@@ -7,6 +7,7 @@ import compactService from './compactService.js';
 import ttsService from './ttsService.js';
 import sdService from './sdService.js';
 import imageTagGenerationService from './imageTagGenerationService.js';
+import timeGapService from './timeGapService.js';
 import { getCurrentStatusFromSchedule, sleep } from '../utils/chatHelpers.js';
 
 class MessageProcessor {
@@ -18,7 +19,10 @@ class MessageProcessor {
       // Check if conversation needs compacting before generating response
       await compactService.compactIfNeeded(conversationId, userId);
 
-      // Get conversation history
+      // Check and insert TIME GAP marker if needed (e.g., user messages after long gaps)
+      timeGapService.checkAndInsertTimeGap(conversationId);
+
+      // Get conversation history (includes any TIME GAP markers we just inserted)
       const aiMessages = messageService.getConversationHistory(conversationId);
       const userMessage = aiMessages[aiMessages.length - 1]?.content || '';
 

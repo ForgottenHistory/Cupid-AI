@@ -5,6 +5,7 @@ import promptBuilderService from './promptBuilderService.js';
 import decisionEngineService from './decisionEngineService.js';
 import personalityService from './personalityService.js';
 import queueService from './queueService.js';
+import timeGapService from './timeGapService.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -118,6 +119,8 @@ class AIService {
       let splitIndex = trimmedMessages.length - 5;
 
       // Walk backwards from splitIndex to include any TIME GAP messages
+      // Note: At this point messages are already formatted by getConversationHistory()
+      // TIME GAP markers will have role='system' and content starting with '[TIME GAP:'
       while (splitIndex > 0 &&
              trimmedMessages[splitIndex - 1].role === 'system' &&
              trimmedMessages[splitIndex - 1].content.startsWith('[TIME GAP:')) {

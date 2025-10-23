@@ -180,7 +180,8 @@ router.post('/test-compact/:conversationId', authenticateToken, async (req, res)
 
     for (let i = 0; i < allMessages.length; i++) {
       const msg = allMessages[i];
-      if (msg.message_type === 'summary' || msg.content?.startsWith('[TIME GAP:')) {
+      // Use message_type to identify TIME GAP and SUMMARY markers (no more string parsing!)
+      if (msg.message_type === 'summary' || msg.message_type === 'time_gap') {
         if (currentBlock.length > 0) {
           blocks.push(currentBlock.length);
           console.log(`   Block ${blocks.length}: ${currentBlock.length} messages`);

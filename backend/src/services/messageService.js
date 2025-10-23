@@ -1,4 +1,5 @@
 import db from '../db/database.js';
+import timeGapService from './timeGapService.js';
 
 class MessageService {
   /**
@@ -96,36 +97,25 @@ class MessageService {
 
   /**
    * Get conversation history as AI messages with session gap markers
+   * TIME GAP markers are now pre-inserted into database, not calculated on-the-fly
    */
   getConversationHistory(conversationId) {
     const messages = db.prepare(`
-      SELECT role, content, message_type, image_tags, created_at FROM messages
+      SELECT role, content, message_type, image_tags, gap_duration_hours FROM messages
       WHERE conversation_id = ?
       ORDER BY created_at ASC
     `).all(conversationId);
 
     const result = [];
-    const SESSION_GAP_THRESHOLD = 30 * 60 * 1000; // 1 hour in milliseconds
 
-    messages.forEach((msg, index) => {
-      // Check for time gap with previous message
-      // Skip if current message is already a TIME GAP marker (to avoid duplicates)
-      if (index > 0 && !msg.content?.startsWith('[TIME GAP:')) {
-        const prevMsg = messages[index - 1];
-        const prevTime = new Date(prevMsg.created_at).getTime();
-        const currentTime = new Date(msg.created_at).getTime();
-        const gapMs = currentTime - prevTime;
-
-        // If gap is significant (30+ minutes), insert session marker
-        if (gapMs >= SESSION_GAP_THRESHOLD) {
-          const gapHours = (gapMs / (1000 * 60 * 60)).toFixed(1);
-
-          // Insert session gap marker as a system message
-          result.push({
-            role: 'system',
-            content: `[TIME GAP: ${gapHours} hours - NEW CONVERSATION SESSION]`
-          });
-        }
+    messages.forEach((msg) => {
+      // Handle TIME GAP markers using message_type (no more string parsing!)
+      if (timeGapService.isTimeGapMarker(msg)) {
+        result.push({
+          role: 'system',
+          content: timeGapService.formatTimeGapContent(msg.gap_duration_hours)
+        });
+        return;
       }
 
       // Process message content
@@ -197,11 +187,13 @@ class MessageService {
    * @returns {object|null} { startMessageId, endMessageId, messageCount, blockIndex, action: 'compact'|'delete' } or null if no suitable block
    */
   findOldestCompactableBlock(conversationId, keepRecentN = 30, minBlockSize = 15) {
-    // Get all messages in chronological order (exclude system messages like TIME GAP/SUMMARY)
+    // Get all messages in chronological order (exclude system messages by message_type)
     const messages = db.prepare(`
-      SELECT id, role, content, message_type, created_at
+      SELECT id, role, message_type, created_at
       FROM messages
-      WHERE conversation_id = ? AND role != 'system'
+      WHERE conversation_id = ?
+      AND message_type NOT IN ('time_gap', 'summary')
+      AND role != 'system'
       ORDER BY created_at ASC
     `).all(conversationId);
 
@@ -211,7 +203,6 @@ class MessageService {
     }
 
     // Identify blocks by calculating time gaps between messages
-    const SESSION_GAP_THRESHOLD = 30 * 60 * 1000; // 30 minutes in milliseconds
     const blocks = [];
     let currentBlock = [];
 
@@ -221,12 +212,10 @@ class MessageService {
       // Check if there's a time gap from previous message
       if (i > 0 && currentBlock.length > 0) {
         const prevMsg = messages[i - 1];
-        const prevTime = new Date(prevMsg.created_at).getTime();
-        const currentTime = new Date(msg.created_at).getTime();
-        const gapMs = currentTime - prevTime;
+        const gapHours = timeGapService.calculateTimeGap(prevMsg.created_at, msg.created_at);
 
         // If gap is significant (30+ minutes), start a new block
-        if (gapMs >= SESSION_GAP_THRESHOLD) {
+        if (gapHours !== null) {
           blocks.push([...currentBlock]);
           currentBlock = [];
         }

@@ -503,6 +503,64 @@ function runMigrations() {
       db.exec(`ALTER TABLE users ADD COLUMN auto_unmatch_inactive_days INTEGER DEFAULT 0;`);
       console.log('✅ auto_unmatch_inactive_days column added to users table');
     }
+
+    // Migration: Add gap_duration_hours column to messages table and migrate TIME GAP markers
+    // Refresh messagesColumnNames before checking
+    const messagesColumnsRefresh = db.pragma('table_info(messages)');
+    const messagesColumnNamesRefresh = messagesColumnsRefresh.map(col => col.name);
+
+    if (!messagesColumnNamesRefresh.includes('gap_duration_hours')) {
+      db.exec(`ALTER TABLE messages ADD COLUMN gap_duration_hours REAL;`);
+      console.log('✅ gap_duration_hours column added to messages table');
+
+      // Migrate existing TIME GAP markers from content-based to type-based
+      // Find all messages with content starting with '[TIME GAP:'
+      const timeGapMessages = db.prepare(`
+        SELECT id, content FROM messages
+        WHERE content LIKE '[TIME GAP:%'
+      `).all();
+
+      let migratedTimeGaps = 0;
+      for (const msg of timeGapMessages) {
+        try {
+          // Extract gap hours from content: "[TIME GAP: 5.2 hours - NEW CONVERSATION SESSION]"
+          const match = msg.content.match(/\[TIME GAP:\s*([0-9.]+)\s*hours/);
+          if (match) {
+            const gapHours = parseFloat(match[1]);
+            db.prepare(`
+              UPDATE messages
+              SET message_type = 'time_gap',
+                  gap_duration_hours = ?
+              WHERE id = ?
+            `).run(gapHours, msg.id);
+            migratedTimeGaps++;
+          }
+        } catch (error) {
+          console.error(`Failed to migrate TIME GAP message ${msg.id}:`, error.message);
+        }
+      }
+
+      if (migratedTimeGaps > 0) {
+        console.log(`✅ Migrated ${migratedTimeGaps} TIME GAP markers to type-based system`);
+      }
+
+      // Also migrate existing summary messages to use message_type
+      const summaryMessages = db.prepare(`
+        SELECT id FROM messages
+        WHERE content LIKE '[SUMMARY:%'
+        AND message_type != 'summary'
+      `).all();
+
+      if (summaryMessages.length > 0) {
+        db.exec(`
+          UPDATE messages
+          SET message_type = 'summary'
+          WHERE content LIKE '[SUMMARY:%'
+          AND message_type != 'summary'
+        `);
+        console.log(`✅ Migrated ${summaryMessages.length} SUMMARY markers to type-based system`);
+      }
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }
