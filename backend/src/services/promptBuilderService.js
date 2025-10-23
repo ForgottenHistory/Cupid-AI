@@ -1,4 +1,5 @@
 import { loadPrompts } from '../routes/prompts.js';
+import memoryService from './memoryService.js';
 
 class PromptBuilderService {
   /**
@@ -59,7 +60,7 @@ class PromptBuilderService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null) {
+  buildSystemPrompt(characterData, characterId = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null) {
     const parts = [];
 
     // Add current date and time
@@ -139,6 +140,14 @@ class PromptBuilderService {
     parts.push(`\n\n${prompts.contextPrompt}`);
 
     parts.push(`\n\n${prompts.systemPrompt}`);
+
+    // Add memories if available
+    if (characterId) {
+      const memories = memoryService.getCharacterMemories(characterId);
+      if (memories.length > 0) {
+        parts.push(`\n\nWHAT YOU REMEMBER ABOUT THEM:\n${memories.map((m, i) => `${i + 1}. ${m}`).join('\n')}`);
+      }
+    }
 
     // Add media sending context if provided
     if (decision) {

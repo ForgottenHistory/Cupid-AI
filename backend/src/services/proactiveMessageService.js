@@ -546,6 +546,7 @@ class ProactiveMessageService {
       const aiResponse = await aiService.createChatCompletion({
         messages: updatedMessages,
         characterData: characterData,
+        characterId: characterId,
         userId: userId,
         userName: userName,
         currentStatus: currentStatusInfo,

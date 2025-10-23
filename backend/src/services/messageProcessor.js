@@ -364,6 +364,7 @@ class MessageProcessor {
         aiResponse = await aiService.createChatCompletion({
           messages: aiMessages,
           characterData: characterData,
+          characterId: characterId,
           userId: userId,
           currentStatus: currentStatusInfo,
           userBio: userBio,
