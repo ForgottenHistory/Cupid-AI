@@ -3,6 +3,7 @@ import aiService from './aiService.js';
 import messageService from './messageService.js';
 import llmSettingsService from './llmSettingsService.js';
 import memoryService from './memoryService.js';
+import { loadPrompts } from '../routes/prompts.js';
 
 class CompactService {
   /**
@@ -22,31 +23,15 @@ class CompactService {
 
     const conversationText = conversationLines.join('\n');
 
-    // Build summary prompt
-    const prompt = `You are ${characterName}, reviewing a past conversation with ${userName} in a dating app chat.
+    // Load custom prompt from config
+    const prompts = loadPrompts();
+    const template = prompts.compactionPrompt;
 
-Your task: Create a concise summary (2-4 sentences) FROM YOUR PERSPECTIVE (first person as ${characterName}) that preserves:
-- Key facts shared (names, events, plans, promises)
-- Emotional moments and relationship dynamics
-- Important decisions or agreements
-- The overall narrative flow
-
-CRITICAL: Write as ${characterName} (use "I", "me", "my"). Refer to ${userName} as "they" or "them".
-
-Do not:
-- Use phrases like "in this conversation" or "we discussed" (state facts directly as if recalling)
-- Include timestamps or meta-commentary
-- Lose critical personal information
-- Write in third person or describe yourself as "${characterName}"
-
-Conversation to summarize:
-${conversationText}
-
-Output format:
-A natural, flowing summary as if YOU (${characterName}) are recalling what happened.
-
-Example (if you are Sarah talking to Mike):
-"I told them about my stressful week at work. They opened up about feeling overwhelmed with deadlines and worried about letting their team down. I reassured them that asking for help is a strength, not a weakness. We made plans to do something relaxing this weekend to decompress."`;
+    // Replace placeholders
+    const prompt = template
+      .replace(/{characterName}/g, characterName)
+      .replace(/{userName}/g, userName)
+      .replace(/{conversationText}/g, conversationText);
 
     // Call Decision LLM directly (independent of Decision Engine)
     const userSettings = llmSettingsService.getUserSettings(userId);

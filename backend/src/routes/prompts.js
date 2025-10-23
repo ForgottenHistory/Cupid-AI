@@ -250,7 +250,31 @@ Return ONLY the memories about the USER, one per line, numbered:
 3. [memory about USER]
 ...
 
-Do not include any other text, explanations, or formatting.`
+Do not include any other text, explanations, or formatting.`,
+
+  compactionPrompt: `Create an OBJECTIVE summary of this dating app conversation between {characterName} and {userName}.
+
+Your task: Write a clear, factual summary (3-5 sentences) that captures:
+- Key facts shared by both parties (events, plans, promises, revelations)
+- Emotional moments and relationship dynamics
+- Important decisions or agreements
+- Topics discussed and how the conversation flowed
+
+CRITICAL RULES:
+- Write in THIRD PERSON and past tense
+- Refer to {characterName} by name and {userName} as "{userName}" or "the user"
+- Be OBJECTIVE - don't embellish or interpret, just state what happened
+- Include WHO said/did WHAT - make it clear who shared which information
+- State facts directly without meta-commentary like "they discussed" or "the conversation covered"
+
+Conversation to summarize:
+{conversationText}
+
+Output format:
+A factual, objective summary written in third person.
+
+Example (for conversation between Sarah and Mike):
+"Sarah shared details about her stressful week at work, mentioning tight deadlines and difficult clients. Mike opened up about feeling overwhelmed with his own work situation and expressed worry about letting his team down. Sarah reassured him that asking for help shows strength rather than weakness. They made plans to meet up this weekend for a relaxing activity to decompress together."`
 };
 
 // Ensure config directory exists

@@ -14,7 +14,8 @@ const Prompts = () => {
     datingProfilePrompt: '',
     schedulePrompt: '',
     personalityPrompt: '',
-    memoryExtractionPrompt: ''
+    memoryExtractionPrompt: '',
+    compactionPrompt: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -199,6 +200,12 @@ const Prompts = () => {
       label: 'Memory Extraction',
       description: 'AI prompt for extracting long-term memories from conversations. Use {characterName}, {conversationHistory}, {existingCount}, and {existingMemories} as placeholders.',
       rows: 30
+    },
+    {
+      key: 'compactionPrompt',
+      label: 'Conversation Compaction',
+      description: 'AI prompt for summarizing old conversation blocks to save context window space. Use {characterName}, {userName}, and {conversationText} as placeholders.',
+      rows: 12
     }
   ];
 
