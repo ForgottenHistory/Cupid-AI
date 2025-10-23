@@ -52,6 +52,7 @@ class TimeGapService {
    * @returns {object} Saved TIME GAP message
    */
   insertTimeGapMarker(conversationId, gapHours, timestamp = null) {
+    const content = this.formatTimeGapContent(gapHours);
     let result;
 
     if (timestamp) {
@@ -62,7 +63,7 @@ class TimeGapService {
       `).run(
         conversationId,
         'system',
-        `[TIME GAP: ${gapHours.toFixed(1)} hours - NEW CONVERSATION SESSION]`,
+        content,
         'time_gap',
         gapHours,
         timestamp
@@ -75,7 +76,7 @@ class TimeGapService {
       `).run(
         conversationId,
         'system',
-        `[TIME GAP: ${gapHours.toFixed(1)} hours - NEW CONVERSATION SESSION]`,
+        content,
         'time_gap',
         gapHours
       );
@@ -155,6 +156,10 @@ class TimeGapService {
    * @returns {string} Formatted content string
    */
   formatTimeGapContent(gapHours) {
+    if (gapHours >= 24) {
+      const days = (gapHours / 24).toFixed(1);
+      return `[TIME GAP: ${days} days - NEW CONVERSATION SESSION]`;
+    }
     return `[TIME GAP: ${gapHours.toFixed(1)} hours - NEW CONVERSATION SESSION]`;
   }
 }
