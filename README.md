@@ -16,7 +16,9 @@ AI-powered dating app simulator. Swipe on characters, match, chat, and build rel
 - Schedule-based engagement: realistic online/away/busy/offline patterns
 - Left-on-read follow-ups
 - Message pagination (200 messages per page)
-- Conversation compacting: automatic summarization when context fills
+- Conversation compacting: automatic AI summarization to manage context window
+- Long-term memory: AI extracts and stores up to 50 persistent memories per character
+- TIME GAP markers: visual indicators for conversation breaks (30+ minutes)
 
 **AI Features:**
 - Multi-provider support (OpenRouter, Featherless)
@@ -109,9 +111,10 @@ npm run dev
 1. **Register/Login**: Create account
 2. **Library**: Import character cards or use Character Wizard
 3. **Home**: Swipe on characters (right = like, left = pass)
-4. **Chat**: Talk with matches, view schedules, generate images
+4. **Chat**: Talk with matches, view schedules, memories, generate images
 5. **Feed**: Browse character posts
 6. **Profile**: Configure LLM settings (Content/Decision/Image Tag), behavior, SD settings
+7. **Prompts**: Customize AI behavior prompts (system, proactive, compaction, memory extraction)
 
 ## Configuration
 
@@ -123,8 +126,15 @@ npm run dev
 Each has independent provider and model configuration.
 
 ### Behavior Settings
-- Proactive messaging
-- Conversation compacting
+- Proactive messaging frequency and limits
+- Conversation compacting thresholds (percentage-based)
+- Memory extraction during compaction
+
+### AI Prompt Customization
+- System prompts (conversation behavior, pacing, NSFW)
+- Proactive message types (fresh start, callback)
+- Conversation compaction summaries
+- Long-term memory extraction rules
 
 ### SD Settings
 - Sampling parameters
@@ -140,22 +150,23 @@ cupid-ai/
 │   ├── src/
 │   │   ├── db/              # SQLite database, migrations
 │   │   ├── routes/          # API endpoints
-│   │   ├── services/        # Business logic, AI, queue system
+│   │   ├── services/        # Business logic, AI, queue, compacting, memory
 │   │   ├── middleware/      # Auth
 │   │   └── utils/           # Helpers, logger
+│   ├── config/              # prompts.json (user-editable AI prompts)
 │   ├── logs/                # Auto-cleaning logs (10-min rolling)
 │   └── uploads/             # Generated images
 ├── frontend/
 │   ├── src/
 │   │   ├── components/      # UI components
-│   │   ├── pages/           # Route pages
+│   │   ├── pages/           # Route pages (Chat, Prompts, etc.)
 │   │   ├── hooks/           # React hooks
 │   │   ├── services/        # API, IndexedDB, WebSocket
 │   │   ├── context/         # Auth, Mood contexts
-│   │   └── utils/           # Helpers
+│   │   └── utils/           # Helpers, debug tools
 │   └── public/              # Static assets
 ├── CLAUDE.md                # Technical documentation
-├── FILE_REGISTRY.md         # File documentation
+├── FILE_REGISTRY.md         # File documentation (backend & frontend)
 └── IDEAS.md                 # Feature ideas
 ```
 
@@ -165,6 +176,13 @@ cupid-ai/
 - Frontend hot-reload (Vite)
 - Logs: `backend/logs/` (server, prompts, responses)
 - Database: `backend/cupid.db` (SQLite)
+
+**Debug Tools (Browser Console):**
+- `window.testCompact()` - Test conversation compacting without saving
+- `window.showBlockStructure()` - Analyze conversation block structure
+- `window.testMemoryExtraction()` - Test memory extraction without saving
+- `window.testCompactUI()` - Test compacting overlay UI
+- `window.showConversationId()` - Display current conversation ID
 
 ## License
 
