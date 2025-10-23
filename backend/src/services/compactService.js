@@ -48,25 +48,19 @@ A natural, flowing summary as if YOU (${characterName}) are recalling what happe
 Example (if you are Sarah talking to Mike):
 "I told them about my stressful week at work. They opened up about feeling overwhelmed with deadlines and worried about letting their team down. I reassured them that asking for help is a strength, not a weakness. We made plans to do something relaxing this weekend to decompress."`;
 
-    try {
-      // Call Decision LLM directly (independent of Decision Engine)
-      const userSettings = llmSettingsService.getUserSettings(userId);
-      const decisionSettings = userSettings.decision || userSettings;
+    // Call Decision LLM directly (independent of Decision Engine)
+    const userSettings = llmSettingsService.getUserSettings(userId);
+    const decisionSettings = userSettings.decision || userSettings;
 
-      const summaryResponse = await aiService.createBasicCompletion(prompt, {
-        userId: userId,
-        model: decisionSettings.model,
-        temperature: decisionSettings.temperature || 0.7,
-        max_tokens: 300, // Summaries should be short
-        provider: decisionSettings.provider || 'openrouter'
-      });
+    const summaryResponse = await aiService.createBasicCompletion(prompt, {
+      userId: userId,
+      model: decisionSettings.model,
+      temperature: decisionSettings.temperature || 0.7,
+      max_tokens: 300, // Summaries should be short
+      provider: decisionSettings.provider || 'openrouter'
+    });
 
-      return summaryResponse.content.trim();
-    } catch (error) {
-      console.error('Failed to generate summary:', error);
-      // Fallback: Generic summary
-      return 'Previous conversation continued.';
-    }
+    return summaryResponse.content.trim();
   }
 
   /**
