@@ -173,7 +173,84 @@ Openness: [0-100]
 Conscientiousness: [0-100]
 Extraversion: [0-100]
 Agreeableness: [0-100]
-Neuroticism: [0-100]`
+Neuroticism: [0-100]`,
+
+  memoryExtractionPrompt: `You are managing long-term memory for the character "{characterName}".
+
+Your task is to extract and update what {characterName} remembers about the USER.
+
+CONVERSATION BLOCK:
+{conversationHistory}
+
+EXISTING MEMORIES ABOUT USER ({existingCount}/50):
+{existingMemories}
+
+CRITICAL INSTRUCTIONS:
+1. Extract ONLY timeless facts about the USER (NOT about {characterName})
+2. Focus on what {characterName} learned about the USER through conversation
+3. DO NOT include basic profile info (name, age, location) - only things revealed through dialogue
+4. Extract MULTIPLE types of information:
+   - Core traits: values, beliefs, personality, interests, sexuality, relationships, life events
+   - Communication patterns: how they type when emotional, words/phrases they use, humor style
+   - Behavioral patterns: how they react to certain topics, what makes them flustered/excited/defensive
+   - Preferences: what they like/dislike, how they make decisions
+5. Prioritize PERMANENT patterns over temporary states:
+   - IMPORTANT: Recurring behaviors, consistent communication style, core personality traits
+   - LESS IMPORTANT: One-time reactions, current feelings in this specific conversation
+6. QUALITY OVER QUANTITY - THIS IS CRITICAL:
+   - Each memory must be UNIQUE and non-redundant
+   - Consolidate similar information into single comprehensive memories
+   - If multiple memories say similar things, merge them into ONE better memory
+   - DO NOT repeat the same insight with different wording
+   - DO NOT try to reach 50 memories if there aren't 50 truly unique insights
+   - 15-25 high-quality unique memories is BETTER than 50 memories with overlap
+   - Only add a memory if it provides NEW information not already captured
+7. Consolidate with existing memories (merge duplicates, update outdated info, remove contradictions)
+8. Write each memory as a short one-liner fact about the USER
+9. Maximum 50 memories, but FEWER is better if it means higher quality and uniqueness
+10. Order by importance (most important first)
+
+EXAMPLES OF GOOD MEMORIES (diverse types of lasting insights):
+CORE TRAITS:
+- "User values chastity despite not being religious"
+- "User has a thing for 'bad bitches'"
+- "User is interested in the supernatural and demons"
+- "User recently went through a breakup"
+
+COMMUNICATION PATTERNS:
+- "User becomes more verbose when flustered or defensive"
+- "User uses 'haha' when nervous or uncomfortable"
+- "User tends to ask clarifying questions when curious"
+- "User switches to shorter messages when excited or aroused"
+
+BEHAVIORAL PATTERNS:
+- "User gets flustered when complimented directly"
+- "User becomes more playful when feeling confident"
+- "User deflects with humor when uncomfortable"
+- "User engages more deeply with philosophical topics"
+
+PREFERENCES:
+- "User appreciates directness and honesty in conversation"
+- "User prefers poetry over blunt statements"
+- "User enjoys intellectual banter mixed with flirting"
+
+EXAMPLES OF BAD MEMORIES (trivial, temporary, profile info, or about {characterName}):
+- "User's name is Alex" (profile info)
+- "User is Swedish" (profile info)
+- "User bought some bread during a walk" (too trivial, one-time action)
+- "User is confused but intrigued by succubi" (temporary reaction in this conversation)
+- "User is interested in {characterName}'s appearance" (about interaction, not user trait)
+- "User enjoys the flirty conversation" (temporary state, not pattern)
+- "{characterName} suggested trying a new restaurant" (about character, not user)
+
+OUTPUT FORMAT:
+Return ONLY the memories about the USER, one per line, numbered:
+1. [memory about USER]
+2. [memory about USER]
+3. [memory about USER]
+...
+
+Do not include any other text, explanations, or formatting.`
 };
 
 // Ensure config directory exists

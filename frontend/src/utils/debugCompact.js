@@ -240,9 +240,137 @@ export function showConversationId() {
   }
 }
 
+/**
+ * Debug function to test memory extraction without saving
+ * Tests how the LLM would extract/consolidate memories from a conversation block
+ * Call from browser console: window.testMemoryExtraction(options)
+ *
+ * @param {Object} options - Optional parameters
+ * @param {string} options.conversationId - Conversation ID (auto-detects if not provided)
+ * @param {number} options.blockIndex - Which block to test (default: 0 = oldest)
+ * @param {number} options.keepUncompacted - Messages to keep uncompacted (default: 30)
+ */
+export async function testMemoryExtraction(options = {}) {
+  try {
+    let conversationId = options.conversationId || options;
+
+    // Handle old API where conversationId was passed directly as string
+    if (typeof conversationId === 'string') {
+      // Old API: testMemoryExtraction(conversationId)
+    } else {
+      // New API: testMemoryExtraction({ conversationId, blockIndex })
+      conversationId = options.conversationId;
+    }
+
+    if (!conversationId) {
+      conversationId = getCurrentConversationId();
+      if (!conversationId) {
+        console.error('❌ Could not detect conversation ID from URL. Please provide it manually: testMemoryExtraction({ conversationId: "your-id" })');
+        return;
+      }
+      console.log(`🔍 Auto-detected conversation ID: ${conversationId}`);
+    }
+
+    console.log(`🧠 Testing memory extraction for conversation ${conversationId}...`);
+
+    // Build request body with optional test parameters
+    const requestBody = {};
+    if (options.blockIndex !== undefined) requestBody.blockIndex = options.blockIndex;
+    if (options.keepUncompacted !== undefined) requestBody.keepUncompacted = options.keepUncompacted;
+
+    const response = await api.post(`/debug/test-memory-extraction/${conversationId}`, requestBody);
+
+    if (!response.data.success) {
+      console.warn('⚠️  Could not test memory extraction');
+      console.log('Reason:', response.data.message);
+      if (response.data.debug) {
+        console.log('\n🔍 DEBUG INFO:');
+        console.log('   Total Messages:', response.data.debug.totalMessages);
+        console.log('   Total Blocks:', response.data.debug.totalBlocks);
+        console.log('   Blocks to Keep:', response.data.debug.blocksToKeep);
+        console.log('   Existing Memories:', response.data.debug.existingMemories.length);
+      }
+      return;
+    }
+
+    const { characterName, blockInfo, existingMemories, extractedMemories, changes } = response.data;
+
+    // Log everything in a nicely formatted way
+    console.log('\n========================================');
+    console.log('🧠 MEMORY EXTRACTION TEST RESULTS');
+    console.log('========================================\n');
+
+    console.log(`👤 Character: ${characterName}`);
+    console.log(`📦 Testing Block ${blockInfo.blockIndex}: ${blockInfo.messageCount} messages`);
+    console.log(`   Message IDs: ${blockInfo.startMessageId} → ${blockInfo.endMessageId}`);
+
+    console.log('\n📊 Memory Summary:');
+    console.log(`   - Existing Memories: ${existingMemories.count}/50`);
+    console.log(`   - Extracted Memories: ${extractedMemories.count}/50`);
+    console.log(`   - Added: ${changes.added} new memories`);
+    console.log(`   - Removed: ${changes.removed} old memories`);
+    console.log(`   - Unchanged: ${changes.unchanged} kept`);
+
+    if (existingMemories.count > 0) {
+      console.log('\n📝 EXISTING MEMORIES:');
+      console.log('─'.repeat(60));
+      existingMemories.memories.forEach((memory, index) => {
+        console.log(`${index + 1}. ${memory}`);
+      });
+    } else {
+      console.log('\n📝 EXISTING MEMORIES: None yet');
+    }
+
+    console.log('\n✨ EXTRACTED MEMORIES:');
+    console.log('─'.repeat(60));
+    extractedMemories.memories.forEach((memory, index) => {
+      // Highlight new memories
+      const isNew = changes.addedMemories.includes(memory);
+      const prefix = isNew ? '🆕' : '  ';
+      console.log(`${prefix} ${index + 1}. ${memory}`);
+    });
+
+    if (changes.added > 0) {
+      console.log('\n🆕 NEW MEMORIES ADDED:');
+      console.log('─'.repeat(60));
+      changes.addedMemories.forEach((memory, index) => {
+        console.log(`${index + 1}. ${memory}`);
+      });
+    }
+
+    if (changes.removed > 0) {
+      console.log('\n🗑️ MEMORIES REMOVED:');
+      console.log('─'.repeat(60));
+      changes.removedMemories.forEach((memory, index) => {
+        console.log(`${index + 1}. ${memory}`);
+      });
+    }
+
+    console.log('\n========================================');
+    console.log('⚠️  NOTE: These memories were NOT saved!');
+    console.log('This is a test run only.');
+    console.log('========================================\n');
+
+    console.log('💡 TIP: Memories should include:');
+    console.log('   - Key facts about the user');
+    console.log('   - Preferences and personality traits');
+    console.log('   - Important life events');
+    console.log('   - Relationship dynamics\n');
+
+    // Return the data for further inspection if needed
+    return response.data;
+  } catch (error) {
+    console.error('❌ Test memory extraction failed:', error);
+    if (error.response?.data?.error) {
+      console.error('   Error:', error.response.data.error);
+    }
+  }
+}
+
 // Expose to window for console access
 if (typeof window !== 'undefined') {
   window.testCompact = testCompact;
   window.showBlockStructure = showBlockStructure;
   window.showConversationId = showConversationId;
+  window.testMemoryExtraction = testMemoryExtraction;
 }

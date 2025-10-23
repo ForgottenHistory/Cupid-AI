@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import MemoriesModal from './MemoriesModal';
+import api from '../../services/api';
 
 /**
  * Chat header component with banner, character info, and menu
@@ -9,6 +11,9 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
   const [showSchedule, setShowSchedule] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
   const [collapsed, setCollapsed] = useState(true);
+  const [showMemories, setShowMemories] = useState(false);
+  const [memories, setMemories] = useState([]);
+  const [loadingMemories, setLoadingMemories] = useState(false);
 
   // Calculate approximate token count (1 token ≈ 4 characters) for loaded messages
   const calculateTokens = () => {
@@ -99,6 +104,22 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
 
   const upcomingActivities = getUpcomingActivities();
 
+  // Fetch memories when modal opens
+  const handleOpenMemories = async () => {
+    setShowMemories(true);
+    setLoadingMemories(true);
+
+    try {
+      const response = await api.get(`/characters/${character.id}/memories`);
+      setMemories(response.data.memories || []);
+    } catch (error) {
+      console.error('Failed to fetch memories:', error);
+      setMemories([]);
+    } finally {
+      setLoadingMemories(false);
+    }
+  };
+
   return (
     <div className="relative flex-shrink-0">
       {/* Banner Image */}
@@ -124,6 +145,17 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
               ) : (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
               )}
+            </svg>
+          </button>
+
+          {/* Memories Button */}
+          <button
+            onClick={handleOpenMemories}
+            className="p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
+            title="View memories"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
           </button>
 
@@ -377,6 +409,15 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
           </div>
         )}
       </div>
+
+      {/* Memories Modal */}
+      <MemoriesModal
+        isOpen={showMemories}
+        onClose={() => setShowMemories(false)}
+        characterName={character.name}
+        memories={memories}
+        loading={loadingMemories}
+      />
     </div>
   );
 };

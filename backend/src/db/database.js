@@ -581,6 +581,16 @@ function runMigrations() {
       `);
       console.log('✅ Advanced LLM parameters (top_k, repetition_penalty, min_p) added for all LLM types');
     }
+
+    // Migration: Add memory_data column to characters table for long-term memory
+    // Refresh charactersColumnNames before checking
+    const charactersColumnsRefreshMemory = db.pragma('table_info(characters)');
+    const charactersColumnNamesRefreshMemory = charactersColumnsRefreshMemory.map(col => col.name);
+
+    if (!charactersColumnNamesRefreshMemory.includes('memory_data')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN memory_data TEXT;`);
+      console.log('✅ memory_data column added to characters table for long-term memory');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

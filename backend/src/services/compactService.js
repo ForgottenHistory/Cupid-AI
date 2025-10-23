@@ -2,6 +2,7 @@ import db from '../db/database.js';
 import aiService from './aiService.js';
 import messageService from './messageService.js';
 import llmSettingsService from './llmSettingsService.js';
+import memoryService from './memoryService.js';
 
 class CompactService {
   /**
@@ -74,11 +75,32 @@ Example (if you are Sarah talking to Mike):
    * @param {number} conversationId - Conversation ID
    * @param {number} startMessageId - First message ID in block
    * @param {number} endMessageId - Last message ID in block
-   * @returns {boolean} Success
+   * @param {number} userId - User ID for memory extraction
+   * @returns {Promise<boolean>} Success
    */
-  deleteBlock(conversationId, startMessageId, endMessageId) {
+  async deleteBlock(conversationId, startMessageId, endMessageId, userId) {
     try {
       console.log(`🗑️  Deleting small block in conversation ${conversationId} (messages ${startMessageId}-${endMessageId})`);
+
+      // Get messages for memory extraction BEFORE deleting
+      const messages = db.prepare(`
+        SELECT id, role, content, created_at, message_type
+        FROM messages
+        WHERE conversation_id = ? AND id BETWEEN ? AND ?
+        ORDER BY created_at ASC
+      `).all(conversationId, startMessageId, endMessageId);
+
+      // Get character ID for memory extraction
+      const conversation = db.prepare('SELECT character_id FROM conversations WHERE id = ?').get(conversationId);
+
+      if (conversation && messages.length > 0) {
+        // Extract memories BEFORE deleting the block
+        try {
+          await memoryService.extractMemories(conversation.character_id, messages, userId);
+        } catch (memoryError) {
+          console.error('⚠️  Memory extraction failed, continuing with deletion:', memoryError);
+        }
+      }
 
       // Check if we need to delete oldest summary first (enforce 5-slot cap)
       const summaryCount = messageService.countSummarySlots(conversationId);
@@ -112,7 +134,7 @@ Example (if you are Sarah talking to Mike):
    * @param {number} startMessageId - First message ID in block
    * @param {number} endMessageId - Last message ID in block
    * @param {number} userId - User ID for LLM settings
-   * @returns {boolean} Success
+   * @returns {Promise<boolean>} Success
    */
   async compactBlock(conversationId, startMessageId, endMessageId, userId) {
     try {
@@ -131,7 +153,7 @@ Example (if you are Sarah talking to Mike):
 
       // Get messages in the block
       const messages = db.prepare(`
-        SELECT id, role, content, created_at
+        SELECT id, role, content, created_at, message_type
         FROM messages
         WHERE conversation_id = ? AND id BETWEEN ? AND ?
         ORDER BY created_at ASC
@@ -155,6 +177,15 @@ Example (if you are Sarah talking to Mike):
           const cardData = JSON.parse(character.card_data);
           characterName = cardData.data?.name || cardData.name || 'Character';
         } catch (e) {}
+      }
+
+      // Extract memories BEFORE deleting the block
+      if (conversation) {
+        try {
+          await memoryService.extractMemories(conversation.character_id, messages, userId);
+        } catch (memoryError) {
+          console.error('⚠️  Memory extraction failed, continuing with compacting:', memoryError);
+        }
       }
 
       // Generate summary
@@ -252,10 +283,11 @@ Example (if you are Sarah talking to Mike):
 
         if (block.action === 'delete') {
           // Delete small block (< 15 messages) without creating summary
-          success = this.deleteBlock(
+          success = await this.deleteBlock(
             conversationId,
             block.startMessageId,
-            block.endMessageId
+            block.endMessageId,
+            userId
           );
         } else {
           // Compact large block (>= 15 messages) with summary

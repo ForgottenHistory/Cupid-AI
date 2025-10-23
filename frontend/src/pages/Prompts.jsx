@@ -13,7 +13,8 @@ const Prompts = () => {
     cleanupDescriptionPrompt: '',
     datingProfilePrompt: '',
     schedulePrompt: '',
-    personalityPrompt: ''
+    personalityPrompt: '',
+    memoryExtractionPrompt: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -192,6 +193,12 @@ const Prompts = () => {
       label: 'Big Five Personality Generation',
       description: 'AI prompt for generating OCEAN personality traits. Use {characterName}, {description}, and {personality} as placeholders.',
       rows: 10
+    },
+    {
+      key: 'memoryExtractionPrompt',
+      label: 'Memory Extraction',
+      description: 'AI prompt for extracting long-term memories from conversations. Use {characterName}, {conversationHistory}, {existingCount}, and {existingMemories} as placeholders.',
+      rows: 30
     }
   ];
 

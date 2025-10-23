@@ -3,6 +3,7 @@ import { authenticateToken } from '../middleware/auth.js';
 import * as aiGeneration from '../controllers/aiGenerationController.js';
 import * as characterStatus from '../controllers/characterStatusController.js';
 import * as characterInteraction from '../controllers/characterInteractionController.js';
+import memoryService from '../services/memoryService.js';
 import db from '../db/database.js';
 
 const router = express.Router();
@@ -112,6 +113,31 @@ router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Failed to update character tags:', error);
     res.status(500).json({ error: 'Failed to update character tags' });
+  }
+});
+
+// ===== Character Memories Route =====
+router.get('/:characterId/memories', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+
+    // Verify user has access to this character
+    const character = db.prepare(`
+      SELECT id FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Get memories from memory service
+    const memories = memoryService.getCharacterMemories(characterId);
+
+    res.json({ memories });
+  } catch (error) {
+    console.error('Failed to get character memories:', error);
+    res.status(500).json({ error: 'Failed to get character memories' });
   }
 });
 

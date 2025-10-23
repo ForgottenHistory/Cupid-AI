@@ -3,7 +3,9 @@ import { authenticateToken } from '../middleware/auth.js';
 import sdService from '../services/sdService.js';
 import messageService from '../services/messageService.js';
 import compactService from '../services/compactService.js';
+import memoryService from '../services/memoryService.js';
 import db from '../db/database.js';
+import { loadPrompts } from './prompts.js';
 
 const router = express.Router();
 
@@ -545,6 +547,256 @@ router.get('/block-structure/:conversationId', authenticateToken, (req, res) => 
   } catch (error) {
     console.error('❌ [DEBUG] Block structure analysis error:', error);
     res.status(500).json({ error: error.message || 'Failed to analyze block structure' });
+  }
+});
+
+/**
+ * POST /api/debug/test-memory-extraction/:conversationId
+ * Test memory extraction WITHOUT saving to database
+ * Returns existing memories and newly extracted memories for comparison
+ */
+router.post('/test-memory-extraction/:conversationId', authenticateToken, async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    // Optional: specify which block to test (default: oldest compactable)
+    const { blockIndex, keepUncompacted: customKeepUncompacted } = req.body;
+
+    console.log(`🧠 [DEBUG] Testing memory extraction for conversation ${conversationId}`);
+
+    // Get conversation and character info
+    const conversation = db.prepare('SELECT user_id, character_id FROM conversations WHERE id = ?').get(conversationId);
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Verify user owns this conversation
+    if (conversation.user_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Get character data
+    const character = db.prepare('SELECT card_data, name FROM characters WHERE id = ?').get(conversation.character_id);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    let characterData;
+    try {
+      characterData = JSON.parse(character.card_data);
+    } catch (e) {
+      return res.status(500).json({ error: 'Invalid character data' });
+    }
+
+    const characterName = characterData.data?.name || characterData.name || character.name || 'Character';
+
+    // Get existing memories
+    const existingMemories = memoryService.getCharacterMemories(conversation.character_id);
+
+    console.log(`📝 [DEBUG] Current memories: ${existingMemories.length}/50`);
+
+    // Get user's compacting settings
+    const userSettings = db.prepare(`
+      SELECT keep_uncompacted_messages
+      FROM users WHERE id = ?
+    `).get(userId);
+
+    const keepUncompacted = customKeepUncompacted || userSettings?.keep_uncompacted_messages || 30;
+
+    // Find compactable blocks (same logic as compactService)
+    const SESSION_GAP_THRESHOLD = 30 * 60 * 1000;
+    const messagesNonSystem = db.prepare(`
+      SELECT id, role, content, message_type, created_at
+      FROM messages
+      WHERE conversation_id = ? AND role != 'system'
+      ORDER BY created_at ASC
+    `).all(conversationId);
+
+    if (messagesNonSystem.length === 0) {
+      return res.json({
+        success: false,
+        message: 'No messages found in conversation'
+      });
+    }
+
+    // Build blocks array
+    const allBlocks = [];
+    let blockBuffer = [];
+
+    for (let i = 0; i < messagesNonSystem.length; i++) {
+      const msg = messagesNonSystem[i];
+
+      if (i > 0 && blockBuffer.length > 0) {
+        const prevMsg = messagesNonSystem[i - 1];
+        const prevTime = new Date(prevMsg.created_at).getTime();
+        const currentTime = new Date(msg.created_at).getTime();
+        const gapMs = currentTime - prevTime;
+
+        if (gapMs >= SESSION_GAP_THRESHOLD) {
+          allBlocks.push([...blockBuffer]);
+          blockBuffer = [];
+        }
+      }
+
+      blockBuffer.push(msg);
+    }
+
+    if (blockBuffer.length > 0) {
+      allBlocks.push(blockBuffer);
+    }
+
+    // Calculate protected blocks
+    const protectedMessages = Math.min(keepUncompacted, messagesNonSystem.length);
+    let messagesFromEnd = 0;
+    let blocksToKeep = 0;
+
+    for (let i = allBlocks.length - 1; i >= 0; i--) {
+      messagesFromEnd += allBlocks[i].length;
+      blocksToKeep++;
+      if (messagesFromEnd >= protectedMessages) break;
+    }
+
+    const compactableBlocks = allBlocks.slice(0, allBlocks.length - blocksToKeep);
+
+    if (compactableBlocks.length === 0) {
+      return res.json({
+        success: false,
+        message: 'No compactable blocks found',
+        debug: {
+          totalMessages: messagesNonSystem.length,
+          totalBlocks: allBlocks.length,
+          blocksToKeep: blocksToKeep,
+          existingMemories: existingMemories
+        }
+      });
+    }
+
+    // Select block to test (default: oldest = 0)
+    const targetBlockIndex = blockIndex !== undefined ? blockIndex : 0;
+
+    if (targetBlockIndex >= compactableBlocks.length) {
+      return res.json({
+        success: false,
+        message: `Block index ${targetBlockIndex} out of range (max: ${compactableBlocks.length - 1})`,
+        availableBlocks: compactableBlocks.length
+      });
+    }
+
+    const targetBlock = compactableBlocks[targetBlockIndex];
+
+    console.log(`🔍 [DEBUG] Testing memory extraction on block ${targetBlockIndex}: ${targetBlock.length} messages`);
+
+    // Extract memories WITHOUT saving (by not calling saveCharacterMemories)
+    // We'll manually call the LLM with the memory extraction prompt
+    const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(conversation.user_id);
+    const userName = user?.display_name || 'User';
+
+    // Format conversation block
+    const conversationHistory = targetBlock.map(m => {
+      if (m.role === 'system') {
+        return m.content;
+      }
+      return `${m.role === 'user' ? userName : characterName}: ${m.content}`;
+    }).join('\n');
+
+    // Build memory extraction prompt using custom prompts from config
+    const prompts = loadPrompts();
+    const template = prompts.memoryExtractionPrompt;
+
+    // Format existing memories
+    const existingMemoriesFormatted = existingMemories.length > 0
+      ? existingMemories.map((m, i) => `${i + 1}. ${m}`).join('\n')
+      : 'None yet.';
+
+    // Replace placeholders in template
+    const memoryPrompt = template
+      .replace(/{characterName}/g, characterName)
+      .replace(/{conversationHistory}/g, conversationHistory)
+      .replace(/{existingCount}/g, existingMemories.length.toString())
+      .replace(/{existingMemories}/g, existingMemoriesFormatted);
+
+    console.log(`🤖 [DEBUG] Calling Decision LLM for memory extraction...`);
+
+    // Get Decision LLM settings
+    const llmSettingsService = (await import('../services/llmSettingsService.js')).default;
+    const decisionSettings = llmSettingsService.getDecisionSettings(userId);
+
+    // Call Decision LLM
+    const aiService = (await import('../services/aiService.js')).default;
+    const response = await aiService.createBasicCompletion(memoryPrompt, {
+      userId: userId,
+      provider: decisionSettings.provider,
+      model: decisionSettings.model,
+      temperature: decisionSettings.temperature,
+      max_tokens: decisionSettings.max_tokens,
+      top_p: decisionSettings.top_p,
+      frequency_penalty: decisionSettings.frequency_penalty,
+      presence_penalty: decisionSettings.presence_penalty,
+      top_k: decisionSettings.top_k,
+      repetition_penalty: decisionSettings.repetition_penalty,
+      min_p: decisionSettings.min_p,
+      messageType: 'memory-extraction-test',
+      characterName: characterName,
+      userName: userName,
+    });
+
+    // Parse memories from response
+    const lines = response.content.trim().split('\n');
+    const extractedMemories = [];
+
+    for (const line of lines) {
+      // Match numbered lines: "1. memory" or "1) memory"
+      const match = line.match(/^\s*\d+[\.)]\s*(.+)$/);
+      if (match) {
+        const memory = match[1].trim();
+        if (memory && memory.length > 0) {
+          extractedMemories.push(memory);
+        }
+      }
+    }
+
+    // Cap at 50 memories
+    const finalMemories = extractedMemories.slice(0, 50);
+
+    console.log(`✅ [DEBUG] Extracted ${finalMemories.length} memories (NOT SAVED)`);
+
+    // Compare old vs new
+    const addedMemories = finalMemories.filter(m => !existingMemories.includes(m));
+    const removedMemories = existingMemories.filter(m => !finalMemories.includes(m));
+    const unchangedMemories = finalMemories.filter(m => existingMemories.includes(m));
+
+    res.json({
+      success: true,
+      characterName: characterName,
+      blockInfo: {
+        blockIndex: targetBlockIndex,
+        messageCount: targetBlock.length,
+        startMessageId: targetBlock[0].id,
+        endMessageId: targetBlock[targetBlock.length - 1].id
+      },
+      existingMemories: {
+        count: existingMemories.length,
+        memories: existingMemories
+      },
+      extractedMemories: {
+        count: finalMemories.length,
+        memories: finalMemories
+      },
+      changes: {
+        added: addedMemories.length,
+        removed: removedMemories.length,
+        unchanged: unchangedMemories.length,
+        addedMemories: addedMemories,
+        removedMemories: removedMemories
+      },
+      note: 'These memories were NOT saved to the database. This is a test run only.'
+    });
+  } catch (error) {
+    console.error('❌ [DEBUG] Test memory extraction error:', error);
+    res.status(500).json({ error: error.message || 'Failed to test memory extraction' });
   }
 });
 
