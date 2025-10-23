@@ -458,7 +458,8 @@ class ProactiveMessageService {
       }
 
       // All decisions passed - NOW insert TIME GAP marker (only if message will actually be sent)
-      timeGapService.checkAndInsertTimeGap(conversationId);
+      // Use special proactive method that checks gap between last message and NOW
+      timeGapService.checkAndInsertTimeGapForProactive(conversationId);
 
       // Refresh conversation history to include the TIME GAP marker we just inserted
       const updatedMessages = messageService.getConversationHistory(conversationId);

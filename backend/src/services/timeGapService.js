@@ -128,6 +128,44 @@ class TimeGapService {
   }
 
   /**
+   * Check if a time gap should be inserted before a proactive message
+   * Checks gap between last message and NOW (when proactive message will be sent)
+   * @param {number} conversationId - Conversation ID
+   * @returns {boolean} True if gap was inserted, false otherwise
+   */
+  checkAndInsertTimeGapForProactive(conversationId) {
+    // Get last message in conversation (excluding TIME GAP markers)
+    const lastMessage = db.prepare(`
+      SELECT id, created_at, message_type FROM messages
+      WHERE conversation_id = ?
+      AND message_type != 'time_gap'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `).get(conversationId);
+
+    // Need at least 1 message to detect a gap
+    if (!lastMessage) {
+      return false;
+    }
+
+    // Calculate gap between last message and NOW
+    const now = new Date();
+    const gapHours = this.calculateTimeGap(lastMessage.created_at, now);
+
+    if (gapHours !== null) {
+      // Insert TIME GAP marker with timestamp just before NOW (the proactive message time)
+      const markerTimestamp = new Date(now.getTime() - 1000); // 1 second before now
+      const markerTimestampStr = markerTimestamp.toISOString().replace('T', ' ').replace('Z', '').substring(0, 19);
+
+      this.insertTimeGapMarker(conversationId, gapHours, markerTimestampStr);
+      console.log(`⏰ Inserted TIME GAP marker for proactive message: ${gapHours.toFixed(1)} hours`);
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
    * Get all TIME GAP markers in a conversation
    * @param {number} conversationId - Conversation ID
    * @returns {Array} Array of TIME GAP messages
