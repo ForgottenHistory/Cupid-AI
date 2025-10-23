@@ -431,11 +431,21 @@ class ProactiveMessageService {
           console.log(`🎯 First message: AUTO-SEND (icebreaker)`);
         } else {
           // Call Decision Engine in proactive mode
+          // Get user bio
+          const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
+          const userBio = user?.bio || null;
+
+          // Get current status from schedule
+          const currentStatusInfo = getCurrentStatusFromSchedule(schedule);
+
           decision = await aiService.makeProactiveDecision({
             messages: messages,
             characterData: characterData,
             gapHours: gapHours,
-            userId: userId
+            userId: userId,
+            currentStatus: currentStatusInfo,
+            schedule: schedule,
+            userBio: userBio
           });
 
           console.log(`🎯 Proactive decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} (${decision.messageType}) - ${decision.reason}`);

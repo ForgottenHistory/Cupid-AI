@@ -1,4 +1,5 @@
 import llmSettingsService from './llmSettingsService.js';
+import promptBuilderService from './promptBuilderService.js';
 
 class DecisionEngineService {
   constructor() {
@@ -21,7 +22,7 @@ class DecisionEngineService {
    * Decision Engine: Analyze conversation and decide on actions
    * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, thought: string|null, imageContext: string|null }
    */
-  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0 }) {
+  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null }) {
     try {
       const aiService = await this.getAIService();
       // Check mood cooldown (30 minutes)
@@ -59,25 +60,33 @@ class DecisionEngineService {
         }
       }
 
-      // Extract character name and description (handle v2 card format)
+      // Extract character name
       const characterName = characterData.data?.name || characterData.name || 'Character';
-      const characterDescription = characterData.data?.description || characterData.description || 'N/A';
 
-      // Build decision prompt (plaintext output)
-      const decisionPrompt = `You are a decision-making AI that analyzes dating app conversations and decides how the character should respond.
+      // Build system prompt (same as chat)
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
 
-Character: ${characterName}
-Description: ${characterDescription}${personalityContext}
+      // Format conversation history (same format as chat prompt, includes TIME GAPs)
+      const conversationHistory = messages.map(m => {
+        if (m.role === 'system') {
+          return m.content; // TIME GAP markers, summaries, etc.
+        }
+        return `${m.role === 'user' ? 'User' : characterName}: ${m.content}`;
+      }).join('\n');
+
+      const decisionPrompt = `${systemPrompt}
+
+${personalityContext}
 ${isEngaged ? '\nCurrent state: Character is actively engaged in conversation (responding quickly)' : '\nCurrent state: Character is disengaged (slower responses based on availability)'}
 ${hasVoice ? '\nVoice available: This character has a voice sample and can send voice messages' : '\nVoice available: No (text only)'}
 ${hasImage ? '\nImage generation: This character has image tags configured and can send generated images' : '\nImage generation: No'}
 
-Recent conversation context:
-${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterName}: ${m.content}`).join('\n')}
+Conversation history:
+${conversationHistory}
 
 User just sent: "${userMessage}"
 
-Decide on the character's behavioral response. Output your decision in this EXACT plaintext format:
+⚠️ DECISION TIME: Analyze the conversation and decide how the character should respond. Output your decision in this EXACT plaintext format:
 
 Reaction: [emoji or "none"]
 Should Respond: [yes/no]
@@ -134,6 +143,8 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
       });
 
       const response = await aiService.createBasicCompletion(decisionPrompt, {
+        userId: userId,
+        provider: decisionSettings.provider,
         model: decisionSettings.model,
         temperature: decisionSettings.temperature,
         max_tokens: decisionSettings.max_tokens,
@@ -182,27 +193,39 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
    * Proactive Decision Engine: Decide if character should send proactive message
    * Returns: { shouldSend: boolean, messageType: "fresh", reason: string }
    */
-  async makeProactiveDecision({ messages, characterData, gapHours, userId }) {
+  async makeProactiveDecision({ messages, characterData, gapHours, userId, currentStatus = null, schedule = null, userBio = null }) {
     try {
       const aiService = await this.getAIService();
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
 
-      // Extract character name and description (handle v2 card format)
+      // Extract character name
       const characterName = characterData.data?.name || characterData.name || 'Character';
-      const characterDescription = characterData.data?.description || characterData.description || 'N/A';
 
-      // Build context
-      const lastMessages = messages.slice(-5);
+      // Build system prompt (same as chat)
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
 
-      const decisionPrompt = `You are deciding if this character should proactively send a message on a dating app.
+      // Format conversation history (same format as chat prompt, includes TIME GAPs)
+      const conversationHistory = messages.map(m => {
+        if (m.role === 'system') {
+          return m.content; // TIME GAP markers, summaries, etc.
+        }
+        return `${m.role === 'user' ? 'User' : characterName}: ${m.content}`;
+      }).join('\n');
 
-Character: ${characterName}
-Description: ${characterDescription}
+      // Load prompts from config
+      const { loadPrompts } = await import('../routes/prompts.js');
+      const prompts = loadPrompts();
+
+      const decisionPrompt = `${systemPrompt}
 
 Time since last message: ${gapHours.toFixed(1)} hours
 
-Recent conversation:
-${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterName}: ${m.content}`).join('\n')}
+Conversation history:
+${conversationHistory}
+
+${prompts.proactiveFreshPrompt}
+
+⚠️ DECISION TIME: Should you send a proactive message now?
 
 IMPORTANT: The default should be YES - characters WANT to talk to people they're interested in. Only say NO if there's a specific reason not to reach out.
 
@@ -236,6 +259,8 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
       });
 
       const response = await aiService.createBasicCompletion(decisionPrompt, {
+        userId: userId,
+        provider: decisionSettings.provider,
         model: decisionSettings.model,
         temperature: decisionSettings.temperature,
         max_tokens: decisionSettings.max_tokens,

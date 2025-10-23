@@ -148,6 +148,10 @@ class MessageProcessor {
 
       console.log(`💭 Total message count: ${totalMessageCount} (next will be ${totalMessageCount + 1}, thought: ${(totalMessageCount + 1) % 10 === 0})`);
 
+      // Get user bio for decision and content generation
+      const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
+      const userBio = user?.bio || null;
+
       const decision = await aiService.makeDecision({
         messages: aiMessages,
         characterData: characterData,
@@ -157,7 +161,10 @@ class MessageProcessor {
         hasVoice: hasVoice,
         hasImage: hasImage,
         lastMoodChange: lastMoodChange,
-        assistantMessageCount: totalMessageCount
+        assistantMessageCount: totalMessageCount,
+        currentStatus: currentStatusInfo,
+        schedule: schedule,
+        userBio: userBio
       });
 
       console.log('🎯 Decision made:', decision);
@@ -259,10 +266,6 @@ class MessageProcessor {
         console.log(`✅ Character ${characterId} successfully unmatched user ${userId} (conversation preserved)`);
         return; // Don't generate response, end processing
       }
-
-      // Get user bio
-      const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
-      const userBio = user?.bio || null;
 
       // GENERATE IMAGE FIRST (if decision says so) so Content LLM knows what image was generated
       let imageUrl = null;
@@ -490,11 +493,23 @@ class MessageProcessor {
           engagementService.markDeparted(userId, characterId, currentStatus);
         }
 
+        // Check if there should be a TIME GAP before these new messages
+        // This catches gaps between assistant messages (e.g., when character replies hours later)
+        timeGapService.checkAndInsertTimeGap(conversationId);
+
         // Update conversation timestamp and increment unread count
         conversationService.incrementUnreadCount(conversationId);
 
-        // Emit all messages to frontend via WebSocket
-        allSavedMessages.forEach(msg => {
+        // Emit all messages to frontend via WebSocket with small delays between them
+        for (let i = 0; i < allSavedMessages.length; i++) {
+          const msg = allSavedMessages[i];
+
+          // Add small delay between messages (except for first one)
+          if (i > 0) {
+            const delay = Math.floor(Math.random() * 1000) + 500; // 500ms-1500ms random delay
+            await sleep(delay);
+          }
+
           io.to(`user:${userId}`).emit('new_message', {
             characterId,
             conversationId,
@@ -509,7 +524,7 @@ class MessageProcessor {
               reasoning: msg.reasoning // include reasoning if available
             }
           });
-        });
+        }
 
         console.log(`✅ Sent ${allSavedMessages.length} message(s) to user ${userId} (type: ${messageType})`);
       }
