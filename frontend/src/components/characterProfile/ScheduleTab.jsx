@@ -143,7 +143,7 @@ const ScheduleTab = ({ data, loading, onGenerate, onRevert, onSave }) => {
                 </button>
               )}
               <GenerateButton
-                onClick={onGenerate}
+                onClick={() => onGenerate()}
                 loading={loading}
                 disabled={!data.description}
                 label="Generate Schedule"
