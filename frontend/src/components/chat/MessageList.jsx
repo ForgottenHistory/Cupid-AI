@@ -38,7 +38,17 @@ const MessageList = ({
 
     // Check if messages were prepended (length increased and we're loading more)
     const previousLength = scrollPositionRef.current.messagesLength;
-    if (isLoadingMoreRef.current && previousLength > 0 && messages.length > previousLength) {
+    const lengthIncreased = messages.length > previousLength;
+
+    console.log('📜 MessageList scroll check:', {
+      isLoadingMore: isLoadingMoreRef.current,
+      previousLength,
+      currentLength: messages.length,
+      lengthIncreased,
+      willAdjust: isLoadingMoreRef.current && previousLength > 0 && lengthIncreased
+    });
+
+    if (isLoadingMoreRef.current && previousLength > 0 && lengthIncreased) {
       // Messages were added - restore scroll position adjusted for new content
       const oldScrollHeight = scrollPositionRef.current.scrollHeight;
       const oldScrollTop = scrollPositionRef.current.scrollTop;

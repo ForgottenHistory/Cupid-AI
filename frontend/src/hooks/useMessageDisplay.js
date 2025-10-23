@@ -12,22 +12,45 @@ export const useMessageDisplay = (messages, messagesEndRef, showTypingIndicator)
   const [displayingMessages, setDisplayingMessages] = useState(false);
   const displayTimeoutsRef = useRef([]);
   const previousFirstMessageIdRef = useRef(null);
+  const previousMessageCountRef = useRef(0);
 
-  // Scroll to bottom when NEW messages are added (not when loading older messages)
+  // Scroll to bottom when NEW messages are added (not when loading older messages or re-sorting)
   useEffect(() => {
-    // Get the ID of the first message
+    // Get the ID of the first message and current count
     const currentFirstMessageId = messages.length > 0 ? messages[0]?.id : null;
     const previousFirstMessageId = previousFirstMessageIdRef.current;
+    const currentMessageCount = messages.length;
+    const previousMessageCount = previousMessageCountRef.current;
 
     // Only auto-scroll if:
     // 1. First message ID hasn't changed (messages were appended, not prepended)
-    // 2. Or this is the initial load (previousFirstMessageId is null)
-    if (previousFirstMessageId === null || currentFirstMessageId === previousFirstMessageId) {
+    // 2. And message count has increased (new messages added, not just re-sorted)
+    // 3. Or this is the initial load (previousFirstMessageId is null)
+    const shouldScroll =
+      previousFirstMessageId === null ||
+      (currentFirstMessageId === previousFirstMessageId && currentMessageCount > previousMessageCount);
+
+    console.log('📜 Scroll check:', {
+      shouldScroll,
+      prevFirstId: previousFirstMessageId,
+      currFirstId: currentFirstMessageId,
+      prevCount: previousMessageCount,
+      currCount: currentMessageCount,
+      reason: previousFirstMessageId === null ? 'initial load' :
+              currentFirstMessageId !== previousFirstMessageId ? 'first message changed (prepended)' :
+              currentMessageCount > previousMessageCount ? 'new message added' :
+              currentMessageCount < previousMessageCount ? 'messages deleted' :
+              'no change or re-sort'
+    });
+
+    if (shouldScroll) {
+      console.log('⬇️ Scrolling to bottom');
       scrollToBottom();
     }
 
-    // Update the ref for next comparison
+    // Update the refs for next comparison
     previousFirstMessageIdRef.current = currentFirstMessageId;
+    previousMessageCountRef.current = currentMessageCount;
   }, [messages, showTypingIndicator]);
 
   // Remove message IDs from newMessageIds after animation completes
@@ -51,6 +74,18 @@ export const useMessageDisplay = (messages, messagesEndRef, showTypingIndicator)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const isNearBottom = () => {
+    // Check if user is near the bottom (within 100px)
+    const element = messagesEndRef.current?.parentElement;
+    if (!element) return true; // Default to true if we can't check
+
+    const threshold = 100;
+    const position = element.scrollTop + element.clientHeight;
+    const bottom = element.scrollHeight;
+
+    return bottom - position < threshold;
   };
 
   const markMessageAsNew = (messageId) => {

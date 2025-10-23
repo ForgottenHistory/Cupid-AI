@@ -471,7 +471,78 @@ class ProactiveMessageService {
       // Get current status
       const currentStatusInfo = schedule ? getCurrentStatusFromSchedule(schedule) : { status: 'online' };
 
-      // Generate proactive message
+      // Check if character can send images
+      const imageTags = characterData.image_tags;
+      const hasImage = imageTags && imageTags.length > 0;
+
+      // MAKE DECISION: Should this proactive message include an image?
+      let shouldSendImage = false;
+      const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
+
+      if (imageMessagesEnabled && hasImage) {
+        // Use decision engine to determine if image should be sent
+        const imageDecision = await aiService.makeDecision({
+          messages: updatedMessages,
+          characterData: characterData,
+          userMessage: `[PROACTIVE MESSAGE CONTEXT: Character is initiating conversation after ${gapHours.toFixed(1)} hour gap]`,
+          userId: userId,
+          isEngaged: true,
+          hasVoice: false,
+          hasImage: hasImage,
+          currentStatus: currentStatusInfo,
+          schedule: schedule,
+          userBio: userBio
+        });
+
+        shouldSendImage = imageDecision.shouldSendImage;
+        console.log(`📷 Proactive image decision: ${shouldSendImage ? 'YES' : 'NO'}`);
+      }
+
+      // GENERATE IMAGE FIRST (if decision says so) before generating text content
+      let imageUrl = null;
+      let imagePrompt = null;
+      let generatedContextTags = null;
+      let messageType = 'text';
+
+      if (shouldSendImage) {
+        console.log(`🎨 Generating image for proactive message from character ${characterId}`);
+
+        try {
+          // Get recent messages for context (last 50)
+          const recentMessages = db.prepare(`
+            SELECT role, content, message_type FROM messages
+            WHERE conversation_id = ?
+            ORDER BY created_at DESC
+            LIMIT 50
+          `).all(conversationId);
+
+          // Use Image Tag LLM to generate context-aware tags
+          const { imageTagGenerationService } = await import('./imageTagGenerationService.js');
+          generatedContextTags = await imageTagGenerationService.generateContextTags(
+            characterData,
+            imageTags,
+            recentMessages.reverse(), // Chronological order
+            userId
+          );
+
+          console.log(`🏷️ Generated context tags for proactive image:`, generatedContextTags);
+
+          // Generate image using SD
+          const { sdService } = await import('./sdService.js');
+          const { imageUrl: url, prompt } = await sdService.generateImage(generatedContextTags);
+          imageUrl = url;
+          imagePrompt = prompt;
+          messageType = 'image';
+
+          console.log(`✅ Proactive image generated: ${imageUrl}`);
+        } catch (error) {
+          console.error('❌ Proactive image generation failed:', error);
+          // Continue without image if generation fails
+          messageType = 'text';
+        }
+      }
+
+      // Generate proactive message (text content)
       const aiResponse = await aiService.createChatCompletion({
         messages: updatedMessages,
         characterData: characterData,
@@ -492,18 +563,19 @@ class ProactiveMessageService {
       // Split content by newlines to create separate messages
       const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
 
-      // Save first part as proactive message
+      // Save first part as proactive message (with image if generated)
       const firstPart = contentParts[0] || '';
       const savedMessage = messageService.saveMessage(
         conversationId,
         'assistant',
         firstPart,
         null, // No reaction for proactive messages
-        'text', // messageType
+        messageType, // 'image' if image was generated, 'text' otherwise
         null, // audioUrl
-        null, // imageUrl
-        null, // imageTags
-        true // isProactive
+        imageUrl, // imageUrl (if generated)
+        generatedContextTags, // imageTags (if generated)
+        true, // isProactive
+        imagePrompt // imagePrompt (if generated)
       );
 
       // Save subsequent parts as separate text messages (also marked as proactive)

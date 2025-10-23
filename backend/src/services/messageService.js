@@ -121,14 +121,16 @@ class MessageService {
       // Process message content
       let content = msg.content;
 
-      // If message has image, prepend context for AI
+      // If message has image, convert to context format for AI
       if (msg.message_type === 'image') {
         if (msg.role === 'user') {
           // User image: Convert to [Image: description] format
           content = `[Image: ${msg.content}]`;
-        } else if (msg.image_tags) {
-          // AI image: Prepend image tags to content
-          content = `[Sent image: ${msg.image_tags}]\n${content}`;
+        } else {
+          // AI image: Don't show image tags to Content LLM (it will try to mimic the format)
+          // Just show a simple placeholder + the actual text content
+          const textContent = content || '';
+          content = textContent || '[sent an image]';
         }
       }
 

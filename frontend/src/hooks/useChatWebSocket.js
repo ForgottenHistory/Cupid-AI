@@ -103,7 +103,17 @@ export const useChatWebSocket = ({
       if (lastMessage && lastMessage.role === 'assistant') {
         // Messages are now split on the backend - just display immediately
         markMessageAsNew(lastMessage.id);
-        setMessages(prev => [...prev, lastMessage]);
+        setMessages(prev => {
+          const newMessages = [...prev, lastMessage];
+          // Check if sorting is needed (only if new message is out of order)
+          const needsSorting = prev.length > 0 &&
+            new Date(lastMessage.created_at) < new Date(prev[prev.length - 1].created_at);
+
+          // Only sort if necessary to avoid unnecessary re-renders
+          return needsSorting
+            ? newMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+            : newMessages;
+        });
         setSending(false);
         inputRef.current?.focus();
       }
