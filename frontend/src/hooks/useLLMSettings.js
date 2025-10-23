@@ -89,6 +89,9 @@ function getDefaultSettings(type) {
       frequencyPenalty: 0.0,
       presencePenalty: 0.0,
       contextWindow: 4000,
+      topK: -1,
+      repetitionPenalty: 1.0,
+      minP: 0.0,
     };
   } else if (type === 'decision') {
     return {
@@ -100,6 +103,9 @@ function getDefaultSettings(type) {
       frequencyPenalty: 0.0,
       presencePenalty: 0.0,
       contextWindow: 2000,
+      topK: -1,
+      repetitionPenalty: 1.0,
+      minP: 0.0,
     };
   } else if (type === 'imagetag') {
     return {
@@ -110,6 +116,9 @@ function getDefaultSettings(type) {
       topP: 1.0,
       frequencyPenalty: 0.0,
       presencePenalty: 0.0,
+      topK: -1,
+      repetitionPenalty: 1.0,
+      minP: 0.0,
     };
   }
 }
