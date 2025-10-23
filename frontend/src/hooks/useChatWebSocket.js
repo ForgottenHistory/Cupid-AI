@@ -56,6 +56,31 @@ export const useChatWebSocket = ({
     setCurrentThought(null);
   }, [characterId]);
 
+  // Listen for test events from debug functions
+  useEffect(() => {
+    const handleTestCompactingStart = (event) => {
+      if (event.detail.characterId === characterId) {
+        console.log('🎬 [TEST] Compacting UI started');
+        setIsCompacting(true);
+      }
+    };
+
+    const handleTestCompactingEnd = (event) => {
+      if (event.detail.characterId === characterId) {
+        console.log('🎬 [TEST] Compacting UI ended');
+        setIsCompacting(false);
+      }
+    };
+
+    window.addEventListener('test_compacting_start', handleTestCompactingStart);
+    window.addEventListener('test_compacting_end', handleTestCompactingEnd);
+
+    return () => {
+      window.removeEventListener('test_compacting_start', handleTestCompactingStart);
+      window.removeEventListener('test_compacting_end', handleTestCompactingEnd);
+    };
+  }, [characterId]);
+
   useEffect(() => {
     if (!user) return;
 

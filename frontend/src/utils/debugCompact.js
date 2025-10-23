@@ -367,10 +367,44 @@ export async function testMemoryExtraction(options = {}) {
   }
 }
 
+/**
+ * Debug function to test the compacting UI overlay
+ * Simulates compacting start/end events to see the loading overlay
+ * Call from browser console: window.testCompactUI()
+ *
+ * @param {number} duration - How long to show the overlay in milliseconds (default: 3000)
+ */
+export function testCompactUI(duration = 3000) {
+  const characterId = window.location.pathname.split('/').pop();
+
+  if (!characterId) {
+    console.error('❌ Not in a chat. Navigate to a character chat first.');
+    return;
+  }
+
+  console.log(`🎬 Showing compacting UI for ${duration}ms...`);
+
+  // Trigger compacting start event
+  window.dispatchEvent(new CustomEvent('test_compacting_start', {
+    detail: { characterId }
+  }));
+
+  // Auto-end after duration
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent('test_compacting_end', {
+      detail: { characterId }
+    }));
+    console.log('✅ Compacting UI test complete');
+  }, duration);
+
+  console.log(`💡 TIP: The overlay should lock the chat for ${duration / 1000} seconds`);
+}
+
 // Expose to window for console access
 if (typeof window !== 'undefined') {
   window.testCompact = testCompact;
   window.showBlockStructure = showBlockStructure;
   window.showConversationId = showConversationId;
   window.testMemoryExtraction = testMemoryExtraction;
+  window.testCompactUI = testCompactUI;
 }
