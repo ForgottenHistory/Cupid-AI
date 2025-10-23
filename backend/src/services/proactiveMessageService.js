@@ -380,10 +380,7 @@ class ProactiveMessageService {
       // Extract character name (handle v2 card format)
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
-      // Check and insert TIME GAP marker if needed (uses centralized timeGapService)
-      timeGapService.checkAndInsertTimeGap(conversationId);
-
-      // Get conversation history (includes any TIME GAP markers we just inserted)
+      // Get conversation history (TIME GAP insertion happens later, after decision logic)
       const messages = messageService.getConversationHistory(conversationId);
 
       // Handle different trigger types
@@ -450,6 +447,12 @@ class ProactiveMessageService {
         }
       }
 
+      // All decisions passed - NOW insert TIME GAP marker (only if message will actually be sent)
+      timeGapService.checkAndInsertTimeGap(conversationId);
+
+      // Refresh conversation history to include the TIME GAP marker we just inserted
+      const updatedMessages = messageService.getConversationHistory(conversationId);
+
       // Get user data
       const user = db.prepare('SELECT display_name, bio FROM users WHERE id = ?').get(userId);
       const userName = user?.display_name || 'User';
@@ -460,7 +463,7 @@ class ProactiveMessageService {
 
       // Generate proactive message
       const aiResponse = await aiService.createChatCompletion({
-        messages: messages,
+        messages: updatedMessages,
         characterData: characterData,
         userId: userId,
         userName: userName,
