@@ -155,7 +155,8 @@ router.get('/llm-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
       SELECT llm_provider, llm_model, llm_temperature, llm_max_tokens, llm_top_p,
-             llm_frequency_penalty, llm_presence_penalty, llm_context_window
+             llm_frequency_penalty, llm_presence_penalty, llm_context_window,
+             llm_top_k, llm_repetition_penalty, llm_min_p
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -171,7 +172,10 @@ router.get('/llm-settings', authenticateToken, (req, res) => {
       topP: settings.llm_top_p,
       frequencyPenalty: settings.llm_frequency_penalty,
       presencePenalty: settings.llm_presence_penalty,
-      contextWindow: settings.llm_context_window
+      contextWindow: settings.llm_context_window,
+      topK: settings.llm_top_k,
+      repetitionPenalty: settings.llm_repetition_penalty,
+      minP: settings.llm_min_p
     });
   } catch (error) {
     console.error('Get LLM settings error:', error);
@@ -185,7 +189,7 @@ router.get('/llm-settings', authenticateToken, (req, res) => {
  */
 router.put('/llm-settings', authenticateToken, (req, res) => {
   try {
-    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow } = req.body;
+    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow, topK, repetitionPenalty, minP } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -209,6 +213,15 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
     }
     if (contextWindow !== undefined && (contextWindow < 1000 || contextWindow > 200000)) {
       return res.status(400).json({ error: 'Context window must be between 1000 and 200000' });
+    }
+    if (topK !== undefined && topK < -1) {
+      return res.status(400).json({ error: 'Top K must be -1 or greater' });
+    }
+    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+    }
+    if (minP !== undefined && (minP < 0 || minP > 1)) {
+      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
     }
 
     // Build update query dynamically
@@ -247,6 +260,18 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
       updates.push('llm_context_window = ?');
       values.push(contextWindow);
     }
+    if (topK !== undefined) {
+      updates.push('llm_top_k = ?');
+      values.push(topK);
+    }
+    if (repetitionPenalty !== undefined) {
+      updates.push('llm_repetition_penalty = ?');
+      values.push(repetitionPenalty);
+    }
+    if (minP !== undefined) {
+      updates.push('llm_min_p = ?');
+      values.push(minP);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -261,7 +286,8 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
     // Get updated settings
     const settings = db.prepare(`
       SELECT llm_model, llm_temperature, llm_max_tokens, llm_top_p,
-             llm_frequency_penalty, llm_presence_penalty, llm_context_window
+             llm_frequency_penalty, llm_presence_penalty, llm_context_window,
+             llm_top_k, llm_repetition_penalty, llm_min_p
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -272,7 +298,10 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
       topP: settings.llm_top_p,
       frequencyPenalty: settings.llm_frequency_penalty,
       presencePenalty: settings.llm_presence_penalty,
-      contextWindow: settings.llm_context_window
+      contextWindow: settings.llm_context_window,
+      topK: settings.llm_top_k,
+      repetitionPenalty: settings.llm_repetition_penalty,
+      minP: settings.llm_min_p
     });
   } catch (error) {
     console.error('Update LLM settings error:', error);
@@ -288,7 +317,8 @@ router.get('/decision-llm-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
       SELECT decision_llm_provider, decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
-             decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
+             decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window,
+             decision_llm_top_k, decision_llm_repetition_penalty, decision_llm_min_p
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -304,7 +334,10 @@ router.get('/decision-llm-settings', authenticateToken, (req, res) => {
       topP: settings.decision_llm_top_p,
       frequencyPenalty: settings.decision_llm_frequency_penalty,
       presencePenalty: settings.decision_llm_presence_penalty,
-      contextWindow: settings.decision_llm_context_window
+      contextWindow: settings.decision_llm_context_window,
+      topK: settings.decision_llm_top_k,
+      repetitionPenalty: settings.decision_llm_repetition_penalty,
+      minP: settings.decision_llm_min_p
     });
   } catch (error) {
     console.error('Get Decision LLM settings error:', error);
@@ -318,7 +351,7 @@ router.get('/decision-llm-settings', authenticateToken, (req, res) => {
  */
 router.put('/decision-llm-settings', authenticateToken, (req, res) => {
   try {
-    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow } = req.body;
+    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow, topK, repetitionPenalty, minP } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -342,6 +375,15 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
     }
     if (contextWindow !== undefined && (contextWindow < 1000 || contextWindow > 200000)) {
       return res.status(400).json({ error: 'Context window must be between 1000 and 200000' });
+    }
+    if (topK !== undefined && topK < -1) {
+      return res.status(400).json({ error: 'Top K must be -1 or greater' });
+    }
+    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+    }
+    if (minP !== undefined && (minP < 0 || minP > 1)) {
+      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
     }
 
     // Build update query dynamically
@@ -380,6 +422,18 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
       updates.push('decision_llm_context_window = ?');
       values.push(contextWindow);
     }
+    if (topK !== undefined) {
+      updates.push('decision_llm_top_k = ?');
+      values.push(topK);
+    }
+    if (repetitionPenalty !== undefined) {
+      updates.push('decision_llm_repetition_penalty = ?');
+      values.push(repetitionPenalty);
+    }
+    if (minP !== undefined) {
+      updates.push('decision_llm_min_p = ?');
+      values.push(minP);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -394,7 +448,8 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
     // Get updated settings
     const settings = db.prepare(`
       SELECT decision_llm_provider, decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
-             decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
+             decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window,
+             decision_llm_top_k, decision_llm_repetition_penalty, decision_llm_min_p
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -406,7 +461,10 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
       topP: settings.decision_llm_top_p,
       frequencyPenalty: settings.decision_llm_frequency_penalty,
       presencePenalty: settings.decision_llm_presence_penalty,
-      contextWindow: settings.decision_llm_context_window
+      contextWindow: settings.decision_llm_context_window,
+      topK: settings.decision_llm_top_k,
+      repetitionPenalty: settings.decision_llm_repetition_penalty,
+      minP: settings.decision_llm_min_p
     });
   } catch (error) {
     console.error('Update Decision LLM settings error:', error);
@@ -422,7 +480,8 @@ router.get('/imagetag-llm-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
       SELECT imagetag_llm_provider, imagetag_llm_model, imagetag_llm_temperature, imagetag_llm_max_tokens, imagetag_llm_top_p,
-             imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty
+             imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty,
+             imagetag_llm_top_k, imagetag_llm_repetition_penalty, imagetag_llm_min_p
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -437,7 +496,10 @@ router.get('/imagetag-llm-settings', authenticateToken, (req, res) => {
       maxTokens: settings.imagetag_llm_max_tokens,
       topP: settings.imagetag_llm_top_p,
       frequencyPenalty: settings.imagetag_llm_frequency_penalty,
-      presencePenalty: settings.imagetag_llm_presence_penalty
+      presencePenalty: settings.imagetag_llm_presence_penalty,
+      topK: settings.imagetag_llm_top_k,
+      repetitionPenalty: settings.imagetag_llm_repetition_penalty,
+      minP: settings.imagetag_llm_min_p
     });
   } catch (error) {
     console.error('Get Image Tag LLM settings error:', error);
@@ -451,7 +513,7 @@ router.get('/imagetag-llm-settings', authenticateToken, (req, res) => {
  */
 router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
   try {
-    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty } = req.body;
+    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, topK, repetitionPenalty, minP } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -472,6 +534,15 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
     }
     if (presencePenalty !== undefined && (presencePenalty < -2 || presencePenalty > 2)) {
       return res.status(400).json({ error: 'Presence penalty must be between -2 and 2' });
+    }
+    if (topK !== undefined && topK < -1) {
+      return res.status(400).json({ error: 'Top K must be -1 or greater' });
+    }
+    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+    }
+    if (minP !== undefined && (minP < 0 || minP > 1)) {
+      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
     }
 
     // Build update query dynamically
@@ -506,6 +577,18 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
       updates.push('imagetag_llm_presence_penalty = ?');
       values.push(presencePenalty);
     }
+    if (topK !== undefined) {
+      updates.push('imagetag_llm_top_k = ?');
+      values.push(topK);
+    }
+    if (repetitionPenalty !== undefined) {
+      updates.push('imagetag_llm_repetition_penalty = ?');
+      values.push(repetitionPenalty);
+    }
+    if (minP !== undefined) {
+      updates.push('imagetag_llm_min_p = ?');
+      values.push(minP);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -520,7 +603,8 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
     // Get updated settings
     const settings = db.prepare(`
       SELECT imagetag_llm_provider, imagetag_llm_model, imagetag_llm_temperature, imagetag_llm_max_tokens, imagetag_llm_top_p,
-             imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty
+             imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty,
+             imagetag_llm_top_k, imagetag_llm_repetition_penalty, imagetag_llm_min_p
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -531,7 +615,10 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
       maxTokens: settings.imagetag_llm_max_tokens,
       topP: settings.imagetag_llm_top_p,
       frequencyPenalty: settings.imagetag_llm_frequency_penalty,
-      presencePenalty: settings.imagetag_llm_presence_penalty
+      presencePenalty: settings.imagetag_llm_presence_penalty,
+      topK: settings.imagetag_llm_top_k,
+      repetitionPenalty: settings.imagetag_llm_repetition_penalty,
+      minP: settings.imagetag_llm_min_p
     });
   } catch (error) {
     console.error('Update Image Tag LLM settings error:', error);

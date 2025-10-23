@@ -222,9 +222,9 @@ class AIService {
       // Add Featherless-specific parameters if using Featherless
       if (provider === 'featherless') {
         // Featherless supports additional sampling parameters
-        requestBody.repetition_penalty = 1.0; // Default, can be customized later
-        requestBody.top_k = -1; // -1 means consider all tokens (default)
-        requestBody.min_p = 0.0; // Disabled by default
+        requestBody.repetition_penalty = userSettings.repetition_penalty ?? 1.0;
+        requestBody.top_k = userSettings.top_k ?? -1;
+        requestBody.min_p = userSettings.min_p ?? 0.0;
       }
 
       // Execute request with retry logic
@@ -307,9 +307,9 @@ class AIService {
       // Strip any leading "Name: " pattern (AI priming artifact)
       // Example: "Jane Doe: message" -> "message"
       // Only matches names (letters, spaces, hyphens, apostrophes), NOT brackets or special chars
-      // Keep stripping until there's no more name pattern at the start
-      while (content.match(/^[A-Za-z\s'-]+:\s*/)) {
-        content = content.replace(/^[A-Za-z\s'-]+:\s*/, '');
+      // Multiline mode: strips from start of each line, not just start of entire string
+      while (content.match(/^[A-Za-z\s'-]+:\s*/m)) {
+        content = content.replace(/^[A-Za-z\s'-]+:\s*/gm, '');
       }
 
       // Strip any text in square brackets [...]
@@ -427,9 +427,9 @@ class AIService {
 
     // Add Featherless-specific parameters if using Featherless
     if (provider === 'featherless') {
-      requestBody.repetition_penalty = 1.0;
-      requestBody.top_k = -1;
-      requestBody.min_p = 0.0;
+      requestBody.repetition_penalty = options.repetition_penalty ?? 1.0;
+      requestBody.top_k = options.top_k ?? -1;
+      requestBody.min_p = options.min_p ?? 0.0;
     }
 
     // Add reasoning if provided (for DeepSeek reasoning mode on OpenRouter)

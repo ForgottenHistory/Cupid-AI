@@ -25,7 +25,8 @@ class LLMSettingsService {
     try {
       const settings = db.prepare(`
         SELECT llm_provider, llm_model, llm_temperature, llm_max_tokens, llm_top_p,
-               llm_frequency_penalty, llm_presence_penalty, llm_context_window
+               llm_frequency_penalty, llm_presence_penalty, llm_context_window,
+               llm_top_k, llm_repetition_penalty, llm_min_p
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -41,7 +42,10 @@ class LLMSettingsService {
         top_p: settings.llm_top_p ?? 1.0,
         frequency_penalty: settings.llm_frequency_penalty ?? 0.0,
         presence_penalty: settings.llm_presence_penalty ?? 0.0,
-        context_window: settings.llm_context_window ?? 4000
+        context_window: settings.llm_context_window ?? 4000,
+        top_k: settings.llm_top_k ?? -1,
+        repetition_penalty: settings.llm_repetition_penalty ?? 1.0,
+        min_p: settings.llm_min_p ?? 0.0
       };
     } catch (error) {
       console.error('Error fetching user LLM settings:', error);
@@ -60,7 +64,8 @@ class LLMSettingsService {
     try {
       const settings = db.prepare(`
         SELECT decision_llm_provider, decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
-               decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window
+               decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window,
+               decision_llm_top_k, decision_llm_repetition_penalty, decision_llm_min_p
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -76,7 +81,10 @@ class LLMSettingsService {
         top_p: settings.decision_llm_top_p ?? 1.0,
         frequency_penalty: settings.decision_llm_frequency_penalty ?? 0.0,
         presence_penalty: settings.decision_llm_presence_penalty ?? 0.0,
-        context_window: settings.decision_llm_context_window ?? 2000
+        context_window: settings.decision_llm_context_window ?? 2000,
+        top_k: settings.decision_llm_top_k ?? -1,
+        repetition_penalty: settings.decision_llm_repetition_penalty ?? 1.0,
+        min_p: settings.decision_llm_min_p ?? 0.0
       };
     } catch (error) {
       console.error('Error fetching user Decision LLM settings:', error);
@@ -96,7 +104,10 @@ class LLMSettingsService {
       top_p: 1.0,
       frequency_penalty: 0.0,
       presence_penalty: 0.0,
-      context_window: 4000
+      context_window: 4000,
+      top_k: -1,
+      repetition_penalty: 1.0,
+      min_p: 0.0
     };
   }
 
@@ -112,7 +123,10 @@ class LLMSettingsService {
       top_p: 1.0,
       frequency_penalty: 0.0,
       presence_penalty: 0.0,
-      context_window: 2000
+      context_window: 2000,
+      top_k: -1,
+      repetition_penalty: 1.0,
+      min_p: 0.0
     };
   }
 
@@ -127,7 +141,8 @@ class LLMSettingsService {
     try {
       const settings = db.prepare(`
         SELECT imagetag_llm_provider, imagetag_llm_model, imagetag_llm_temperature, imagetag_llm_max_tokens, imagetag_llm_top_p,
-               imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty
+               imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty,
+               imagetag_llm_top_k, imagetag_llm_repetition_penalty, imagetag_llm_min_p
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -142,7 +157,10 @@ class LLMSettingsService {
         max_tokens: settings.imagetag_llm_max_tokens ?? 4000,
         top_p: settings.imagetag_llm_top_p ?? 1.0,
         frequency_penalty: settings.imagetag_llm_frequency_penalty ?? 0.0,
-        presence_penalty: settings.imagetag_llm_presence_penalty ?? 0.0
+        presence_penalty: settings.imagetag_llm_presence_penalty ?? 0.0,
+        top_k: settings.imagetag_llm_top_k ?? -1,
+        repetition_penalty: settings.imagetag_llm_repetition_penalty ?? 1.0,
+        min_p: settings.imagetag_llm_min_p ?? 0.0
       };
     } catch (error) {
       console.error('Error fetching user Image Tag LLM settings:', error);
@@ -161,7 +179,10 @@ class LLMSettingsService {
       max_tokens: 4000,
       top_p: 1.0,
       frequency_penalty: 0.0,
-      presence_penalty: 0.0
+      presence_penalty: 0.0,
+      top_k: -1,
+      repetition_penalty: 1.0,
+      min_p: 0.0
     };
   }
 }

@@ -59,17 +59,21 @@ class DecisionEngineService {
         }
       }
 
+      // Extract character name and description (handle v2 card format)
+      const characterName = characterData.data?.name || characterData.name || 'Character';
+      const characterDescription = characterData.data?.description || characterData.description || 'N/A';
+
       // Build decision prompt (plaintext output)
       const decisionPrompt = `You are a decision-making AI that analyzes dating app conversations and decides how the character should respond.
 
-Character: ${characterData.name}
-Description: ${characterData.description || 'N/A'}${personalityContext}
+Character: ${characterName}
+Description: ${characterDescription}${personalityContext}
 ${isEngaged ? '\nCurrent state: Character is actively engaged in conversation (responding quickly)' : '\nCurrent state: Character is disengaged (slower responses based on availability)'}
 ${hasVoice ? '\nVoice available: This character has a voice sample and can send voice messages' : '\nVoice available: No (text only)'}
 ${hasImage ? '\nImage generation: This character has image tags configured and can send generated images' : '\nImage generation: No'}
 
 Recent conversation context:
-${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
+${messages.slice(-3).map(m => `${m.role === 'user' ? 'User' : characterName}: ${m.content}`).join('\n')}
 
 User just sent: "${userMessage}"
 
@@ -136,8 +140,11 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
         top_p: decisionSettings.top_p,
         frequency_penalty: decisionSettings.frequency_penalty,
         presence_penalty: decisionSettings.presence_penalty,
+        top_k: decisionSettings.top_k,
+        repetition_penalty: decisionSettings.repetition_penalty,
+        min_p: decisionSettings.min_p,
         messageType: 'decision',
-        characterName: characterData.name
+        characterName: characterName
       });
 
       const content = response.content.trim();
@@ -180,18 +187,22 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
       const aiService = await this.getAIService();
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
 
+      // Extract character name and description (handle v2 card format)
+      const characterName = characterData.data?.name || characterData.name || 'Character';
+      const characterDescription = characterData.data?.description || characterData.description || 'N/A';
+
       // Build context
       const lastMessages = messages.slice(-5);
 
       const decisionPrompt = `You are deciding if this character should proactively send a message on a dating app.
 
-Character: ${characterData.name}
-Description: ${characterData.description || 'N/A'}
+Character: ${characterName}
+Description: ${characterDescription}
 
 Time since last message: ${gapHours.toFixed(1)} hours
 
 Recent conversation:
-${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
+${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterName}: ${m.content}`).join('\n')}
 
 IMPORTANT: The default should be YES - characters WANT to talk to people they're interested in. Only say NO if there's a specific reason not to reach out.
 
@@ -231,8 +242,11 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
         top_p: decisionSettings.top_p,
         frequency_penalty: decisionSettings.frequency_penalty,
         presence_penalty: decisionSettings.presence_penalty,
+        top_k: decisionSettings.top_k,
+        repetition_penalty: decisionSettings.repetition_penalty,
+        min_p: decisionSettings.min_p,
         messageType: 'decision-proactive',
-        characterName: characterData.name
+        characterName: characterName
       });
 
       const content = response.content.trim();
@@ -370,6 +384,10 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
       // Build context
       const lastMessages = messages.slice(-5);
 
+      // Extract character name and description (handle v2 card format)
+      const characterName = characterData.data?.name || characterData.name || 'Character';
+      const characterDescription = characterData.data?.description || characterData.description || 'N/A';
+
       // Calculate personality influence on probability
       const extraversion = personality?.extraversion || 50;
       const neuroticism = personality?.neuroticism || 50;
@@ -386,13 +404,13 @@ Output ONLY the two lines in the exact format shown above, nothing else.`;
 
       const decisionPrompt = `You are deciding if this character should send a follow-up message on a dating app.
 
-Character: ${characterData.name}
-Description: ${characterData.description || 'N/A'}${personalityGuidance}
+Character: ${characterName}
+Description: ${characterDescription}${personalityGuidance}
 
 Situation: You sent a message ${minutesSinceRead} minutes ago. They opened the chat and read it, but haven't responded yet.
 
 Recent conversation:
-${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterData.name}: ${m.content}`).join('\n')}
+${lastMessages.map(m => `${m.role === 'user' ? 'User' : characterName}: ${m.content}`).join('\n')}
 
 Should you follow up? Consider:
 - Your personality (are you the type to double-text?)
@@ -424,8 +442,11 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
         top_p: decisionSettings.top_p,
         frequency_penalty: decisionSettings.frequency_penalty,
         presence_penalty: decisionSettings.presence_penalty,
+        top_k: decisionSettings.top_k,
+        repetition_penalty: decisionSettings.repetition_penalty,
+        min_p: decisionSettings.min_p,
         messageType: 'decision-left-on-read',
-        characterName: characterData.name
+        characterName: characterName
       });
 
       const content = response.content.trim();

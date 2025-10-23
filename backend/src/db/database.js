@@ -561,6 +561,26 @@ function runMigrations() {
         console.log(`✅ Migrated ${summaryMessages.length} SUMMARY markers to type-based system`);
       }
     }
+
+    // Migration: Add advanced LLM parameters (top_k, repetition_penalty, min_p) for all three LLM types
+    // Refresh userColumnNames before checking
+    const userColumnsRefreshAdvanced = db.pragma('table_info(users)');
+    const userColumnNamesRefreshAdvanced = userColumnsRefreshAdvanced.map(col => col.name);
+
+    if (!userColumnNamesRefreshAdvanced.includes('llm_top_k')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN llm_top_k INTEGER DEFAULT -1;
+        ALTER TABLE users ADD COLUMN llm_repetition_penalty REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN llm_min_p REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN decision_llm_top_k INTEGER DEFAULT -1;
+        ALTER TABLE users ADD COLUMN decision_llm_repetition_penalty REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN decision_llm_min_p REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN imagetag_llm_top_k INTEGER DEFAULT -1;
+        ALTER TABLE users ADD COLUMN imagetag_llm_repetition_penalty REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN imagetag_llm_min_p REAL DEFAULT 0.0;
+      `);
+      console.log('✅ Advanced LLM parameters (top_k, repetition_penalty, min_p) added for all LLM types');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }
