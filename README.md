@@ -124,7 +124,6 @@ Each has independent provider and model configuration.
 
 ### Behavior Settings
 - Proactive messaging
-- Left-on-read triggers
 - Conversation compacting
 
 ### SD Settings

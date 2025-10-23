@@ -12,7 +12,8 @@
 - `feed.js` - Fetch posts for all characters
 - `sync.js` - Sync library characters to backend
 - `tts.js` - Voice library (DISABLED)
-- `debug.js` - Debug proactive/image generation
+- `debug.js` - Debug proactive/image generation, test compact, test memory extraction, block structure
+- `prompts.js` - Get/update/reset AI behavior prompts (system, proactive, compaction, memory, etc.)
 
 ## Controllers
 - `characterInteractionController.js` - Swipe limits, likes, daily auto-match
@@ -23,7 +24,7 @@
 - `aiService.js` - OpenRouter API, chat completions, prompt logging
 - `messageProcessor.js` - Async message processing, engagement, mood, AI orchestration
 - `conversationService.js` - Conversation CRUD, unread counts
-- `messageService.js` - Message CRUD, history, pagination (200/page), edit/delete
+- `messageService.js` - Message CRUD, history, pagination (200/page), edit/delete, block detection (30-min gaps)
 - `decisionEngineService.js` - Decision LLM: reactions, moods, unmatch, media, proactive
 - `engagementService.js` - Time-based engagement, departures, cooldowns
 - `proactiveMessageService.js` - Background proactive: candidates, probability, first messages
@@ -32,12 +33,15 @@
 - `personalityService.js` - Big Five (OCEAN) generation
 - `sdService.js` - Stable Diffusion image generation
 - `ttsService.js` - ChatterBox TTS (DISABLED)
-- `promptBuilderService.js` - System prompt construction, v2 card format support, schedule/proactive context
+- `promptBuilderService.js` - System prompt construction, v2 card format support, schedule/proactive context, memory injection
 - `llmSettingsService.js` - User LLM settings, Content/Decision defaults
 - `tokenService.js` - Token counting, context trimming (gpt-tokenizer)
 - `authService.js` - JWT, bcrypt password hashing
 - `superLikeService.js` - DEPRECATED (unused)
 - `swipeLimitService.js` - Daily swipe limit (5/day)
+- `compactService.js` - Conversation compacting: summary generation, block deletion, 5-slot cap
+- `memoryService.js` - Long-term memory extraction and storage (50 memories max per character)
+- `timeGapService.js` - TIME GAP marker insertion for conversation breaks (30+ min gaps)
 
 ## Database
 - `database.js` - SQLite init, auto-migrations
@@ -59,6 +63,7 @@
 - `package.json` - Dependencies, scripts
 - `.env` - Environment variables (not in git)
 - `.env.example` - Env template
+- `prompts.json` - User-editable AI behavior prompts (system, proactive, compaction, memory, etc.)
 
 ## Notes
 Voice messages DISABLED, image messages ENABLED, super likes DEPRECATED. Logs: `logs/`, uploads: `uploads/`.

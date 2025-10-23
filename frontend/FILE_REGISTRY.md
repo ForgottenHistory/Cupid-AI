@@ -10,9 +10,10 @@
 - `Signup.jsx` - Signup page
 - `Home.jsx` - Tinder-style swipe interface
 - `Library.jsx` - Character management, Character Wizard button
-- `Chat.jsx` - Individual chat conversations
+- `Chat.jsx` - Individual chat conversations, compacting overlay
 - `Feed.jsx` - Full-screen social media feed (Instagram Stories style)
 - `Profile.jsx` - User settings: profile, LLM, behavior, SD settings
+- `Prompts.jsx` - AI behavior prompt editor (system, proactive, compaction, memory, etc.)
 - `CharacterWizard.jsx` - 4-step AI character creation
 - `VoiceLibrary.jsx` - Voice sample management (DISABLED)
 
@@ -25,7 +26,7 @@
 
 ## Hooks
 - `useChat.js` - Main chat hook: messages, pagination (200/page), sending, engagement, mood
-- `useChatWebSocket.js` - WebSocket: new messages, typing, offline, unmatch
+- `useChatWebSocket.js` - WebSocket: new messages, typing, offline, unmatch, compacting events
 - `useMessageActions.js` - Edit, delete, regenerate messages
 - `useMessageDisplay.js` - Progressive display, smart auto-scroll (prepend detection), animations
 - `useLLMSettings.js` - Load/save/update/reset LLM settings
@@ -48,14 +49,15 @@
 - `CardCounter.jsx` - Remaining cards counter
 
 ## Components - Chat
-- `ChatHeader.jsx` - Header with status, name, back button
+- `ChatHeader.jsx` - Header with status, name, back button, memories button
 - `ChatInput.jsx` - Message input, AI reply suggestions, image upload
 - `MessageList.jsx` - Scrollable message list, Load More button, scroll preservation
 - `MessageBubble.jsx` - Individual message with reactions, edit/delete
 - `TypingIndicator.jsx` - Text-based typing indicator
-- `SystemMessage.jsx` - System messages (departures, moods)
+- `SystemMessage.jsx` - System messages (departures, moods, TIME GAP markers)
 - `ChatBackgroundEffects.jsx` - Dynamic mood backgrounds
 - `MoodModal.jsx` - Mood change notification modal
+- `MemoriesModal.jsx` - View character's long-term memories (50 max)
 - `AudioPlayer.jsx` - Voice message player with effects (DISABLED)
 
 ## Components - Character Profile
@@ -103,6 +105,7 @@
 - `characterImageParser.js` - PNG character card parsing (v2 format)
 - `messageUtils.js` - Split messages by newlines for progressive display
 - `syncCharacterImages.js` - Sync character images to backend
+- `debugCompact.js` - Debug functions: testCompact, showBlockStructure, testMemoryExtraction, testCompactUI
 
 ## Config
 - `vite.config.js` - Vite bundler config
