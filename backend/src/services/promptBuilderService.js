@@ -60,7 +60,7 @@ class PromptBuilderService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, characterId = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null) {
+  buildSystemPrompt(characterData, characterId = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, matchedDate = null) {
     const parts = [];
 
     // Add current date and time
@@ -77,6 +77,19 @@ class PromptBuilderService {
     const displayHours = hours % 12 || 12;
 
     parts.push(`Current date and time: ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}`);
+
+    // Add days since matched if available
+    if (matchedDate) {
+      const matched = new Date(matchedDate);
+      const daysSinceMatch = Math.floor((now - matched) / (1000 * 60 * 60 * 24));
+      if (daysSinceMatch === 0) {
+        parts.push(`You matched with them TODAY!`);
+      } else if (daysSinceMatch === 1) {
+        parts.push(`You matched with them 1 day ago.`);
+      } else {
+        parts.push(`You matched with them ${daysSinceMatch} days ago.`);
+      }
+    }
 
     // Handle v2 card format (nested under .data) or flat format
     const name = characterData.data?.name || characterData.name;

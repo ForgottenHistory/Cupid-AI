@@ -380,6 +380,10 @@ class ProactiveMessageService {
       // Extract character name (handle v2 card format)
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
+      // Get conversation to access matched date
+      const conversation = conversationService.getConversationById(conversationId);
+      const matchedDate = conversation?.created_at;
+
       // Get conversation history (TIME GAP insertion happens later, after decision logic)
       const messages = messageService.getConversationHistory(conversationId);
 
@@ -556,7 +560,8 @@ class ProactiveMessageService {
         isProactive: true,
         proactiveType: decision?.messageType || 'icebreaker',
         gapHours: gapHours,
-        isFirstMessage: isFirstMessage
+        isFirstMessage: isFirstMessage,
+        matchedDate: matchedDate
       });
 
       // Clean up em dashes (replace with periods)
