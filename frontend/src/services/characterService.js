@@ -216,12 +216,13 @@ class CharacterService {
    * @param {string} description - Character description
    * @param {string} name - Character name
    * @param {string} day - Optional specific day (MONDAY, TUESDAY, etc)
+   * @param {string} extraInstructions - Optional extra user instructions
    */
-  async generateSchedule(description, name, day = null) {
+  async generateSchedule(description, name, day = null, extraInstructions = null) {
     const url = day
       ? `/characters/generate-schedule?day=${day.toUpperCase()}`
       : '/characters/generate-schedule';
-    const response = await api.post(url, { description, name });
+    const response = await api.post(url, { description, name, extraInstructions });
     return response.data.schedule;
   }
 

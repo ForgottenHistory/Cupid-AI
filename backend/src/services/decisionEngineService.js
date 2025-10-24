@@ -64,7 +64,7 @@ class DecisionEngineService {
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
       // Build system prompt (same as chat)
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, null, currentStatus, userBio, schedule);
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {
@@ -202,7 +202,7 @@ Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasV
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
       // Build system prompt (same as chat)
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, null, currentStatus, userBio, schedule);
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {

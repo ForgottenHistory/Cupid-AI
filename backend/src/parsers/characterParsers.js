@@ -117,8 +117,8 @@ export function parseScheduleFromPlaintext(text) {
   // Strip markdown formatting to be more forgiving
   const cleanedText = stripMarkdown(text);
 
-  // Split by day headers
-  const dayRegex = /(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)/gi;
+  // Split by day headers (must be on their own line with a colon, e.g. "MONDAY:")
+  const dayRegex = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY):\s*$/gim;
   const sections = cleanedText.split(dayRegex).filter(s => s.trim());
 
   for (let i = 0; i < sections.length; i += 2) {
@@ -147,6 +147,16 @@ export function parseScheduleFromPlaintext(text) {
         if (upper === 'ONLIN') return 'ONLINE';
         return match;
       });
+
+      // First check if line looks like a time block but has invalid status
+      const invalidStatusMatch = trimmedLine.match(/(\d{2}:\d{2})-(\d{2}:\d{2})\s+([A-Z]+)(?:\s+(.+))?/i);
+      if (invalidStatusMatch) {
+        const [, start, end, status] = invalidStatusMatch;
+        const validStatuses = ['ONLINE', 'AWAY', 'BUSY', 'OFFLINE'];
+        if (!validStatuses.includes(status.toUpperCase())) {
+          console.log(`⚠️  Invalid status "${status}" on line: ${trimmedLine.substring(0, 80)}`);
+        }
+      }
 
       // Parse format: "HH:MM-HH:MM STATUS Activity (optional)"
       const match = trimmedLine.match(/(\d{2}:\d{2})-(\d{2}:\d{2})\s+(ONLINE|AWAY|BUSY|OFFLINE)(?:\s+(.+))?/i);
@@ -184,6 +194,9 @@ export function parseScheduleFromPlaintext(text) {
 
     if (blocks.length > 0) {
       schedule[dayName] = blocks;
+      console.log(`✅ Parsed ${blocks.length} blocks for ${dayName}`);
+    } else {
+      console.log(`⚠️  No blocks parsed for ${dayName}`);
     }
   }
 

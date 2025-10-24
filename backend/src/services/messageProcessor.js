@@ -98,13 +98,6 @@ class MessageProcessor {
         // Calculate response delay (fast ~1s response)
         let delay = engagementService.calculateResponseDelay(currentStatus);
 
-        // If offline, character won't respond
-        if (delay === null) {
-          console.log('💤 Character is offline - no response');
-          io.to(`user:${userId}`).emit('character_offline', { characterId });
-          return;
-        }
-
         // If disengaged, start engagement (70% chance to engage immediately)
         if (engagementState.engagement_state === 'disengaged') {
           if (Math.random() < 0.7) {

@@ -86,15 +86,10 @@ class EngagementService {
 
   /**
    * Calculate response delay
-   * Returns delay in milliseconds (or null if offline)
+   * Returns delay in milliseconds
    */
   calculateResponseDelay(currentStatus) {
-    // If offline, no response
-    if (currentStatus === 'offline') {
-      return null;
-    }
-
-    // Fast responses (~1 second with some variance)
+    // Fast responses (~1 second with some variance) for all statuses
     const min = 500;  // 0.5 seconds
     const max = 2000; // 2 seconds
     return Math.floor(Math.random() * (max - min + 1)) + min;

@@ -118,6 +118,16 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
       return;
     }
 
+    // Prompt user for extra instructions
+    const extraInstructions = prompt(
+      'Any extra instructions for the schedule? (optional)\n\n' +
+      'Examples:\n' +
+      '- "Make them more socially active"\n' +
+      '- "Include gaming as a hobby"\n' +
+      '- "Less NSFW content"\n' +
+      '- "More variety in activities"'
+    );
+
     setLoading(true);
     setError('');
 
@@ -125,7 +135,8 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
       const schedule = await characterService.generateSchedule(
         data.description,
         character.name,
-        day
+        day,
+        extraInstructions
       );
 
       // If generating a specific day, merge with existing schedule
