@@ -83,11 +83,11 @@ class PromptBuilderService {
       const matched = new Date(matchedDate);
       const daysSinceMatch = Math.floor((now - matched) / (1000 * 60 * 60 * 24));
       if (daysSinceMatch === 0) {
-        parts.push(`You matched with them TODAY!`);
+        parts.push(`\nYou matched with them TODAY!`);
       } else if (daysSinceMatch === 1) {
-        parts.push(`You matched with them 1 day ago.`);
+        parts.push(`\nYou matched with them 1 day ago.`);
       } else {
-        parts.push(`You matched with them ${daysSinceMatch} days ago.`);
+        parts.push(`\nYou matched with them ${daysSinceMatch} days ago.`);
       }
     }
 
