@@ -161,7 +161,14 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
 
           {/* Menu Button */}
           <button
-            onClick={() => setShowMenu(!showMenu)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!showMenu) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setDropdownPosition({ x: rect.right - 180, y: rect.bottom + 8 });
+              }
+              setShowMenu(!showMenu);
+            }}
             className="relative z-30 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -171,14 +178,20 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
 
         </div>
 
-        {/* Dropdown Menu */}
-        {showMenu && (
+        {/* Dropdown Menu - rendered in portal to escape overflow constraints */}
+        {showMenu && createPortal(
           <>
             <div
-              className="fixed inset-0 z-10"
+              className="fixed inset-0 z-[998]"
               onClick={() => setShowMenu(false)}
             />
-            <div className="absolute right-4 top-20 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-1 min-w-[180px] z-20">
+            <div
+              className="fixed bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-1 min-w-[180px] z-[999]"
+              style={{
+                left: `${dropdownPosition.x}px`,
+                top: `${dropdownPosition.y}px`
+              }}
+            >
                 <div className="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-sm border-b border-purple-100/50 dark:border-purple-900/50">
                   <div className="flex items-center gap-2 font-medium">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +233,8 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
                   Unmatch
                 </button>
             </div>
-          </>
+          </>,
+          document.body
         )}
 
         {/* Character Info Overlay */}
