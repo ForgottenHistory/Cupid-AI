@@ -109,15 +109,23 @@ Guidelines:
   * Variety: Don't overuse voice - text is default, voice is special
   * Quick replies: Usually text
   * Deep/heartfelt messages: More likely voice` : ''}${hasImage ? `
-- "Send Image": Consider context carefully. Send image when:
-  * User directly asks for a photo/pic/selfie → Usually YES
-  * Character wants to show what they're doing/wearing → YES if relevant
-  * Flirty moment where visual would enhance chemistry → Consider YES
-  * Sharing a moment (food, location, outfit, activity) → Consider YES
+- "Send Image": CRITICAL - Images should be OCCASIONAL and SPREAD OUT, not spammed!
+  * MAXIMUM 3 images in a row, then WAIT several messages before sending more
+  * If you've sent 3 images recently, default to NO unless user explicitly asks
+  * Check conversation history - did you already send 2+ images recently? If yes, probably NO
+  * After sending an image, wait at least 3-5 text messages before considering another
+
+  Send image when:
+  * User directly asks for a photo/pic/selfie → Usually YES (but still respect the 3-in-a-row max)
+  * Character wants to show what they're doing/wearing → YES if relevant AND haven't sent many recently
+  * Flirty moment where visual would enhance chemistry → Consider YES if not spamming
+  * Sharing a moment (food, location, outfit, activity) → Consider YES if not spamming
   * Random messages with no visual context → NO
   * Early conversation before rapport built → Usually NO
-  * Personality: High openness/extraversion = more likely to send spontaneous pics
-  Images should feel natural to the conversation flow, not forced or random.` : ''}
+  * Already sent 3 images in recent messages → NO (wait for several text exchanges)
+  * Personality: High openness/extraversion = more likely to send spontaneous pics, but still respect limits
+
+  Images should feel natural and SPECIAL, not constant or forced. Text is the default!` : ''}
 - "Mood": ${canChangeMood ? 'CRITICAL: Mood changes should be EXTREMELY RARE - only 1 in 20+ messages or less. Default is "none".' : 'MOOD COOLDOWN ACTIVE - You MUST set this to "none". The mood was recently changed and cannot be changed again yet.'}${canChangeMood ? `
   * "none" - DEFAULT - Use this 95%+ of the time. Most conversations don't need mood changes!
   * "hearts" - ONLY for major romantic breakthroughs (first "I love you", intimate confession)
