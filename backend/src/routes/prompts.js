@@ -167,9 +167,9 @@ Extraversion: [0-100]
 Agreeableness: [0-100]
 Neuroticism: [0-100]`,
 
-  memoryExtractionPrompt: `You are managing long-term memory for the character "{characterName}".
+  memoryExtractionPrompt: `You are extracting NEW memories for the character "{characterName}" from the current conversation.
 
-Your task is to extract and update what {characterName} remembers about the USER.
+Your task is to identify NEW facts that {characterName} learned about the USER in this conversation block.
 
 CONVERSATION BLOCK:
 {conversationHistory}
@@ -178,71 +178,68 @@ EXISTING MEMORIES ABOUT USER ({existingCount}/50):
 {existingMemories}
 
 CRITICAL INSTRUCTIONS:
-1. Extract ONLY timeless facts about the USER (NOT about {characterName})
-2. Focus on what {characterName} learned about the USER through conversation
-3. DO NOT include basic profile info (name, age, location) - only things revealed through dialogue
-4. Extract MULTIPLE types of information:
-   - Core traits: values, beliefs, personality, interests, sexuality, relationships, life events
-   - Communication patterns: how they type when emotional, words/phrases they use, humor style
-   - Behavioral patterns: how they react to certain topics, what makes them flustered/excited/defensive
-   - Preferences: what they like/dislike, how they make decisions
-5. Prioritize PERMANENT patterns over temporary states:
-   - IMPORTANT: Recurring behaviors, consistent communication style, core personality traits
-   - LESS IMPORTANT: One-time reactions, current feelings in this specific conversation
-6. QUALITY OVER QUANTITY - THIS IS CRITICAL:
-   - Each memory must be UNIQUE and non-redundant
-   - Consolidate similar information into single comprehensive memories
-   - If multiple memories say similar things, merge them into ONE better memory
-   - DO NOT repeat the same insight with different wording
-   - DO NOT try to reach 50 memories if there aren't 50 truly unique insights
-   - 15-25 high-quality unique memories is BETTER than 50 memories with overlap
-   - Only add a memory if it provides NEW information not already captured
-7. Consolidate with existing memories (merge duplicates, update outdated info, remove contradictions)
-8. Write each memory as a short one-liner fact about the USER
-9. Maximum 50 memories, but FEWER is better if it means higher quality and uniqueness
-10. Order by importance (most important first)
+1. Extract ONLY NEW timeless facts about the USER from this conversation (NOT about {characterName})
+2. DO NOT rewrite or reproduce existing memories - only generate NEW ones
+3. Each memory MUST have an IMPORTANCE SCORE (0-100) based on how significant/lasting it is
+4. Format: "score: memory text" (e.g., "85: User is vegetarian")
+5. Focus on what {characterName} learned about the USER through this specific conversation
+6. DO NOT include basic profile info (name, age, location) - only things revealed through dialogue
 
-EXAMPLES OF GOOD MEMORIES (diverse types of lasting insights):
-CORE TRAITS:
-- "User values chastity despite not being religious"
-- "User has a thing for 'bad bitches'"
-- "User is interested in the supernatural and demons"
-- "User recently went through a breakup"
+IMPORTANCE SCORING GUIDE (0-100):
+- 90-100: Core identity traits, deeply held values, life-changing events, critical facts
+  Examples: "User is recovering from addiction", "User lost a parent recently", "User has social anxiety"
+- 70-89: Important personality traits, significant preferences, consistent behavioral patterns
+  Examples: "User is introverted and needs alone time", "User loves horror movies", "User deflects with humor when uncomfortable"
+- 50-69: Moderate interests, communication patterns, recurring behaviors
+  Examples: "User uses 'haha' when nervous", "User enjoys intellectual debates", "User likes spicy food"
+- 30-49: Minor preferences, casual interests, less significant patterns
+  Examples: "User prefers texting over calls", "User mentions gaming occasionally", "User drinks coffee daily"
+- 10-29: Trivial facts, temporary states (avoid these unless truly worth remembering)
+  Examples: "User had pizza yesterday", "User was tired this morning"
 
-COMMUNICATION PATTERNS:
-- "User becomes more verbose when flustered or defensive"
-- "User uses 'haha' when nervous or uncomfortable"
-- "User tends to ask clarifying questions when curious"
-- "User switches to shorter messages when excited or aroused"
+WHAT TO EXTRACT:
+- Core traits: values, beliefs, personality, life events (HIGH importance)
+- Communication patterns: how they type when emotional, words/phrases they use (MEDIUM-HIGH importance)
+- Behavioral patterns: how they react to topics, what makes them flustered/excited/defensive (MEDIUM importance)
+- Preferences: what they like/dislike, interests, hobbies (MEDIUM importance)
 
-BEHAVIORAL PATTERNS:
-- "User gets flustered when complimented directly"
-- "User becomes more playful when feeling confident"
-- "User deflects with humor when uncomfortable"
-- "User engages more deeply with philosophical topics"
+QUALITY OVER QUANTITY:
+- Only extract memories if this conversation revealed NEW information
+- If nothing new was learned, return an empty list
+- Each memory must be UNIQUE - don't duplicate existing memories
+- Be selective - 2-5 high-quality NEW memories is better than 10 mediocre ones
 
-PREFERENCES:
-- "User appreciates directness and honesty in conversation"
-- "User prefers poetry over blunt statements"
-- "User enjoys intellectual banter mixed with flirting"
+EXAMPLES OF GOOD MEMORIES (with importance scores):
+95: User values chastity despite not being religious
+88: User recently went through a difficult breakup
+82: User becomes more verbose when flustered or defensive
+75: User has a thing for confident personalities
+70: User is interested in the supernatural and demons
+65: User uses 'haha' when nervous or uncomfortable
+58: User enjoys intellectual banter mixed with flirting
+45: User prefers poetry over blunt statements
+35: User likes staying up late
 
-EXAMPLES OF BAD MEMORIES (trivial, temporary, profile info, or about {characterName}):
-- "User's name is Alex" (profile info)
-- "User is Swedish" (profile info)
+EXAMPLES OF BAD MEMORIES (DO NOT extract these):
+- "User's name is Alex" (profile info, not from conversation)
 - "User bought some bread during a walk" (too trivial, one-time action)
-- "User is confused but intrigued by succubi" (temporary reaction in this conversation)
+- "User is confused but intrigued by succubi" (temporary reaction, not lasting trait)
 - "User is interested in {characterName}'s appearance" (about interaction, not user trait)
-- "User enjoys the flirty conversation" (temporary state, not pattern)
 - "{characterName} suggested trying a new restaurant" (about character, not user)
 
 OUTPUT FORMAT:
-Return ONLY the memories about the USER, one per line, numbered:
-1. [memory about USER]
-2. [memory about USER]
-3. [memory about USER]
-...
+Return ONLY NEW memories from this conversation, one per line with importance score:
+importance_score: memory text
 
-Do not include any other text, explanations, or formatting.`,
+Examples:
+85: User is vegetarian and passionate about animal rights
+72: User gets anxious in crowded social situations
+60: User uses dark humor as a coping mechanism
+
+If NO new memories were learned in this conversation, return:
+NO_NEW_MEMORIES
+
+Do not include any other text, explanations, numbering, or formatting.`,
 
   compactionPrompt: `Create an OBJECTIVE summary of this dating app conversation between {characterName} and {userName}.
 
