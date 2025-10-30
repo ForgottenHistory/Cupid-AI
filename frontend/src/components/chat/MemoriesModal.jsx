@@ -61,19 +61,46 @@ const MemoriesModal = ({ isOpen, onClose, characterName, memories, loading }) =>
             </div>
           ) : (
             <div className="space-y-2">
-              {memories.map((memory, index) => (
-                <div
-                  key={index}
-                  className="flex gap-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-100 dark:border-purple-800/50 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
-                    {index + 1}
+              {memories.map((memory, index) => {
+                // Handle both old format (string) and new format (object)
+                const memoryText = typeof memory === 'string' ? memory : memory.text;
+                const importance = typeof memory === 'object' && memory.importance !== undefined ? memory.importance : null;
+
+                return (
+                  <div
+                    key={index}
+                    className="flex gap-3 p-3 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-100 dark:border-purple-800/50 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-lg">
+                      {index + 1}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                        {memoryText}
+                      </p>
+                      {importance !== null && (
+                        <div className="mt-1 flex items-center gap-1">
+                          <span className="text-xs font-medium text-purple-600 dark:text-purple-400">
+                            Importance: {importance}
+                          </span>
+                          <div className="flex-1 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden max-w-[100px]">
+                            <div
+                              className={`h-full rounded-full ${
+                                importance >= 90 ? 'bg-red-500' :
+                                importance >= 70 ? 'bg-orange-500' :
+                                importance >= 50 ? 'bg-yellow-500' :
+                                importance >= 30 ? 'bg-blue-500' :
+                                'bg-gray-400'
+                              }`}
+                              style={{ width: `${importance}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="flex-1 text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
-                    {memory}
-                  </p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
