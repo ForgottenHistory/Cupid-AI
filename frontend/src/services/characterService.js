@@ -256,6 +256,63 @@ class CharacterService {
   async updateCharacterData(characterId, updates) {
     return characterStorage.updateCharacter(characterId, updates);
   }
+
+  /**
+   * Sync IndexedDB with backend - removes characters that are no longer matched in backend
+   * This is useful for cleaning up orphaned characters from failed auto-unmatch events
+   * @param {number} userId - User ID
+   * @returns {Promise<{removed: number, removedCharacters: Array}>} Number of characters removed and their details
+   */
+  async syncWithBackend(userId) {
+    try {
+      console.log('🔄 Starting manual sync with backend...');
+
+      // Get all liked characters from IndexedDB
+      const localCharacters = await characterStorage.getCharacters(userId);
+      const likedCharacters = localCharacters.filter(c => c.isLiked);
+
+      console.log(`📊 Found ${likedCharacters.length} liked characters in IndexedDB`);
+
+      // Get all matched characters from backend
+      const response = await api.get('/sync/matched-characters');
+      const backendCharacterIds = new Set(response.data.characterIds);
+
+      console.log(`📊 Found ${backendCharacterIds.size} matched characters in backend`);
+
+      // Find characters in IndexedDB that are NOT in backend (orphaned)
+      const orphanedCharacters = likedCharacters.filter(
+        char => !backendCharacterIds.has(char.id)
+      );
+
+      console.log(`💔 Found ${orphanedCharacters.length} orphaned characters to remove`);
+
+      // Remove orphaned characters from IndexedDB
+      const removed = [];
+      for (const character of orphanedCharacters) {
+        console.log(`🗑️ Removing orphaned character: ${character.name} (${character.id})`);
+        await characterStorage.unlikeCharacter(character.id);
+        removed.push({
+          id: character.id,
+          name: character.name
+        });
+      }
+
+      // Notify other components to refresh
+      if (removed.length > 0) {
+        window.dispatchEvent(new Event('characterUpdated'));
+      }
+
+      console.log(`✅ Sync complete: ${removed.length} characters removed`);
+
+      return {
+        removed: removed.length,
+        removedCharacters: removed
+      };
+    } catch (error) {
+      console.error('❌ Failed to sync with backend:', error);
+      throw error;
+    }
+  }
 }
 
 export default new CharacterService();

@@ -192,10 +192,9 @@ export const useChatWebSocket = ({
     };
 
     const handleCharacterUnmatched = async (data) => {
-      if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('💔 Character has unmatched:', data);
 
-      // Unlike character in IndexedDB
+      // Unlike character in IndexedDB (do this regardless of which chat we're viewing)
       try {
         const characterService = (await import('../services/characterService')).default;
         await characterService.unlikeCharacter(data.characterId);
@@ -203,12 +202,14 @@ export const useChatWebSocket = ({
         // Notify other components to refresh
         window.dispatchEvent(new Event('characterUpdated'));
 
-        // Set unmatch data to trigger modal display
-        setUnmatchData({
-          characterId: data.characterId,
-          characterName: data.characterName,
-          reason: data.reason
-        });
+        // Only show unmatch modal if we're currently viewing this character's chat
+        if (data.characterId === currentCharacterIdRef.current) {
+          setUnmatchData({
+            characterId: data.characterId,
+            characterName: data.characterName,
+            reason: data.reason
+          });
+        }
       } catch (error) {
         console.error('Failed to handle unmatch:', error);
       }

@@ -179,9 +179,20 @@ class AIService {
       }
 
       // Add roleplay reminder to keep AI on track
+      // Check if there's a time gap in the last 5 messages
+      const hasTimeGap = last5Messages.some(msg =>
+        msg.role === 'system' && msg.content.startsWith('[TIME GAP:')
+      );
+
+      let roleplayReminder = '⚠️ CRITICAL - RESUME ROLEPLAY NOW: Write something ENTIRELY NEW that progresses the conversation forward. DO NOT copy, repeat, or paraphrase any previous messages. DO NOT regenerate old content. Stay in character. Write as the character would naturally text in this dating app conversation - no narration, no actions in asterisks, just authentic new messages.';
+
+      if (hasTimeGap) {
+        roleplayReminder += '\n\n⏰ TIME GAP DETECTED: There was a significant time gap in this conversation. Respond naturally as if time has actually passed. DON\'T immediately continue the old topic - acknowledge the gap, ask what\'s up, or bring up something new. The conversation context may have changed.';
+      }
+
       finalMessages.push({
         role: 'system',
-        content: '⚠️ CRITICAL - RESUME ROLEPLAY NOW: Continue from where the conversation left off. Write something ENTIRELY NEW that progresses the conversation forward. DO NOT copy, repeat, or paraphrase any previous messages. DO NOT regenerate old content. Stay in character. Write as the character would naturally text in this dating app conversation - no narration, no actions in asterisks, just authentic new messages.'
+        content: roleplayReminder
       });
 
       // Add last 5 messages for maximum recency (right before character prime)

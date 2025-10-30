@@ -246,10 +246,25 @@ class PromptBuilderService {
     const parts = [];
     const prompts = loadPrompts();
 
+    // Add current date/time at the start for ALL proactive messages
+    const now = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayOfWeek = dayNames[now.getDay()];
+    const month = monthNames[now.getMonth()];
+    const day = now.getDate();
+    const year = now.getFullYear();
+    const hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+
+    parts.push(`⏰ RIGHT NOW it is: ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}`);
+
     // Special handling for first messages (icebreakers)
     if (isFirstMessage) {
       const timeSinceMatch = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since you matched.` : ' You matched recently.';
-      parts.push(`💬 FIRST MESSAGE: You're reaching out for the first time!${timeSinceMatch}`);
+      parts.push(`\n\n💬 FIRST MESSAGE: You're reaching out for the first time!${timeSinceMatch}`);
       parts.push(`\n\n${prompts.proactiveFirstMessagePrompt}`);
 
       return parts.join('');
@@ -257,14 +272,14 @@ class PromptBuilderService {
 
     // Special handling for left-on-read
     if (proactiveType === 'left_on_read') {
-      parts.push(`👀 LEFT ON READ: They read your message but haven't responded yet. It's been a few minutes.`);
+      parts.push(`\n\n👀 LEFT ON READ: They read your message but haven't responded yet. It's been a few minutes.`);
       parts.push(`\n\n${prompts.leftOnReadPrompt}`);
       return parts.join('');
     }
 
     // Normal proactive message handling - always start fresh
     const timeGapText = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since their last message.` : ' Some time has passed.';
-    parts.push(`💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
+    parts.push(`\n\n💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
 
     // Always use fresh prompt
     parts.push(`\n\n${prompts.proactiveFreshPrompt}`);

@@ -201,26 +201,30 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
     // Split content by newlines to create separate messages
     const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
 
-    // Save first message with reasoning if available
-    if (contentParts.length > 0) {
-      messageService.saveMessage(
-        conversation.id,
-        'assistant',
-        contentParts[0],
-        null, // no reaction
-        'text', // messageType
-        null, // audioUrl
-        null, // imageUrl
-        null, // imageTags
-        false, // isProactive
-        null, // imagePrompt
-        aiResponse.reasoning // reasoning
-      );
+    // Validate that we have actual content to send
+    if (contentParts.length === 0 || !contentParts[0]) {
+      console.warn(`⚠️ AI generated empty first message for conversation ${conversation.id} - this should not happen`);
+      return res.status(500).json({ error: 'AI generated empty response' });
+    }
 
-      // Save subsequent parts without reasoning
-      for (let i = 1; i < contentParts.length; i++) {
-        messageService.saveMessage(conversation.id, 'assistant', contentParts[i]);
-      }
+    // Save first message with reasoning if available
+    messageService.saveMessage(
+      conversation.id,
+      'assistant',
+      contentParts[0],
+      null, // no reaction
+      'text', // messageType
+      null, // audioUrl
+      null, // imageUrl
+      null, // imageTags
+      false, // isProactive
+      null, // imagePrompt
+      aiResponse.reasoning // reasoning
+    );
+
+    // Save subsequent parts without reasoning
+    for (let i = 1; i < contentParts.length; i++) {
+      messageService.saveMessage(conversation.id, 'assistant', contentParts[i]);
     }
 
     // Update conversation timestamp and increment unread count
@@ -531,8 +535,15 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     // Split content by newlines to create separate messages
     const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
 
+    // Validate that we have actual content to send
+    if (contentParts.length === 0 || !contentParts[0]) {
+      const characterName = characterData.data?.name || characterData.name || 'Character';
+      console.warn(`⚠️ ${characterName} generated empty message on regenerate - skipping`);
+      return res.status(400).json({ error: 'AI generated empty response' });
+    }
+
     // Save first part as media message (image with all metadata)
-    const firstPart = contentParts[0] || '';
+    const firstPart = contentParts[0];
     messageService.saveMessage(
       conversation.id,
       'assistant',

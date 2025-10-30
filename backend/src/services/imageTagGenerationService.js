@@ -54,8 +54,15 @@ class ImageTagGenerationService {
         .filter(msg => msg.message_type === 'image' && msg.image_tags)
         .map(msg => msg.image_tags);
 
+      // Check if there's a TIME GAP between the last image and now
+      const hasTimeGapSinceLastImage = this.checkTimeGapSinceLastImage(recentMessages);
+
       if (previousImageTags.length > 0) {
-        console.log(`📸 Found ${previousImageTags.length} previous image(s) - will maintain visual consistency`);
+        if (hasTimeGapSinceLastImage) {
+          console.log(`📸 Found ${previousImageTags.length} previous image(s) BUT time gap detected - will use NEW outfit`);
+        } else {
+          console.log(`📸 Found ${previousImageTags.length} previous image(s) - will maintain visual consistency`);
+        }
       }
 
       // Format recent messages for context
@@ -63,8 +70,8 @@ class ImageTagGenerationService {
         .map(msg => `${msg.role === 'user' ? 'User' : 'Character'}: ${msg.content}`)
         .join('\n');
 
-      // Build prompt for LLM with previous image tags
-      const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags);
+      // Build prompt for LLM with previous image tags and time gap info
+      const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGapSinceLastImage);
 
       // Call LLM to generate tags using user's configured settings
       const response = await aiService.createBasicCompletion(prompt, {
@@ -100,7 +107,7 @@ class ImageTagGenerationService {
   /**
    * Build prompt for LLM tag generation
    */
-  buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags) {
+  buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGap = false) {
     // Load prompts from config
     const prompts = loadImageTagPrompts();
 
@@ -153,7 +160,7 @@ ${prompts.varietyPrompt || ''}
 
 ${prompts.closingInstructionsPrompt}`;
 
-    // Add previous image tags section if available for VISUAL CONSISTENCY
+    // Add previous image tags section if available
     if (previousImageTags && previousImageTags.length > 0) {
       prompt += `
 
@@ -163,7 +170,7 @@ ${prompts.closingInstructionsPrompt}`;
 
 ${previousImageTags.map((tags, index) => `Image ${index + 1}: ${tags}`).join('\n')}
 
-${prompts.visualConsistencyPrompt}`;
+${hasTimeGap ? prompts.timeGapPrompt : prompts.visualConsistencyPrompt}`;
     }
 
     prompt += `
@@ -173,6 +180,28 @@ ${prompts.exampleOutputPrompt}
 Your selected tags:`;
 
     return prompt;
+  }
+
+  /**
+   * Check if there's a TIME GAP between the last image and now
+   * @param {Array} recentMessages - Recent messages with message_type
+   * @returns {boolean} True if time gap detected since last image
+   */
+  checkTimeGapSinceLastImage(recentMessages) {
+    // Find the last image message
+    const lastImageIndex = recentMessages.findLastIndex(msg => msg.message_type === 'image');
+    if (lastImageIndex === -1) {
+      return false; // No previous images
+    }
+
+    // Look for TIME GAP markers after the last image
+    const messagesAfterLastImage = recentMessages.slice(lastImageIndex + 1);
+    const hasTimeGap = messagesAfterLastImage.some(msg =>
+      msg.message_type === 'time_gap' ||
+      (msg.role === 'system' && msg.content && msg.content.startsWith('[TIME GAP:'))
+    );
+
+    return hasTimeGap;
   }
 
   /**

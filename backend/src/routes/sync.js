@@ -121,6 +121,32 @@ router.post('/characters', authenticateToken, (req, res) => {
 });
 
 /**
+ * GET /api/sync/matched-characters
+ * Get list of all character IDs that are currently matched (exist in backend)
+ * Used by frontend to sync IndexedDB and remove orphaned characters
+ */
+router.get('/matched-characters', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get all character IDs that exist in backend for this user
+    const characters = db.prepare('SELECT id FROM characters WHERE user_id = ?').all(userId);
+    const characterIds = characters.map(c => c.id);
+
+    console.log(`📊 User ${userId} has ${characterIds.length} matched characters in backend`);
+
+    res.json({
+      success: true,
+      characterIds,
+      count: characterIds.length
+    });
+  } catch (error) {
+    console.error('Get matched characters error:', error);
+    res.status(500).json({ error: 'Failed to get matched characters' });
+  }
+});
+
+/**
  * POST /api/sync/character-images
  * Sync character images from frontend IndexedDB to backend
  * Body: { characters: [{ id, imageUrl }] }

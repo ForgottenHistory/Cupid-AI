@@ -42,7 +42,10 @@ class CompactService {
       model: decisionSettings.model,
       temperature: decisionSettings.temperature || 0.7,
       max_tokens: 300, // Summaries should be short
-      provider: decisionSettings.provider || 'openrouter'
+      provider: decisionSettings.provider || 'openrouter',
+      messageType: 'compaction',
+      characterName: characterName,
+      userName: userName
     });
 
     return summaryResponse.content.trim();

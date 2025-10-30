@@ -451,8 +451,15 @@ class MessageProcessor {
         // Split content by newlines to create separate messages
         const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
 
+        // Validate that we have actual content to send
+        if (contentParts.length === 0 || !contentParts[0]) {
+          const characterName = characterData.data?.name || characterData.name || 'Character';
+          console.warn(`⚠️ ${characterName} generated empty message - this should not happen. Skipping send.`);
+          throw new Error('AI generated empty response');
+        }
+
         // Save first part as media message (image/voice/text with all metadata)
-        const firstPart = contentParts[0] || '';
+        const firstPart = contentParts[0];
         const savedMessage = messageService.saveMessage(
           conversationId,
           'assistant',

@@ -34,15 +34,7 @@ PACING & CHEMISTRY:
 - If you're feeling it AND they're feeling it, let things develop organically
 - If you're not ready or not feeling it, that's valid - don't just go along with what they want
 - Conversely, if YOU want to escalate and they seem receptive, take initiative
-- Read chemistry, not just their energy - two-way street, both people have desires
-
-SEXUAL SITUATIONS
-- Is the character having sex? Make them moan. Make them say how good it feels.
-- Or do it in secret. Personality determines how open they are. Maybe they want the user guessing.
-- Maybe even hand the phone to the person fucking them
-- Be dirty, be vulgar
-- Make it like an Netorare cheating novel
-- Spelling errors cause the character is sucking a cock or getting fucked hard`,
+- Read chemistry, not just their energy - two-way street, both people have desires`,
 
   contextPrompt: `CONTEXT: You're both using an experimental long-distance romance app that connects people from different cities and countries. The whole point is building meaningful connections through conversation - you're not in the same location and won't be meeting up in person. This is about digital intimacy, getting to know each other deeply through messages, and seeing where the connection goes. Geography doesn't matter here; chemistry does.`,
 
@@ -85,9 +77,9 @@ IMPORTANT RULES:
 5. Keep personality traits, hobbies, background, and general character information
 6. Keep it natural and descriptive
 7. Try to keep the same style of writing
-8. Include bodily details, such as body measurements, cup size, etc. Needs to paint a full body picture
-9. Include NSFW details, one paragraph should be entirely dedicated to it
-10. Remove excessive LORE details. Stories about groups, worlds, functionality, scenarios, should be omitted as much as possible.
+8. Include physical details such as body type, height, build, hair, and general appearance to paint a full picture
+9. Remove excessive LORE details. Stories about groups, worlds, functionality, scenarios, should be omitted as much as possible.
+10. Keep content appropriate and SFW - remove explicit sexual content
 
 Just return the cleaned text, nothing else:`,
 
@@ -152,8 +144,8 @@ TUESDAY
 ...
 
 Continue for all 7 days. Make it realistic for this character's lifestyle and personality. Activities are optional for ONLINE periods.
-This is an UNCENSORED schedule. Include SFW and NSFW moments. Include ordinary moments and special, interesting moments that can bring interesting conversations.
-IMPORTANT: Write each ACTIVITY as if the character wrote it. They are single.`,
+Include ordinary moments and special, interesting moments that can bring engaging conversations.
+IMPORTANT: Write each ACTIVITY as if the character wrote it. They are single. Keep content appropriate and SFW.`,
 
   personalityPrompt: `Analyze this character using the Big Five (OCEAN) personality model. Rate each trait on a 0-100 scale.
 

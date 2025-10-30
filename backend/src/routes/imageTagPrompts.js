@@ -29,39 +29,27 @@ const DEFAULT_IMAGE_TAG_PROMPTS = {
 - Focus on: expression, pose, activity, clothing (COLOR + TYPE + DETAILS), location, lighting
 - Match the location/activity to the character's current status (e.g., if at gym, use gym-related tags)`,
 
-  scalePrompt: `**SUGGESTIVENESS SCALE** - Choose based on conversation context:
+  scalePrompt: `**IMAGE STYLE SCALE** - Choose based on conversation context:
 
 🔵 **CASUAL/SFW**:
-- Regular clothing: crop tops, denim shorts, sundresses, casual wear
-- Public locations: park, cafe, gym, outdoors
-- Neutral poses: smiling, waving, sitting, standing
+- Regular clothing: t-shirts, crop tops, denim shorts, sundresses, casual wear, jeans, hoodies
+- Public locations: park, cafe, gym, outdoors, street, restaurant
+- Neutral poses: smiling, waving, sitting, standing, relaxed
 
-🟡 **FLIRTY**:
-- Revealing but tasteful: tight clothing, cleavage, midriff, low-cut tops
-- Home locations: bedroom, living room, bathroom mirror selfie
-- Flirty poses: looking at viewer, slight tease, playful expression
-
-🟠 **SUGGESTIVE/AROUSING**:
-- More revealing: lingerie peeking, underwear visible, see-through, wardrobe malfunction, nipple slip
-- Intimate locations: bedroom, bed, bathtub
-- Suggestive poses: lying down, on bed, arching back, seductive expression
-
-🔴 **NSFW**:
-- Minimal clothing: lingerie, underwear, towel, nude
-- Private locations: bedroom, bed, shower
-- Intimate poses: on bed, lying down, from above, undressing`,
+🟡 **FLIRTY/PLAYFUL**:
+- Stylish clothing: fitted tops, nice dresses, fashionable outfits
+- Various locations: bedroom, living room, bathroom mirror selfie, home
+- Playful poses: looking at viewer, playful expression, confident stance`,
 
   contextAnalysisPrompt: `**Context Analysis** - Read the conversation and decide:
-1. **Tone**: Is it casual chitchat, flirty banter, or sexually charged?
-2. **Time**: Daytime casual, evening relaxed, late night intimate?
+1. **Tone**: Is it casual chitchat or flirty banter?
+2. **Time**: Daytime casual, evening relaxed, late night?
 3. **Character personality**: Confident/bold vs shy/reserved (from contextual tags and description)
-4. **User's interest**: Are they asking for pics? Being flirty? Escalating?`,
+4. **User's interest**: Are they asking for pics? Being friendly? Being flirty?`,
 
-  boldnessPrompt: `**Be BOLD and VARIED**: Don't default to safe/casual every time. This is a dating app - characters should send a mix of casual, flirty, and suggestive pics based on context.
-**BE INNOVATIVE AND SPICY**: Characters SHOULD send risky photos, by going to private rooms, or some even will do in public. They can ask other people to take their photo. They can have nudes and other sexually graphic photos, sometimes with other people.
-**BE SEXY**: Main focus is to illicit feelings of arousal into the viewer. Squeeze breasts together, make it sweaty, a nipple slip in public, even full on nudes and sextapes are ENCOURAGED.
-
-For SEX PHOTOS, always include at least 1boy. Include the penis. Make a POV shot PREFFERED OVER of selfie. Make it wet and sweaty. Really bring that NTR vibe.`,
+  boldnessPrompt: `**Be VARIED and CONTEXTUAL**: Don't default to safe/casual every time. This is a dating app - characters should send a mix of casual and flirty pics based on context and personality.
+**BE CREATIVE**: Characters can take photos in different locations - at home, outdoors, at activities they enjoy. They can ask friends to take their photo.
+**MATCH THE MOOD**: Pay attention to the conversation tone and character personality to determine appropriate photo style.`,
 
   varietyPrompt: `**🎲 VARIETY IS CRITICAL - AVOID REPETITION**:
 

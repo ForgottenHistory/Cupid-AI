@@ -124,7 +124,7 @@ class MemoryService {
       });
 
       // Parse memories from response
-      const newMemories = this._parseMemoriesFromResponse(response);
+      const newMemories = this._parseMemoriesFromResponse(response.content);
 
       console.log(`✅ Extracted ${newMemories.length} memories for ${characterName}`);
 

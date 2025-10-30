@@ -400,6 +400,58 @@ export function testCompactUI(duration = 3000) {
   console.log(`💡 TIP: The overlay should lock the chat for ${duration / 1000} seconds`);
 }
 
+/**
+ * Sync IndexedDB characters with backend - removes orphaned characters
+ * Call from browser console: window.syncCharacters()
+ */
+export async function syncCharacters() {
+  try {
+    console.log('🔄 Starting character sync with backend...');
+
+    // Get user from localStorage
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+      console.error('❌ Not logged in. Please log in first.');
+      return;
+    }
+
+    const user = JSON.parse(userStr);
+    const userId = user.id;
+
+    console.log(`👤 Syncing characters for user ${userId}...`);
+
+    // Import characterService dynamically
+    const { default: characterService } = await import('../services/characterService');
+
+    const result = await characterService.syncWithBackend(userId);
+
+    console.log('\n========================================');
+    console.log('✅ CHARACTER SYNC COMPLETE');
+    console.log('========================================\n');
+
+    console.log(`📊 Results:`);
+    console.log(`   - Characters removed: ${result.removed}`);
+
+    if (result.removedCharacters.length > 0) {
+      console.log('\n💔 Removed characters (no longer matched in backend):');
+      result.removedCharacters.forEach((char, index) => {
+        console.log(`   ${index + 1}. ${char.name} (${char.id})`);
+      });
+    } else {
+      console.log('\n✅ All characters in sync - no orphaned characters found');
+    }
+
+    console.log('\n========================================\n');
+
+    return result;
+  } catch (error) {
+    console.error('❌ Character sync failed:', error);
+    if (error.response?.data?.error) {
+      console.error('   Error:', error.response.data.error);
+    }
+  }
+}
+
 // Expose to window for console access
 if (typeof window !== 'undefined') {
   window.testCompact = testCompact;
@@ -407,4 +459,5 @@ if (typeof window !== 'undefined') {
   window.showConversationId = showConversationId;
   window.testMemoryExtraction = testMemoryExtraction;
   window.testCompactUI = testCompactUI;
+  window.syncCharacters = syncCharacters;
 }
