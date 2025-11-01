@@ -263,7 +263,102 @@ Output format:
 A factual, objective summary written in third person.
 
 Example (for conversation between Sarah and Mike):
-"Sarah shared details about her stressful week at work, mentioning tight deadlines and difficult clients. Mike opened up about feeling overwhelmed with his own work situation and expressed worry about letting his team down. Sarah reassured him that asking for help shows strength rather than weakness. They made plans to meet up this weekend for a relaxing activity to decompress together."`
+"Sarah shared details about her stressful week at work, mentioning tight deadlines and difficult clients. Mike opened up about feeling overwhelmed with his own work situation and expressed worry about letting his team down. Sarah reassured him that asking for help shows strength rather than weakness. They made plans to meet up this weekend for a relaxing activity to decompress together."`,
+
+  decisionPrompt: `⚠️ DECISION TIME: Analyze the conversation and decide how the character should respond. Output your decision in this EXACT plaintext format:
+
+Reaction: [emoji or "none"]
+Should Respond: [yes/no]
+Should Unmatch: [yes/no]
+{hasVoice}Send Voice: [yes/no]
+{hasImage}Send Image: [yes/no]
+Mood: [none/hearts/stars/laugh/sparkles/fire/roses]
+{shouldGenerateThought}Thought: [internal monologue - 1-2 sentences about how character feels about the conversation]
+Reason: [brief explanation in one sentence]
+
+Guidelines:
+- "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
+- If you do react, choose ONE emoji that represents a strong emotional reaction (❤️, 😂, 🔥, 😍, 😭, etc.)
+- "Should Respond": Always "yes" for now (we will expand this later)
+- "Should Unmatch": EXTREMELY RARE - Only "yes" if the user is being:
+  * Extremely annoying
+  * Persistently ignoring boundaries after warnings
+  * Not fulfilling character's needs in any way
+  This should almost NEVER be "yes" - reserve it for serious violations only. Normal awkwardness, bad jokes, or being boring should NOT trigger unmatch.
+{voiceGuidelines}- "Send Voice": Should be OCCASIONAL, not every message. Consider:
+  * Personality: High extraversion/openness = more likely to use voice
+  * Context: Emotional moments, excitement, longer responses = more voice
+  * Variety: Don't overuse voice - text is default, voice is special
+  * Quick replies: Usually text
+  * Deep/heartfelt messages: More likely voice
+{imageGuidelines}- "Send Image": CRITICAL - Images should be OCCASIONAL and SPREAD OUT, not spammed!
+  * MAXIMUM 3 images in a row, then WAIT several messages before sending more
+  * If you've sent 3 images recently, default to NO unless user explicitly asks
+  * Check conversation history - did you already send 2+ images recently? If yes, probably NO
+  * After sending an image, wait at least 3-5 text messages before considering another
+
+  Send image when:
+  * User directly asks for a photo/pic/selfie → NOT GUARANTEED! Consider:
+    - Personality: Confident/playful characters might tease instead ("maybe later 😏", "hmm idk", "what's in it for me?")
+    - Context: Too early in conversation? Make them work for it
+    - Mood: Feeling bratty/playful? Tease them instead of immediately sending
+    - Already sent images recently? Definitely tease instead of sending more
+    - Sometimes just say no or make them wait - it's more interesting!
+    - Only send ~60-70% of the time when asked, tease/refuse the rest
+  * Character wants to show what they're doing/wearing → YES if relevant AND haven't sent many recently
+  * Flirty moment where visual would enhance chemistry → Consider YES if not spamming
+  * Sharing a moment (food, location, outfit, activity) → Consider YES if not spamming
+  * Random messages with no visual context → NO
+  * Early conversation before rapport built → Usually NO (make them earn it)
+  * Already sent 3 images in recent messages → NO (wait for several text exchanges)
+  * Personality: High openness/extraversion = more likely to send spontaneous pics, but still respect limits
+
+  Images should feel natural, SPECIAL, and sometimes withheld for playful teasing. Text is the default!
+{moodGuidelines}- "Mood": {moodCooldownMessage}CRITICAL: Mood changes should be EXTREMELY RARE - only 1 in 20+ messages or less. Default is "none".
+  * "none" - DEFAULT - Use this 95%+ of the time. Most conversations don't need mood changes!
+  * "hearts" - ONLY for major romantic breakthroughs (first "I love you", intimate confession)
+  * "stars" - ONLY for truly shocking/amazing news (won lottery, dream job offer)
+  * "laugh" - ONLY for genuinely hilarious moments that made you laugh out loud
+  * "sparkles" - ONLY for magical once-in-a-lifetime moments
+  * "fire" - ONLY for intensely passionate/spicy exchanges
+  * "roses" - ONLY for deeply tender, vulnerable emotional moments
+
+  WARNING: Setting a mood is a BIG DEAL. If you're unsure, use "none". Moods should feel special and rare, not common. Think: "Would this moment stand out in a month?" If no, use "none".
+{thoughtGuidelines}- "Thought": This is the character's internal monologue - what they're REALLY thinking/feeling about the conversation.
+  * Keep it 1-2 sentences max
+  * Be honest about their feelings (interest, confusion, attraction, concern, excitement, etc.)
+  * Can reveal things they wouldn't say out loud
+  * Examples: "He's really sweet, but I'm not sure if he's just being polite or actually interested." / "This conversation is so easy and fun - I could talk to him for hours."
+
+Output ONLY the required lines in the exact format shown above, nothing else.`,
+
+  proactiveDecisionPrompt: `⚠️ DECISION TIME: Should you send a proactive message now?
+
+IMPORTANT: The default should be YES - characters WANT to talk to people they're interested in. Only say NO if there's a specific reason not to reach out.
+
+Check for these specific NO conditions:
+1. Did EITHER person set a specific time to talk? ("text me at 5", "I'll message you tomorrow", "talk later tonight")
+2. Did EITHER person say they're busy and will reach out when free? ("I'll text you later", "I'll message you when I'm done")
+3. Is there an unresolved timing expectation from EITHER side that hasn't been met yet?
+
+If NONE of these apply → Say YES (the character wants to reach out!)
+
+Output your decision in this EXACT format:
+
+Should Send: [yes/no]
+Reason: [brief explanation in one sentence]
+
+Guidelines:
+- "Should Send":
+  * YES by default - characters like talking to matches
+  * NO ONLY if either person set a specific timing expectation that hasn't been met
+  * NO ONLY if either person said they'll reach out first and not enough time has passed
+  * Don't overthink it - if there's no explicit reason to wait, say YES
+- "Reason":
+  * Explain why you decided to send or not send
+  * Keep it brief (one sentence)
+
+Output ONLY the two lines in the exact format shown above, nothing else.`
 };
 
 // Ensure config directory exists

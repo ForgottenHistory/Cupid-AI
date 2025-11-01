@@ -74,6 +74,64 @@ class DecisionEngineService {
         return `${m.role === 'user' ? 'User' : characterName}: ${m.content}`;
       }).join('\n');
 
+      // Load decision prompt from config
+      const { loadPrompts } = await import('../routes/prompts.js');
+      const prompts = loadPrompts();
+
+      // Build decision prompt with dynamic replacements
+      let decisionPromptTemplate = prompts.decisionPrompt;
+
+      // Replace conditional sections
+      decisionPromptTemplate = decisionPromptTemplate.replace(
+        '{hasVoice}',
+        hasVoice ? '' : '##REMOVE_VOICE##'
+      );
+      decisionPromptTemplate = decisionPromptTemplate.replace(
+        '{hasImage}',
+        hasImage ? '' : '##REMOVE_IMAGE##'
+      );
+      decisionPromptTemplate = decisionPromptTemplate.replace(
+        '{shouldGenerateThought}',
+        shouldGenerateThought ? '' : '##REMOVE_THOUGHT##'
+      );
+
+      // Remove conditional guideline sections
+      if (!hasVoice) {
+        decisionPromptTemplate = decisionPromptTemplate.replace(/\{voiceGuidelines\}[^\{]*/g, '');
+      } else {
+        decisionPromptTemplate = decisionPromptTemplate.replace('{voiceGuidelines}', '\n');
+      }
+
+      if (!hasImage) {
+        decisionPromptTemplate = decisionPromptTemplate.replace(/\{imageGuidelines\}[^\{]*/g, '');
+      } else {
+        decisionPromptTemplate = decisionPromptTemplate.replace('{imageGuidelines}', '\n');
+      }
+
+      // Mood cooldown message
+      const moodCooldownMsg = canChangeMood
+        ? ''
+        : 'MOOD COOLDOWN ACTIVE - You MUST set this to "none". The mood was recently changed and cannot be changed again yet. ';
+      decisionPromptTemplate = decisionPromptTemplate.replace('{moodCooldownMessage}', moodCooldownMsg);
+
+      if (canChangeMood) {
+        decisionPromptTemplate = decisionPromptTemplate.replace('{moodGuidelines}', '\n');
+      } else {
+        // Remove mood guidelines section when on cooldown
+        decisionPromptTemplate = decisionPromptTemplate.replace(/\{moodGuidelines\}[^\{]*/g, '');
+      }
+
+      if (!shouldGenerateThought) {
+        decisionPromptTemplate = decisionPromptTemplate.replace(/\{thoughtGuidelines\}[^\{]*/g, '');
+      } else {
+        decisionPromptTemplate = decisionPromptTemplate.replace('{thoughtGuidelines}', '\n');
+      }
+
+      // Remove marker lines
+      decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_VOICE##[^\n]*\n?/g, '');
+      decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_IMAGE##[^\n]*\n?/g, '');
+      decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_THOUGHT##[^\n]*\n?/g, '');
+
       const decisionPrompt = `${systemPrompt}
 
 ${personalityContext}
@@ -86,69 +144,7 @@ ${conversationHistory}
 
 User just sent: "${userMessage}"
 
-⚠️ DECISION TIME: Analyze the conversation and decide how the character should respond. Output your decision in this EXACT plaintext format:
-
-Reaction: [emoji or "none"]
-Should Respond: [yes/no]
-Should Unmatch: [yes/no]
-${hasVoice ? 'Send Voice: [yes/no]\n' : ''}${hasImage ? 'Send Image: [yes/no]\n' : ''}Mood: [none/hearts/stars/laugh/sparkles/fire/roses]
-${shouldGenerateThought ? 'Thought: [internal monologue - 1-2 sentences about how character feels about the conversation]\n' : ''}Reason: [brief explanation in one sentence]
-
-Guidelines:
-- "Reaction": IMPORTANT - Reactions should be RARE (only 1 in 5 messages or less). Only react to messages that are genuinely funny, sweet, exciting, or emotionally significant. Most messages should get "none". Don't react to every message!
-- If you do react, choose ONE emoji that represents a strong emotional reaction (❤️, 😂, 🔥, 😍, 😭, etc.)
-- "Should Respond": Always "yes" for now (we will expand this later)
-- "Should Unmatch": EXTREMELY RARE - Only "yes" if the user is being:
-  * Extremely annoying
-  * Persistently ignoring boundaries after warnings
-  * Not fulfilling character's needs in any way
-  This should almost NEVER be "yes" - reserve it for serious violations only. Normal awkwardness, bad jokes, or being boring should NOT trigger unmatch.${hasVoice ? `
-- "Send Voice": Should be OCCASIONAL, not every message. Consider:
-  * Personality: High extraversion/openness = more likely to use voice
-  * Context: Emotional moments, excitement, longer responses = more voice
-  * Variety: Don't overuse voice - text is default, voice is special
-  * Quick replies: Usually text
-  * Deep/heartfelt messages: More likely voice` : ''}${hasImage ? `
-- "Send Image": CRITICAL - Images should be OCCASIONAL and SPREAD OUT, not spammed!
-  * MAXIMUM 3 images in a row, then WAIT several messages before sending more
-  * If you've sent 3 images recently, default to NO unless user explicitly asks
-  * Check conversation history - did you already send 2+ images recently? If yes, probably NO
-  * After sending an image, wait at least 3-5 text messages before considering another
-
-  Send image when:
-  * User directly asks for a photo/pic/selfie → NOT GUARANTEED! Consider:
-    - Personality: Confident/playful characters might tease instead ("maybe later 😏", "hmm idk", "what's in it for me?")
-    - Context: Too early in conversation? Make them work for it
-    - Mood: Feeling bratty/playful? Tease them instead of immediately sending
-    - Already sent images recently? Definitely tease instead of sending more
-    - Sometimes just say no or make them wait - it's more interesting!
-    - Only send ~60-70% of the time when asked, tease/refuse the rest
-  * Character wants to show what they're doing/wearing → YES if relevant AND haven't sent many recently
-  * Flirty moment where visual would enhance chemistry → Consider YES if not spamming
-  * Sharing a moment (food, location, outfit, activity) → Consider YES if not spamming
-  * Random messages with no visual context → NO
-  * Early conversation before rapport built → Usually NO (make them earn it)
-  * Already sent 3 images in recent messages → NO (wait for several text exchanges)
-  * Personality: High openness/extraversion = more likely to send spontaneous pics, but still respect limits
-
-  Images should feel natural, SPECIAL, and sometimes withheld for playful teasing. Text is the default!` : ''}
-- "Mood": ${canChangeMood ? 'CRITICAL: Mood changes should be EXTREMELY RARE - only 1 in 20+ messages or less. Default is "none".' : 'MOOD COOLDOWN ACTIVE - You MUST set this to "none". The mood was recently changed and cannot be changed again yet.'}${canChangeMood ? `
-  * "none" - DEFAULT - Use this 95%+ of the time. Most conversations don't need mood changes!
-  * "hearts" - ONLY for major romantic breakthroughs (first "I love you", intimate confession)
-  * "stars" - ONLY for truly shocking/amazing news (won lottery, dream job offer)
-  * "laugh" - ONLY for genuinely hilarious moments that made you laugh out loud
-  * "sparkles" - ONLY for magical once-in-a-lifetime moments
-  * "fire" - ONLY for intensely passionate/spicy exchanges
-  * "roses" - ONLY for deeply tender, vulnerable emotional moments
-
-  WARNING: Setting a mood is a BIG DEAL. If you're unsure, use "none". Moods should feel special and rare, not common. Think: "Would this moment stand out in a month?" If no, use "none".` : ''}${shouldGenerateThought ? `
-- "Thought": This is the character's internal monologue - what they're REALLY thinking/feeling about the conversation.
-  * Keep it 1-2 sentences max
-  * Be honest about their feelings (interest, confusion, attraction, concern, excitement, etc.)
-  * Can reveal things they wouldn't say out loud
-  * Examples: "He's really sweet, but I'm not sure if he's just being polite or actually interested." / "This conversation is so easy and fun - I could talk to him for hours."` : ''}
-
-Output ONLY the ${shouldGenerateThought ? (hasVoice && hasImage ? 'eight' : hasVoice || hasImage ? 'seven' : 'six') : (hasVoice && hasImage ? 'seven' : hasVoice || hasImage ? 'six' : 'five')} lines in the exact format shown above, nothing else.`;
+${decisionPromptTemplate}`;
 
       console.log('🎯 Decision Engine Request:', {
         model: decisionSettings.model,
@@ -239,33 +235,7 @@ ${conversationHistory}
 
 ${prompts.proactiveFreshPrompt}
 
-⚠️ DECISION TIME: Should you send a proactive message now?
-
-IMPORTANT: The default should be YES - characters WANT to talk to people they're interested in. Only say NO if there's a specific reason not to reach out.
-
-Check for these specific NO conditions:
-1. Did EITHER person set a specific time to talk? ("text me at 5", "I'll message you tomorrow", "talk later tonight")
-2. Did EITHER person say they're busy and will reach out when free? ("I'll text you later", "I'll message you when I'm done")
-3. Is there an unresolved timing expectation from EITHER side that hasn't been met yet?
-
-If NONE of these apply → Say YES (the character wants to reach out!)
-
-Output your decision in this EXACT format:
-
-Should Send: [yes/no]
-Reason: [brief explanation in one sentence]
-
-Guidelines:
-- "Should Send":
-  * YES by default - characters like talking to matches
-  * NO ONLY if either person set a specific timing expectation that hasn't been met
-  * NO ONLY if either person said they'll reach out first and not enough time has passed
-  * Don't overthink it - if there's no explicit reason to wait, say YES
-- "Reason":
-  * Explain why you decided to send or not send
-  * Keep it brief (one sentence)
-
-Output ONLY the two lines in the exact format shown above, nothing else.`;
+${prompts.proactiveDecisionPrompt}`;
 
       console.log('🎯 Proactive Decision Engine Request:', {
         model: decisionSettings.model,

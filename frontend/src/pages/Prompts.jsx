@@ -16,7 +16,9 @@ const Prompts = () => {
     schedulePrompt: '',
     personalityPrompt: '',
     memoryExtractionPrompt: '',
-    compactionPrompt: ''
+    compactionPrompt: '',
+    decisionPrompt: '',
+    proactiveDecisionPrompt: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -128,7 +130,7 @@ const Prompts = () => {
   };
 
   const calculateFieldTokens = (key) => {
-    return Math.ceil(prompts[key].length / 4);
+    return Math.ceil((prompts[key]?.length || 0) / 4);
   };
 
   const conversationPromptFields = [
@@ -179,6 +181,21 @@ const Prompts = () => {
       label: 'Proactive Closing',
       description: 'Final instructions for proactive messages',
       rows: 2
+    }
+  ];
+
+  const decisionEnginePromptFields = [
+    {
+      key: 'decisionPrompt',
+      label: 'Main Decision Engine',
+      description: 'AI prompt for analyzing conversations and deciding on reactions, unmatch, voice/image messages, moods, and thoughts. This is the core decision-making prompt.',
+      rows: 40
+    },
+    {
+      key: 'proactiveDecisionPrompt',
+      label: 'Proactive Message Decision',
+      description: 'AI prompt for deciding if character should send a proactive message after time gaps. Determines when characters reach out first.',
+      rows: 20
     }
   ];
 
@@ -309,6 +326,45 @@ const Prompts = () => {
                 <span className="text-lg font-semibold text-gray-900 dark:text-white">
                   {field.label}
                 </span>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {field.description}
+                </p>
+              </label>
+              <textarea
+                value={prompts[field.key]}
+                onChange={(e) => updatePrompt(field.key, e.target.value)}
+                rows={field.rows}
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-y font-mono text-sm"
+                placeholder={`Enter ${field.label.toLowerCase()}...`}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Separator */}
+        <div className="my-12 border-t-2 border-purple-200 dark:border-purple-800"></div>
+
+        {/* Decision Engine Prompts */}
+        <div className="space-y-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Decision Engine
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              AI prompts for character decision-making. These control reactions, moods, unmatch decisions, and proactive messaging behavior.
+            </p>
+          </div>
+          {decisionEnginePromptFields.map(field => (
+            <div key={field.key} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
+              <label className="block mb-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {field.label}
+                  </span>
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-mono">
+                    ~{calculateFieldTokens(field.key).toLocaleString()} tokens
+                  </span>
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {field.description}
                 </p>
