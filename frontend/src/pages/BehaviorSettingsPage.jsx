@@ -6,7 +6,6 @@ const BehaviorSettingsPage = () => {
   const navigate = useNavigate();
   const containerRef = useRef(null);
   const [settings, setSettings] = useState({
-    maxEmojisPerMessage: 2,
     proactiveMessageHours: 4,
     dailyProactiveLimit: 5,
     proactiveAwayChance: 50,
@@ -14,10 +13,6 @@ const BehaviorSettingsPage = () => {
     proactiveCheckInterval: 5,
     maxConsecutiveProactive: 4,
     proactiveCooldownMultiplier: 2.0,
-    dailyLeftOnReadLimit: 10,
-    leftOnReadTriggerMin: 5,
-    leftOnReadTriggerMax: 15,
-    leftOnReadCharacterCooldown: 120,
     pacingStyle: 'balanced',
     compactThresholdPercent: 90,
     compactTargetPercent: 70,
@@ -84,7 +79,6 @@ const BehaviorSettingsPage = () => {
 
   const resetToDefaults = () => {
     setSettings({
-      maxEmojisPerMessage: 2,
       proactiveMessageHours: 4,
       dailyProactiveLimit: 5,
       proactiveAwayChance: 50,
@@ -92,10 +86,6 @@ const BehaviorSettingsPage = () => {
       proactiveCheckInterval: 5,
       maxConsecutiveProactive: 4,
       proactiveCooldownMultiplier: 2.0,
-      dailyLeftOnReadLimit: 10,
-      leftOnReadTriggerMin: 5,
-      leftOnReadTriggerMax: 15,
-      leftOnReadCharacterCooldown: 120,
       pacingStyle: 'balanced',
       compactThresholdPercent: 90,
       compactTargetPercent: 70,
@@ -149,30 +139,6 @@ const BehaviorSettingsPage = () => {
             {success && (
               <div className="p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg text-green-700 dark:text-green-300 text-sm">
                 {success}
-              </div>
-            )}
-
-            {/* Emoji Usage - HIDDEN (not working) */}
-            {false && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="font-semibold text-gray-900 dark:text-gray-100">Max Emojis Per Message</label>
-                  <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.maxEmojisPerMessage}</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="5"
-                  step="1"
-                  value={settings.maxEmojisPerMessage}
-                  onChange={(e) => updateSetting('maxEmojisPerMessage', parseInt(e.target.value))}
-                  className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
-                />
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span>None</span>
-                  <span>Lots</span>
-                </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">How many emojis characters can use in each message</p>
               </div>
             )}
 

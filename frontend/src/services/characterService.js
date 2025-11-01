@@ -121,26 +121,27 @@ class CharacterService {
    * Like a character (mark as match) and check for super like
    */
   async likeCharacter(characterId) {
-    // Update local storage first
-    const character = await characterStorage.likeCharacter(characterId);
-
-    // Call backend to check for super like
+    // Call backend first to check for max matches limit
     try {
+      const character = await characterStorage.getCharacter(characterId);
       const response = await api.post(`/characters/${characterId}/like`, {
         characterData: character.cardData.data
       });
+
+      // If backend succeeds, update local storage
+      await characterStorage.likeCharacter(characterId);
 
       return {
         character,
         isSuperLike: response.data.isSuperLike || false
       };
     } catch (error) {
-      console.error('Failed to check super like:', error);
-      // Return character anyway, just without super like info
-      return {
-        character,
-        isSuperLike: false
-      };
+      // If backend rejects (e.g., max matches reached), throw error to caller
+      if (error.response?.status === 400) {
+        throw new Error(error.response.data.error || 'Failed to match character');
+      }
+      console.error('Failed to like character:', error);
+      throw error;
     }
   }
 

@@ -710,10 +710,9 @@ router.put('/sd-settings', authenticateToken, (req, res) => {
 router.get('/behavior-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
-      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
+      SELECT proactive_message_hours, daily_proactive_limit,
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
-             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, daily_swipe_limit, daily_auto_match_enabled,
              compaction_enabled, max_memories, max_matches
@@ -725,7 +724,6 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
     }
 
     res.json({
-      maxEmojisPerMessage: settings.max_emojis_per_message,
       proactiveMessageHours: settings.proactive_message_hours,
       dailyProactiveLimit: settings.daily_proactive_limit,
       proactiveAwayChance: settings.proactive_away_chance,
@@ -734,10 +732,6 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       proactiveCheckInterval: settings.proactive_check_interval,
       maxConsecutiveProactive: settings.max_consecutive_proactive,
       proactiveCooldownMultiplier: settings.proactive_cooldown_multiplier,
-      dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
-      leftOnReadTriggerMin: settings.left_on_read_trigger_min,
-      leftOnReadTriggerMax: settings.left_on_read_trigger_max,
-      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown,
       compactThresholdPercent: settings.compact_threshold_percent,
       compactTargetPercent: settings.compact_target_percent,
       keepUncompactedMessages: settings.keep_uncompacted_messages,
@@ -760,13 +754,10 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches } = req.body;
+    const { proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
-    if (maxEmojisPerMessage !== undefined && (maxEmojisPerMessage < 0 || maxEmojisPerMessage > 5)) {
-      return res.status(400).json({ error: 'Max emojis per message must be between 0 and 5' });
-    }
     if (proactiveMessageHours !== undefined && (proactiveMessageHours < 1 || proactiveMessageHours > 24)) {
       return res.status(400).json({ error: 'Proactive message hours must be between 1 and 24' });
     }
@@ -785,20 +776,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     if (proactiveCheckInterval !== undefined && (proactiveCheckInterval < 1 || proactiveCheckInterval > 60)) {
       return res.status(400).json({ error: 'Proactive check interval must be between 1 and 60 minutes' });
     }
-    if (dailyLeftOnReadLimit !== undefined && (dailyLeftOnReadLimit < 0 || dailyLeftOnReadLimit > 50)) {
-      return res.status(400).json({ error: 'Daily left-on-read limit must be between 0 and 50' });
-    }
-    if (leftOnReadTriggerMin !== undefined && (leftOnReadTriggerMin < 1 || leftOnReadTriggerMin > 30)) {
-      return res.status(400).json({ error: 'Left-on-read trigger minimum must be between 1 and 30 minutes' });
-    }
-    if (leftOnReadTriggerMax !== undefined && (leftOnReadTriggerMax < 5 || leftOnReadTriggerMax > 60)) {
-      return res.status(400).json({ error: 'Left-on-read trigger maximum must be between 5 and 60 minutes' });
-    }
-    if (leftOnReadCharacterCooldown !== undefined && (leftOnReadCharacterCooldown < 30 || leftOnReadCharacterCooldown > 480)) {
-      return res.status(400).json({ error: 'Left-on-read character cooldown must be between 30 and 480 minutes' });
-    }
-    if (maxConsecutiveProactive !== undefined && (maxConsecutiveProactive < 1 || maxConsecutiveProactive > 10)) {
-      return res.status(400).json({ error: 'Max consecutive proactive must be between 1 and 10' });
+    if (maxConsecutiveProactive !== undefined && (maxConsecutiveProactive < 0 || maxConsecutiveProactive > 10)) {
+      return res.status(400).json({ error: 'Max consecutive proactive must be between 0 and 10' });
     }
     if (proactiveCooldownMultiplier !== undefined && (proactiveCooldownMultiplier < 1.0 || proactiveCooldownMultiplier > 5.0)) {
       return res.status(400).json({ error: 'Proactive cooldown multiplier must be between 1.0 and 5.0' });
@@ -829,10 +808,6 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     const updates = [];
     const values = [];
 
-    if (maxEmojisPerMessage !== undefined) {
-      updates.push('max_emojis_per_message = ?');
-      values.push(maxEmojisPerMessage);
-    }
     if (proactiveMessageHours !== undefined) {
       updates.push('proactive_message_hours = ?');
       values.push(proactiveMessageHours);
@@ -864,22 +839,6 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     if (proactiveCooldownMultiplier !== undefined) {
       updates.push('proactive_cooldown_multiplier = ?');
       values.push(proactiveCooldownMultiplier);
-    }
-    if (dailyLeftOnReadLimit !== undefined) {
-      updates.push('daily_left_on_read_limit = ?');
-      values.push(dailyLeftOnReadLimit);
-    }
-    if (leftOnReadTriggerMin !== undefined) {
-      updates.push('left_on_read_trigger_min = ?');
-      values.push(leftOnReadTriggerMin);
-    }
-    if (leftOnReadTriggerMax !== undefined) {
-      updates.push('left_on_read_trigger_max = ?');
-      values.push(leftOnReadTriggerMax);
-    }
-    if (leftOnReadCharacterCooldown !== undefined) {
-      updates.push('left_on_read_character_cooldown = ?');
-      values.push(leftOnReadCharacterCooldown);
     }
     if (compactThresholdPercent !== undefined) {
       updates.push('compact_threshold_percent = ?');
@@ -930,10 +889,9 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
 
     // Get updated settings
     const settings = db.prepare(`
-      SELECT max_emojis_per_message, proactive_message_hours, daily_proactive_limit,
+      SELECT proactive_message_hours, daily_proactive_limit,
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
-             daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, daily_swipe_limit, daily_auto_match_enabled,
              compaction_enabled, max_memories, max_matches
@@ -941,7 +899,6 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     `).get(userId);
 
     res.json({
-      maxEmojisPerMessage: settings.max_emojis_per_message,
       proactiveMessageHours: settings.proactive_message_hours,
       dailyProactiveLimit: settings.daily_proactive_limit,
       proactiveAwayChance: settings.proactive_away_chance,
@@ -950,10 +907,6 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       proactiveCheckInterval: settings.proactive_check_interval,
       maxConsecutiveProactive: settings.max_consecutive_proactive,
       proactiveCooldownMultiplier: settings.proactive_cooldown_multiplier,
-      dailyLeftOnReadLimit: settings.daily_left_on_read_limit,
-      leftOnReadTriggerMin: settings.left_on_read_trigger_min,
-      leftOnReadTriggerMax: settings.left_on_read_trigger_max,
-      leftOnReadCharacterCooldown: settings.left_on_read_character_cooldown,
       compactThresholdPercent: settings.compact_threshold_percent,
       compactTargetPercent: settings.compact_target_percent,
       keepUncompactedMessages: settings.keep_uncompacted_messages,
