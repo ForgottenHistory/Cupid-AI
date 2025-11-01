@@ -60,6 +60,17 @@ export async function likeCharacter(req, res) {
       return res.status(400).json({ error: 'Character data is required' });
     }
 
+    // Check max matches limit
+    const user = db.prepare('SELECT max_matches FROM users WHERE id = ?').get(userId);
+    const maxMatches = user?.max_matches || 0;
+
+    if (maxMatches > 0) {
+      const currentMatches = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ?').get(userId);
+      if (currentMatches.count >= maxMatches) {
+        return res.status(400).json({ error: `Maximum matches limit reached (${maxMatches}). Unmatch characters to make room for new matches.` });
+      }
+    }
+
     // Check character's current status
     let currentStatus = 'online';
     if (characterData.schedule) {
@@ -113,7 +124,7 @@ export async function performDailyAutoMatch(req, res) {
     }
 
     // Check if user has already auto-matched today
-    const user = db.prepare('SELECT last_auto_match_date FROM users WHERE id = ?').get(userId);
+    const user = db.prepare('SELECT last_auto_match_date, max_matches FROM users WHERE id = ?').get(userId);
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
     console.log(`  📆 Last auto-match: ${user.last_auto_match_date}, Today: ${today}`);
@@ -121,6 +132,16 @@ export async function performDailyAutoMatch(req, res) {
     if (user.last_auto_match_date === today) {
       console.log('  ⏭️ Already matched today');
       return res.json({ autoMatched: false, reason: 'Already matched today' });
+    }
+
+    // Check max matches limit
+    const maxMatches = user?.max_matches || 0;
+    if (maxMatches > 0) {
+      const currentMatches = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ?').get(userId);
+      if (currentMatches.count >= maxMatches) {
+        console.log(`  ⏭️ Max matches limit reached (${currentMatches.count}/${maxMatches})`);
+        return res.json({ autoMatched: false, reason: `Maximum matches limit reached (${maxMatches})` });
+      }
     }
 
     console.log(`  📚 Unmatched characters received: ${libraryCharacters.length}`);

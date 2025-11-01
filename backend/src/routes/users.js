@@ -716,7 +716,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
              daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, daily_swipe_limit, daily_auto_match_enabled,
-             compaction_enabled, max_memories
+             compaction_enabled, max_memories, max_matches
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -745,7 +745,8 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       dailySwipeLimit: settings.daily_swipe_limit,
       dailyAutoMatchEnabled: Boolean(settings.daily_auto_match_enabled),
       compactionEnabled: Boolean(settings.compaction_enabled),
-      maxMemories: settings.max_memories
+      maxMemories: settings.max_memories,
+      maxMatches: settings.max_matches
     });
   } catch (error) {
     console.error('Get behavior settings error:', error);
@@ -759,7 +760,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories } = req.body;
+    const { maxEmojisPerMessage, proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, dailyLeftOnReadLimit, leftOnReadTriggerMin, leftOnReadTriggerMax, leftOnReadCharacterCooldown, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -819,6 +820,9 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     }
     if (maxMemories !== undefined && (maxMemories < 0 || maxMemories > 100)) {
       return res.status(400).json({ error: 'Max memories must be between 0 and 100' });
+    }
+    if (maxMatches !== undefined && (maxMatches < 0 || maxMatches > 50)) {
+      return res.status(400).json({ error: 'Max matches must be between 0 and 50' });
     }
 
     // Build update query dynamically
@@ -909,6 +913,10 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('max_memories = ?');
       values.push(maxMemories);
     }
+    if (maxMatches !== undefined) {
+      updates.push('max_matches = ?');
+      values.push(maxMatches);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -928,7 +936,7 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
              daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, daily_swipe_limit, daily_auto_match_enabled,
-             compaction_enabled, max_memories
+             compaction_enabled, max_memories, max_matches
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -953,7 +961,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       dailySwipeLimit: settings.daily_swipe_limit,
       dailyAutoMatchEnabled: Boolean(settings.daily_auto_match_enabled),
       compactionEnabled: Boolean(settings.compaction_enabled),
-      maxMemories: settings.max_memories
+      maxMemories: settings.max_memories,
+      maxMatches: settings.max_matches
     });
   } catch (error) {
     console.error('Update behavior settings error:', error);

@@ -26,7 +26,8 @@ const BehaviorSettingsPage = () => {
     dailyAutoMatchEnabled: true,
     dailySwipeLimit: 5,
     compactionEnabled: true,
-    maxMemories: 50
+    maxMemories: 50,
+    maxMatches: 0
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,7 +104,8 @@ const BehaviorSettingsPage = () => {
       dailyAutoMatchEnabled: true,
       dailySwipeLimit: 5,
       compactionEnabled: true,
-      maxMemories: 50
+      maxMemories: 50,
+      maxMatches: 0
     });
     setSuccess('');
     setError('');
@@ -618,6 +620,30 @@ const BehaviorSettingsPage = () => {
                 <span>10</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Maximum swipes (likes/passes) allowed per day in the Discover tab (0 = unlimited)</p>
+            </div>
+
+            {/* Max Matches */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Max Matches at Once</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.maxMatches === 0 ? 'Unlimited' : `${settings.maxMatches} matches`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="50"
+                step="1"
+                value={settings.maxMatches}
+                onChange={(e) => updateSetting('maxMatches', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Unlimited</span>
+                <span>50</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum number of active matches you can have at once. When at the limit, you can't match in Discover or receive auto-matches (0 = unlimited)</p>
             </div>
 
             {/* Daily Auto-Match Section Header */}

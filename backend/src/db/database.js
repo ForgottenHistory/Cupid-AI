@@ -448,6 +448,11 @@ function runMigrations() {
       console.log('✅ max_memories column added to users table');
     }
 
+    if (!userColumnNamesRefresh.includes('max_matches')) {
+      db.exec(`ALTER TABLE users ADD COLUMN max_matches INTEGER DEFAULT 0;`);
+      console.log('✅ max_matches column added to users table');
+    }
+
     // Migration: Update messages table to allow 'system' role
     // Check if the constraint needs updating
     const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();
