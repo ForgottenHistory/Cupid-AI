@@ -255,7 +255,7 @@ class AIService {
                   'Authorization': `Bearer ${providerConfig.apiKey}`,
                   'Content-Type': 'application/json',
                   'HTTP-Referer': 'https://localhost:3000',
-                  'X-Title': 'AI-Dater',
+                  'X-Title': 'Cupid-AI',
                 },
                 timeout: 120000 // 120 second timeout
               }
@@ -477,7 +477,7 @@ class AIService {
                 'Authorization': `Bearer ${providerConfig.apiKey}`,
                 'Content-Type': 'application/json',
                 'HTTP-Referer': 'https://localhost:3000',
-                'X-Title': 'AI-Dater',
+                'X-Title': 'Cupid-AI',
               },
               timeout: 120000 // 120 second timeout
             }
@@ -734,7 +734,7 @@ class AIService {
                 'Authorization': `Bearer ${providerConfig.apiKey}`,
                 'Content-Type': 'application/json',
                 'HTTP-Referer': 'https://localhost:3000',
-                'X-Title': 'AI-Dater',
+                'X-Title': 'Cupid-AI',
               },
               responseType: 'stream',
               timeout: 120000 // 120 second timeout

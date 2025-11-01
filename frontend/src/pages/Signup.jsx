@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 const Signup = () => {
   const [formData, setFormData] = useState({
     username: '',
-    email: '',
     password: '',
     confirmPassword: '',
     displayName: '',
@@ -46,7 +45,6 @@ const Signup = () => {
     try {
       await register({
         username: formData.username,
-        email: formData.email,
         password: formData.password,
         displayName: formData.displayName || formData.username,
       });
@@ -63,7 +61,7 @@ const Signup = () => {
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <h1 className="text-4xl font-bold text-center mb-2 bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
-            AI-Dater
+            Cupid-AI
           </h1>
           <p className="text-center text-gray-600 mb-8">Create your account</p>
 
@@ -87,22 +85,6 @@ const Signup = () => {
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
                 placeholder="Choose a username"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email *
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition text-gray-900"
-                placeholder="your@email.com"
               />
             </div>
 

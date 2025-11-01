@@ -133,7 +133,7 @@ httpServer.listen(PORT, () => {
   console.log(`
 ╔════════════════════════════════════════╗
 ║                                        ║
-║   🚀 AI-Dater Backend Server          ║
+║   🚀 Cupid-AI Backend Server          ║
 ║   🔌 WebSocket Support Enabled        ║
 ║                                        ║
 ║   📡 Server: http://localhost:${PORT}    ║

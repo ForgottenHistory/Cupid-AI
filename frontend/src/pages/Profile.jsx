@@ -209,11 +209,6 @@ const Profile = () => {
 
                 <div className="space-y-6">
                   <div>
-                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Email</label>
-                    <p className="text-gray-900 mt-1">{user?.email}</p>
-                  </div>
-
-                  <div>
                     <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Bio</label>
                     <p className="text-gray-900 mt-1">
                       {user?.bio || <span className="text-gray-400 italic">No bio yet</span>}
@@ -263,19 +258,6 @@ const Profile = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                     />
                     <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={user?.email}
-                      disabled
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                   </div>
 
                   <div>

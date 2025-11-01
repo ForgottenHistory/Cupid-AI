@@ -10,19 +10,19 @@ class AuthService {
   /**
    * Register a new user
    */
-  async register({ username, email, password, displayName }) {
+  async register({ username, password, displayName }) {
     try {
       // Validate input
-      if (!username || !email || !password) {
-        throw new Error('Username, email, and password are required');
+      if (!username || !password) {
+        throw new Error('Username and password are required');
       }
 
       // Check if user already exists
-      const existingUser = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?')
-        .get(username, email);
+      const existingUser = db.prepare('SELECT id FROM users WHERE username = ?')
+        .get(username);
 
       if (existingUser) {
-        throw new Error('Username or email already exists');
+        throw new Error('Username already exists');
       }
 
       // Hash password
@@ -30,14 +30,14 @@ class AuthService {
 
       // Insert user
       const result = db.prepare(`
-        INSERT INTO users (username, email, password_hash, display_name)
-        VALUES (?, ?, ?, ?)
-      `).run(username, email, passwordHash, displayName || username);
+        INSERT INTO users (username, password_hash, display_name)
+        VALUES (?, ?, ?)
+      `).run(username, passwordHash, displayName || username);
 
       const userId = result.lastInsertRowid;
 
       // Get created user
-      const user = db.prepare('SELECT id, username, email, display_name, bio, profile_image, created_at FROM users WHERE id = ?')
+      const user = db.prepare('SELECT id, username, display_name, bio, profile_image, created_at FROM users WHERE id = ?')
         .get(userId);
 
       // Generate JWT token
@@ -62,10 +62,10 @@ class AuthService {
         throw new Error('Username and password are required');
       }
 
-      // Get user by username or email
+      // Get user by username
       const user = db.prepare(`
-        SELECT * FROM users WHERE username = ? OR email = ?
-      `).get(username, username);
+        SELECT * FROM users WHERE username = ?
+      `).get(username);
 
       if (!user) {
         throw new Error('Invalid credentials');
@@ -100,8 +100,7 @@ class AuthService {
     return jwt.sign(
       {
         id: user.id,
-        username: user.username,
-        email: user.email
+        username: user.username
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
@@ -124,7 +123,7 @@ class AuthService {
    */
   getUserById(userId) {
     const user = db.prepare(`
-      SELECT id, username, email, display_name, bio, profile_image, created_at
+      SELECT id, username, display_name, bio, profile_image, created_at
       FROM users WHERE id = ?
     `).get(userId);
 

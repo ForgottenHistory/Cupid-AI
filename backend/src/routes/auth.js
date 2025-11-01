@@ -10,11 +10,10 @@ const router = express.Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, displayName } = req.body;
+    const { username, password, displayName } = req.body;
 
     const result = await authService.register({
       username,
-      email,
       password,
       displayName
     });

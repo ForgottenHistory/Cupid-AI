@@ -43,7 +43,7 @@ const upload = multer({
 router.get('/profile', authenticateToken, (req, res) => {
   try {
     const user = db.prepare(`
-      SELECT id, username, email, display_name, bio, profile_image, created_at
+      SELECT id, username, display_name, bio, profile_image, created_at
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -93,7 +93,7 @@ router.put('/profile', authenticateToken, (req, res) => {
 
     // Get updated user
     const user = db.prepare(`
-      SELECT id, username, email, display_name, bio, profile_image, created_at
+      SELECT id, username, display_name, bio, profile_image, created_at
       FROM users WHERE id = ?
     `).get(userId);
 

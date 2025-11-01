@@ -591,6 +591,128 @@ function runMigrations() {
       db.exec(`ALTER TABLE characters ADD COLUMN memory_data TEXT;`);
       console.log('✅ memory_data column added to characters table for long-term memory');
     }
+
+    // Migration: Make email column optional (nullable)
+    // SQLite doesn't support ALTER COLUMN, so we recreate the table if email is NOT NULL
+    const usersSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
+    if (usersSchema && usersSchema.sql.includes('email TEXT UNIQUE NOT NULL')) {
+      console.log('🔄 Making email column optional in users table...');
+
+      // Get all existing columns from users table
+      const usersColumnsForEmail = db.pragma('table_info(users)');
+
+      db.exec(`
+        PRAGMA foreign_keys=OFF;
+
+        BEGIN TRANSACTION;
+
+        -- Create new table with email as optional
+        CREATE TABLE users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          email TEXT,
+          password_hash TEXT NOT NULL,
+          display_name TEXT,
+          bio TEXT,
+          profile_image TEXT,
+          llm_model TEXT DEFAULT 'deepseek/deepseek-chat-v3',
+          llm_temperature REAL DEFAULT 0.8,
+          llm_max_tokens INTEGER DEFAULT 800,
+          llm_top_p REAL DEFAULT 1.0,
+          llm_frequency_penalty REAL DEFAULT 0.0,
+          llm_presence_penalty REAL DEFAULT 0.0,
+          llm_context_window INTEGER DEFAULT 4000,
+          llm_provider TEXT DEFAULT 'openrouter',
+          llm_top_k INTEGER DEFAULT -1,
+          llm_repetition_penalty REAL DEFAULT 1.0,
+          llm_min_p REAL DEFAULT 0.0,
+          decision_llm_model TEXT DEFAULT 'deepseek/deepseek-chat-v3',
+          decision_llm_temperature REAL DEFAULT 0.7,
+          decision_llm_max_tokens INTEGER DEFAULT 500,
+          decision_llm_top_p REAL DEFAULT 1.0,
+          decision_llm_frequency_penalty REAL DEFAULT 0.0,
+          decision_llm_presence_penalty REAL DEFAULT 0.0,
+          decision_llm_context_window INTEGER DEFAULT 2000,
+          decision_llm_provider TEXT DEFAULT 'openrouter',
+          decision_llm_top_k INTEGER DEFAULT -1,
+          decision_llm_repetition_penalty REAL DEFAULT 1.0,
+          decision_llm_min_p REAL DEFAULT 0.0,
+          imagetag_llm_provider TEXT DEFAULT 'openrouter',
+          imagetag_llm_model TEXT DEFAULT 'x-ai/grok-4-fast',
+          imagetag_llm_temperature REAL DEFAULT 0.7,
+          imagetag_llm_max_tokens INTEGER DEFAULT 4000,
+          imagetag_llm_top_p REAL DEFAULT 1.0,
+          imagetag_llm_frequency_penalty REAL DEFAULT 0.0,
+          imagetag_llm_presence_penalty REAL DEFAULT 0.0,
+          imagetag_llm_top_k INTEGER DEFAULT -1,
+          imagetag_llm_repetition_penalty REAL DEFAULT 1.0,
+          imagetag_llm_min_p REAL DEFAULT 0.0,
+          proactive_messages_today INTEGER DEFAULT 0,
+          last_proactive_date TEXT,
+          super_likes_today INTEGER DEFAULT 0,
+          last_super_like_date TEXT,
+          last_global_proactive_at TIMESTAMP,
+          left_on_read_messages_today INTEGER DEFAULT 0,
+          last_left_on_read_date TEXT,
+          daily_left_on_read_limit INTEGER DEFAULT 10,
+          left_on_read_trigger_min INTEGER DEFAULT 5,
+          left_on_read_trigger_max INTEGER DEFAULT 15,
+          left_on_read_character_cooldown INTEGER DEFAULT 120,
+          swipes_today INTEGER DEFAULT 0,
+          last_swipe_date TEXT,
+          sd_steps INTEGER DEFAULT 30,
+          sd_cfg_scale REAL DEFAULT 7.0,
+          sd_sampler TEXT DEFAULT 'DPM++ 2M',
+          sd_scheduler TEXT DEFAULT 'Karras',
+          sd_enable_hr INTEGER DEFAULT 1,
+          sd_hr_scale REAL DEFAULT 1.5,
+          sd_hr_upscaler TEXT DEFAULT 'remacri_original',
+          sd_hr_steps INTEGER DEFAULT 15,
+          sd_hr_cfg REAL DEFAULT 5.0,
+          sd_denoising_strength REAL DEFAULT 0.7,
+          sd_enable_adetailer INTEGER DEFAULT 1,
+          sd_adetailer_model TEXT DEFAULT 'face_yolov8n.pt',
+          sd_main_prompt TEXT DEFAULT 'masterpiece, best quality, amazing quality',
+          sd_negative_prompt TEXT DEFAULT 'nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
+          sd_model TEXT DEFAULT '',
+          last_auto_match_date TEXT,
+          max_emojis_per_message INTEGER DEFAULT 2,
+          proactive_message_hours INTEGER DEFAULT 4,
+          daily_proactive_limit INTEGER DEFAULT 5,
+          pacing_style TEXT DEFAULT 'balanced',
+          proactive_away_chance INTEGER DEFAULT 50,
+          proactive_busy_chance INTEGER DEFAULT 10,
+          proactive_check_interval INTEGER DEFAULT 5,
+          last_proactive_check_at TIMESTAMP,
+          max_consecutive_proactive INTEGER DEFAULT 4,
+          proactive_cooldown_multiplier REAL DEFAULT 2.0,
+          compact_threshold INTEGER DEFAULT 26000,
+          compact_target INTEGER DEFAULT 20000,
+          keep_uncompacted_messages INTEGER DEFAULT 30,
+          max_summaries INTEGER DEFAULT 5,
+          compact_threshold_percent INTEGER DEFAULT 90,
+          compact_target_percent INTEGER DEFAULT 70,
+          auto_unmatch_inactive_days INTEGER DEFAULT 0,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Copy data from old table (set email to NULL for users without email)
+        INSERT INTO users_new SELECT * FROM users;
+
+        -- Drop old table
+        DROP TABLE users;
+
+        -- Rename new table
+        ALTER TABLE users_new RENAME TO users;
+
+        COMMIT;
+
+        PRAGMA foreign_keys=ON;
+      `);
+
+      console.log('✅ Email column is now optional in users table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }
