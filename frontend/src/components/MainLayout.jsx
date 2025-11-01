@@ -4,9 +4,6 @@ import { useState, useEffect } from 'react';
 import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
-import LLMSettings from './LLMSettings';
-import SDSettings from './SDSettings';
-import BehaviorSettings from './BehaviorSettings';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { syncAllCharacters, clearAllPosts } from '../utils/syncCharacterImages';
 import DailyMatchModal from './DailyMatchModal';
@@ -20,9 +17,6 @@ const MainLayout = ({ children }) => {
   const [matches, setMatches] = useState([]);
   const [stats, setStats] = useState({ total: 0, liked: 0, remaining: 0 });
   const [conversations, setConversations] = useState([]);
-  const [showLLMSettings, setShowLLMSettings] = useState(false);
-  const [showSDSettings, setShowSDSettings] = useState(false);
-  const [showBehaviorSettings, setShowBehaviorSettings] = useState(false);
   const [characterStatuses, setCharacterStatuses] = useState({});
   const [dailyMatchCharacter, setDailyMatchCharacter] = useState(null);
   const [showDailyMatchModal, setShowDailyMatchModal] = useState(false);
@@ -467,7 +461,7 @@ const MainLayout = ({ children }) => {
               </div>
             </div>
             <button
-              onClick={() => setShowLLMSettings(true)}
+              onClick={() => navigate('/settings/llm')}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
               title="LLM Settings"
             >
@@ -477,7 +471,7 @@ const MainLayout = ({ children }) => {
               </svg>
             </button>
             <button
-              onClick={() => setShowSDSettings(true)}
+              onClick={() => navigate('/settings/image')}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
               title="Image Generation Settings"
             >
@@ -486,7 +480,7 @@ const MainLayout = ({ children }) => {
               </svg>
             </button>
             <button
-              onClick={() => setShowBehaviorSettings(true)}
+              onClick={() => navigate('/settings/behavior')}
               className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
               title="Behavior Settings"
             >
@@ -622,21 +616,6 @@ const MainLayout = ({ children }) => {
           {children}
         </div>
       </div>
-
-      {/* LLM Settings Modal */}
-      {showLLMSettings && (
-        <LLMSettings onClose={() => setShowLLMSettings(false)} />
-      )}
-
-      {/* SD Settings Modal */}
-      {showSDSettings && (
-        <SDSettings onClose={() => setShowSDSettings(false)} />
-      )}
-
-      {/* Behavior Settings Modal */}
-      {showBehaviorSettings && (
-        <BehaviorSettings onClose={() => setShowBehaviorSettings(false)} />
-      )}
 
       {/* Daily Match Modal */}
       {showDailyMatchModal && dailyMatchCharacter && (

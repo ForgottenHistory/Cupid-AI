@@ -16,6 +16,9 @@ import Prompts from './pages/Prompts';
 import Profile from './pages/Profile';
 import Chat from './pages/Chat';
 import CharacterWizard from './pages/CharacterWizard';
+import LLMSettingsPage from './pages/LLMSettingsPage';
+import BehaviorSettingsPage from './pages/BehaviorSettingsPage';
+import SDSettingsPage from './pages/SDSettingsPage';
 
 // Wrapper component to force Chat remount when characterId changes
 function ChatWrapper() {
@@ -126,6 +129,39 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <ChatWrapper />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings/llm"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <LLMSettingsPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings/behavior"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <BehaviorSettingsPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings/image"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <SDSettingsPage />
                 </MainLayout>
               </ProtectedRoute>
             }

@@ -130,7 +130,19 @@ const ModelSelector = ({ selectedModel, onChange, provider = 'openrouter' }) => 
       {/* Model Dropdown */}
       <select
         value={selectedModel}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          console.log('ModelSelector onChange:', e.target.value);
+          onChange(e.target.value);
+        }}
+        onClick={(e) => {
+          // Force onChange even if clicking the same option
+          if (e.target.tagName === 'OPTION') {
+            const clickedValue = e.target.value;
+            if (clickedValue && clickedValue !== selectedModel) {
+              onChange(clickedValue);
+            }
+          }
+        }}
         disabled={loadingModels}
         className="w-full px-4 py-3 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
         size="8"

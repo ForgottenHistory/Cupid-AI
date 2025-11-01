@@ -110,37 +110,37 @@ const Profile = () => {
   const profileImageUrl = imagePreview || getImageUrl(user?.profile_image);
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50">
+    <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="max-w-3xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="mb-8">
           <button
             onClick={() => navigate('/')}
-            className="text-gray-600 hover:text-gray-900 flex items-center gap-2 mb-4 transition"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 flex items-center gap-2 mb-4 transition"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back
           </button>
-          <h1 className="text-4xl font-bold text-gray-900">Profile Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your account information</p>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">Profile Settings</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your account information</p>
         </div>
 
         {/* Messages */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300">
             {error}
           </div>
         )}
         {success && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg text-green-700">
+          <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg text-green-700 dark:text-green-300">
             {success}
           </div>
         )}
 
         {/* Profile Card */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden">
           {/* Cover gradient */}
           <div className="h-32 bg-gradient-to-r from-pink-400 via-purple-500 to-blue-500"></div>
 
@@ -152,10 +152,10 @@ const Profile = () => {
                   <img
                     src={profileImageUrl}
                     alt="Profile"
-                    className="w-32 h-32 rounded-full border-4 border-white shadow-xl object-cover"
+                    className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-800 shadow-xl object-cover"
                   />
                 ) : (
-                  <div className="w-32 h-32 rounded-full border-4 border-white shadow-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold">
+                  <div className="w-32 h-32 rounded-full border-4 border-white dark:border-gray-800 shadow-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-4xl font-bold">
                     {(user?.display_name || user?.username || 'U').charAt(0).toUpperCase()}
                   </div>
                 )}
@@ -194,10 +194,10 @@ const Profile = () => {
               <div>
                 <div className="flex justify-between items-start mb-6">
                   <div>
-                    <h2 className="text-3xl font-bold text-gray-900">
+                    <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
                       {user?.display_name || user?.username}
                     </h2>
-                    <p className="text-gray-500 text-sm mt-1">@{user?.username}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">@{user?.username}</p>
                   </div>
                   <button
                     onClick={() => setIsEditing(true)}
@@ -209,17 +209,17 @@ const Profile = () => {
 
                 <div className="space-y-6">
                   <div>
-                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Bio</label>
-                    <p className="text-gray-900 mt-1">
-                      {user?.bio || <span className="text-gray-400 italic">No bio yet</span>}
+                    <label className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Bio</label>
+                    <p className="text-gray-900 dark:text-gray-100 mt-1">
+                      {user?.bio || <span className="text-gray-400 dark:text-gray-500 italic">No bio yet</span>}
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-gray-200">
-                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2 block">
+                  <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <label className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 block">
                       Account Created
                     </label>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 dark:text-gray-400 text-sm">
                       {new Date(user?.created_at).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'long',
@@ -234,7 +234,7 @@ const Profile = () => {
               <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       Display Name
                     </label>
                     <input
@@ -242,26 +242,26 @@ const Profile = () => {
                       name="displayName"
                       value={formData.displayName}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                       placeholder="Your display name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       Username
                     </label>
                     <input
                       type="text"
                       value={user?.username}
                       disabled
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400 cursor-not-allowed"
                     />
-                    <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Username cannot be changed</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       Bio
                     </label>
                     <textarea
@@ -269,17 +269,17 @@ const Profile = () => {
                       value={formData.bio}
                       onChange={handleChange}
                       rows={4}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 resize-none"
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
                       placeholder="Tell us about yourself..."
                     />
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       {formData.bio.length} / 500 characters
                     </p>
                   </div>
 
                   {imageFile && (
-                    <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                      <p className="text-sm text-purple-700">
+                    <div className="p-4 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg">
+                      <p className="text-sm text-purple-700 dark:text-purple-300">
                         New profile image selected: {imageFile.name}
                       </p>
                     </div>
@@ -297,7 +297,7 @@ const Profile = () => {
                       type="button"
                       onClick={handleCancel}
                       disabled={loading}
-                      className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Cancel
                     </button>

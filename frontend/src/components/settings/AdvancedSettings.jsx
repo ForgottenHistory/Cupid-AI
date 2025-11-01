@@ -47,16 +47,22 @@ const AdvancedSettings = ({ settings, updateSetting }) => {
         />
 
         {/* Context Window */}
-        <SliderParameter
-          label="Context Window"
-          value={settings.contextWindow}
-          min={1000}
-          max={200000}
-          step={1000}
-          onChange={(value) => updateSetting('contextWindow', value)}
-          labels={['1K', '100K', '200K']}
-          description="Maximum conversation history to send. Older messages are dropped when limit is reached. Set based on your model's capabilities (e.g., 4K for most models, 128K+ for Claude/GPT-4)."
-        />
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Context Window
+          </label>
+          <input
+            type="number"
+            value={settings.contextWindow}
+            onChange={(e) => updateSetting('contextWindow', parseInt(e.target.value) || 0)}
+            min="1"
+            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+            placeholder="e.g., 4000, 8000, 128000"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Maximum conversation history to read. Older messages are dropped when limit is reached. Independent from Compaction system.
+          </p>
+        </div>
 
         {/* Featherless-specific parameters */}
         {isFeatherless && (

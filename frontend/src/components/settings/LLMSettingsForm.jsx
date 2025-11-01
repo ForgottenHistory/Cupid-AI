@@ -36,9 +36,13 @@ const LLMSettingsForm = ({
               <>
                 <strong>Content LLM:</strong> Used to generate character responses and dialogue. This is the main AI that writes what your characters say.
               </>
-            ) : (
+            ) : type === 'decision' ? (
               <>
                 <strong>Decision LLM:</strong> Used to make behavioral decisions (reactions, mood changes, events). A smaller, faster model is recommended for quick decision-making.
+              </>
+            ) : (
+              <>
+                <strong>Image Tag LLM:</strong> Used to generate Danbooru-style tags for character image generation. A thinking model is recommended for smart tag generation.
               </>
             )}
           </p>
@@ -95,16 +99,22 @@ const LLMSettingsForm = ({
         />
 
         {/* Max Tokens */}
-        <SliderParameter
-          label="Max Tokens"
-          value={settings.maxTokens}
-          min={100}
-          max={4000}
-          step={100}
-          onChange={(value) => updateSetting('maxTokens', value)}
-          labels={['Short (100)', 'Medium (2000)', 'Long (4000)']}
-          description="Maximum length of the response. ~4 characters per token."
-        />
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            Max Tokens For Output
+          </label>
+          <input
+            type="number"
+            value={settings.maxTokens}
+            onChange={(e) => updateSetting('maxTokens', parseInt(e.target.value) || 0)}
+            min="1"
+            className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+            placeholder="e.g., 800, 2000, 4000"
+          />
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+            Maximum length of the response. ~4 characters per token.
+          </p>
+        </div>
 
         {/* Advanced Settings */}
         <AdvancedSettings
@@ -135,7 +145,7 @@ const LLMSettingsForm = ({
             disabled={saving}
             className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 dark:hover:from-pink-700 dark:hover:to-purple-800 transition font-semibold shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </div>
