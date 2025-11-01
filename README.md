@@ -2,7 +2,7 @@
 
 AI-Powered Dating Simulation with Realistic Character Interactions
 
-![Cupid AI](hero.png)
+![Cupid AI](images/hero.png)
 
 ## Overview
 
@@ -15,6 +15,8 @@ Most AI roleplay projects have limited memory, focused on action rather than com
 Cupid solves most issues with activities, online statuses and great image generation. Characters have their own life, stick around for a while then go do their thing. They naturally say goodbye, have moods, show off whatever they're doing. It won't replace your other roleplay apps, rather it's more for chilling out and chatting with whoever is online. 
 
 Along with important memories saved and message compaction, the chat's can go on for a long time with less context loss. Overall a neat package for people who like talking a lot.
+
+![Cupid AI](images/chat-example.png)
 
 ## Key Features
 
@@ -64,39 +66,18 @@ Each LLM has separate provider (OpenRouter/Featherless), model, temperature, tok
 - Memory extraction rules (importance scoring, fact selection)
 - Conversation compaction instructions
 
-**Stable Diffusion Settings:**
-- Sampling method, steps, CFG scale
-- Resolution and upscaling options
-- ADetailer face restoration
-- Custom positive/negative prompts
-- ControlNet support
-
-## Tech Stack
-
-**Frontend:**
-- React + Vite
-- Tailwind CSS
-- IndexedDB (character storage)
-- Socket.IO (real-time chat)
-
-**Backend:**
-- Node.js + Express
-- SQLite (better-sqlite3)
-- JWT Authentication
-- Socket.IO
-- Multi-provider LLM support (OpenRouter, Featherless)
-
-**External Services:**
-- OpenRouter / Featherless (LLM providers)
-- Stable Diffusion WebUI (image generation)
-
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+
+
+Node.js 18+
+
+One LLM provicer:
 - OpenRouter API key ([get one here](https://openrouter.ai/))
-- Featherless API key (optional, [get one here](https://featherless.ai/))
-- Stable Diffusion WebUI (optional, for image generation)
+- Featherless API key ([get one here](https://featherless.ai/))
+
+Optional:
+- Stable Diffusion WebUI (for image generation)
 
 ### Installation
 
@@ -118,6 +99,8 @@ npm install
 ```
 
 3. **Configure environment variables**
+
+Look at .env.example for reference
 
 Create `backend/.env`:
 ```env
@@ -152,7 +135,7 @@ Navigate to `http://localhost:5173`
 ## Usage Guide
 
 ### Getting Started
-1. **Sign up** for an account or log in
+1. **Sign up** for an account or log in (stored offline)
 2. **Import characters** from PNG cards or create new ones with the Character Wizard
 3. **Configure your LLM settings** in Profile → LLM Settings (choose models for Content/Decision/Image Tag)
 4. **Swipe on characters** in the Discover tab (right = like, left = pass)
@@ -215,6 +198,25 @@ Generate AI characters in 4 steps:
 4. **Options**: Auto-generate dating profile, schedule, and personality traits
 
 ## Development
+
+### Tech Stack
+
+**Frontend:**
+- React + Vite
+- Tailwind CSS
+- IndexedDB (character storage)
+- Socket.IO (real-time chat)
+
+**Backend:**
+- Node.js + Express
+- SQLite (better-sqlite3)
+- JWT Authentication
+- Socket.IO
+- Multi-provider LLM support (OpenRouter, Featherless)
+
+**External Services:**
+- OpenRouter / Featherless (LLM providers)
+- Stable Diffusion WebUI (image generation)
 
 ### Project Structure
 ```
