@@ -12,6 +12,11 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
   const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const [editedTags, setEditedTags] = useState([]);
+  const [newTag, setNewTag] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
   const navigate = useNavigate();
 
   if (!character) return null;
@@ -28,6 +33,106 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         { id: 'image', label: 'Image' },
         { id: 'overview', label: 'Overview' },
       ];
+
+  const handleStartEditingName = () => {
+    setEditedName(character.name || '');
+    setIsEditingName(true);
+  };
+
+  const handleCancelEditingName = () => {
+    setIsEditingName(false);
+    setEditedName('');
+    setError('');
+  };
+
+  const handleSaveName = async () => {
+    if (!editedName.trim()) {
+      setError('Name cannot be empty');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Update character name in IndexedDB
+      await characterService.updateCharacterData(character.id, {
+        name: editedName.trim()
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+
+      setIsEditingName(false);
+    } catch (err) {
+      console.error('Save name error:', err);
+      setError('Failed to save name');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartEditingTags = () => {
+    setEditedTags(data.tags || []);
+    setNewTag('');
+    setIsEditingTags(true);
+  };
+
+  const handleCancelEditingTags = () => {
+    setIsEditingTags(false);
+    setEditedTags([]);
+    setNewTag('');
+    setError('');
+  };
+
+  const handleAddTag = () => {
+    if (!newTag.trim()) return;
+    if (editedTags.includes(newTag.trim())) {
+      setError('Tag already exists');
+      return;
+    }
+    setEditedTags([...editedTags, newTag.trim()]);
+    setNewTag('');
+    setError('');
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    setEditedTags(editedTags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleSaveTags = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Update character in IndexedDB
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          tags: editedTags
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+
+      setIsEditingTags(false);
+    } catch (err) {
+      console.error('Save tags error:', err);
+      setError('Failed to save tags');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCleanupDescription = async () => {
     if (!data.description) {
@@ -475,8 +580,65 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {/* Title & Tags */}
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">{character.name}</h2>
-            {data.tags && data.tags.length > 0 && (
+            {/* Name Section */}
+            {!isEditingName ? (
+              <div className="flex items-start justify-between mb-2">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{character.name}</h2>
+                {mode === 'library' && !isEditingTags && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleStartEditingName}
+                      className="px-3 py-1 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
+                    >
+                      Edit Name
+                    </button>
+                    <button
+                      onClick={handleStartEditingTags}
+                      className="px-3 py-1 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
+                    >
+                      Edit Tags
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3 mb-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSaveName();
+                      }
+                    }}
+                    placeholder="Character name..."
+                    className="flex-1 px-4 py-2 text-2xl font-bold border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 outline-none"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={handleCancelEditingName}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveName}
+                    disabled={loading}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 transition text-sm font-medium"
+                  >
+                    {loading ? 'Saving...' : 'Save Name'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* View Mode */}
+            {!isEditingTags && data.tags && data.tags.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {data.tags.map((tag, index) => (
                   <span
@@ -486,6 +648,72 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                     {tag}
                   </span>
                 ))}
+              </div>
+            )}
+
+            {/* Edit Mode */}
+            {isEditingTags && (
+              <div className="space-y-3">
+                {/* Current Tags */}
+                <div className="flex flex-wrap gap-2">
+                  {editedTags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium flex items-center gap-2"
+                    >
+                      {tag}
+                      <button
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-red-600 dark:hover:text-red-400 transition"
+                        title="Remove tag"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+
+                {/* Add New Tag */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                    placeholder="Add new tag..."
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                  />
+                  <button
+                    onClick={handleAddTag}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition text-sm font-medium"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={handleCancelEditingTags}
+                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveTags}
+                    disabled={loading}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 transition text-sm font-medium"
+                  >
+                    {loading ? 'Saving...' : 'Save Tags'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
