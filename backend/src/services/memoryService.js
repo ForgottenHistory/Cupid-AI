@@ -8,7 +8,7 @@ import { loadPrompts } from '../routes/prompts.js';
  *
  * Memories are:
  * - Stored per character (shared across all users)
- * - Max 50 memories per character
+ * - User-configurable memory cap (0-100, default 50)
  * - One-liner timeless facts with importance scores (0-100)
  * - Extracted using Content LLM from conversation blocks
  * - NEW memories are added and merged with existing ones
@@ -19,7 +19,7 @@ class MemoryService {
   /**
    * Get character memories from database
    * @param {string} characterId - Character ID
-   * @returns {Array<{importance: number, text: string}>} Array of memory objects (max 50)
+   * @returns {Array<{importance: number, text: string}>} Array of memory objects
    */
   getCharacterMemories(characterId) {
     const character = db.prepare('SELECT memory_data FROM characters WHERE id = ?').get(characterId);
@@ -50,22 +50,34 @@ class MemoryService {
   /**
    * Save character memories to database
    * @param {string} characterId - Character ID
-   * @param {Array<{importance: number, text: string}>} memories - Array of memory objects (max 50)
+   * @param {Array<{importance: number, text: string}>} memories - Array of memory objects
+   * @param {number} userId - User ID (for max_memories setting)
    */
-  saveCharacterMemories(characterId, memories) {
+  saveCharacterMemories(characterId, memories, userId) {
     if (!Array.isArray(memories)) {
       throw new Error('Memories must be an array');
     }
 
-    // Sort by importance (highest first) and enforce 50 memory cap
+    // Get user's max_memories setting (default to 50 if not found)
+    const user = db.prepare('SELECT max_memories FROM users WHERE id = ?').get(userId);
+    const maxMemories = user?.max_memories ?? 50;
+
+    // If max_memories is 0, memories are disabled - save empty array
+    if (maxMemories === 0) {
+      db.prepare('UPDATE characters SET memory_data = ? WHERE id = ?').run('[]', characterId);
+      console.log(`💾 Memory system disabled for user ${userId} - cleared memories for character ${characterId}`);
+      return;
+    }
+
+    // Sort by importance (highest first) and enforce user's memory cap
     const sortedMemories = memories
       .sort((a, b) => b.importance - a.importance)
-      .slice(0, 50);
+      .slice(0, maxMemories);
 
     const memoryData = JSON.stringify(sortedMemories);
     db.prepare('UPDATE characters SET memory_data = ? WHERE id = ?').run(memoryData, characterId);
 
-    console.log(`💾 Saved ${sortedMemories.length} memories for character ${characterId} (importance range: ${sortedMemories[0]?.importance || 0}-${sortedMemories[sortedMemories.length - 1]?.importance || 0})`);
+    console.log(`💾 Saved ${sortedMemories.length}/${maxMemories} memories for character ${characterId} (importance range: ${sortedMemories[0]?.importance || 0}-${sortedMemories[sortedMemories.length - 1]?.importance || 0})`);
   }
 
   /**
@@ -77,6 +89,16 @@ class MemoryService {
    * @returns {Promise<Array<{importance: number, text: string}>>} Updated array of memories (max 50)
    */
   async extractMemories(characterId, messages, userId) {
+    // Check if memory system is enabled for this user
+    const user = db.prepare('SELECT max_memories FROM users WHERE id = ?').get(userId);
+    const maxMemories = user?.max_memories ?? 50;
+
+    // If max_memories is 0, memories are disabled - return empty array
+    if (maxMemories === 0) {
+      console.log(`🧠 Memory system disabled for user ${userId} - skipping extraction`);
+      return [];
+    }
+
     // Get character data
     const character = db.prepare('SELECT card_data, name FROM characters WHERE id = ?').get(characterId);
     if (!character) {
@@ -112,7 +134,7 @@ class MemoryService {
     );
 
     console.log(`🧠 Extracting NEW memories for ${characterName} from ${messages.length} messages...`);
-    console.log(`📝 Current memories: ${existingMemories.length}/50`);
+    console.log(`📝 Current memories: ${existingMemories.length}/${maxMemories}`);
 
     // Get Content LLM settings
     const contentSettings = llmSettingsService.getUserSettings(userId);
@@ -147,12 +169,12 @@ class MemoryService {
       console.log(`✅ Extracted ${newMemories.length} NEW memories for ${characterName}`);
 
       // Merge new memories with existing ones
-      const mergedMemories = this._mergeMemories(existingMemories, newMemories);
+      const mergedMemories = this._mergeMemories(existingMemories, newMemories, maxMemories);
 
-      console.log(`💾 Total memories after merge: ${mergedMemories.length}/50`);
+      console.log(`💾 Total memories after merge: ${mergedMemories.length}/${maxMemories}`);
 
-      // Save to database (saveCharacterMemories will sort and cap at 50)
-      this.saveCharacterMemories(characterId, mergedMemories);
+      // Save to database (saveCharacterMemories will sort and cap based on user settings)
+      this.saveCharacterMemories(characterId, mergedMemories, userId);
 
       return mergedMemories;
     } catch (error) {
@@ -163,26 +185,27 @@ class MemoryService {
   }
 
   /**
-   * Merge new memories with existing ones, keeping top 50 by importance
+   * Merge new memories with existing ones, keeping top N by importance
    * @param {Array<{importance: number, text: string}>} existingMemories - Current memories
    * @param {Array<{importance: number, text: string}>} newMemories - New memories to add
-   * @returns {Array<{importance: number, text: string}>} Merged and sorted memories (max 50)
+   * @param {number} maxMemories - Maximum number of memories to keep
+   * @returns {Array<{importance: number, text: string}>} Merged and sorted memories
    * @private
    */
-  _mergeMemories(existingMemories, newMemories) {
+  _mergeMemories(existingMemories, newMemories, maxMemories) {
     // Combine all memories
     const allMemories = [...existingMemories, ...newMemories];
 
     // Sort by importance (highest first)
     allMemories.sort((a, b) => b.importance - a.importance);
 
-    // Keep top 50
-    const topMemories = allMemories.slice(0, 50);
+    // Keep top N based on user's max_memories setting
+    const topMemories = allMemories.slice(0, maxMemories);
 
     // Log what was pruned if any
-    if (allMemories.length > 50) {
-      const pruned = allMemories.length - 50;
-      const lowestKept = topMemories[49].importance;
+    if (allMemories.length > maxMemories) {
+      const pruned = allMemories.length - maxMemories;
+      const lowestKept = topMemories[maxMemories - 1].importance;
       console.log(`✂️ Pruned ${pruned} lowest importance memories (kept importance >= ${lowestKept})`);
     }
 

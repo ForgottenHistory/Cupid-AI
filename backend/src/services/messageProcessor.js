@@ -16,8 +16,14 @@ class MessageProcessor {
    */
   async processMessage(io, userId, characterId, conversationId, characterData) {
     try {
-      // Check if conversation needs compacting before generating response
-      await compactService.compactIfNeeded(conversationId, userId, io, characterId);
+      // Get user settings for compaction
+      const userSettings = db.prepare('SELECT compaction_enabled FROM users WHERE id = ?').get(userId);
+      const compactionEnabled = userSettings?.compaction_enabled ?? 1; // Default to enabled if not found
+
+      // Check if conversation needs compacting before generating response (only if enabled)
+      if (compactionEnabled) {
+        await compactService.compactIfNeeded(conversationId, userId, io, characterId);
+      }
 
       // Check and insert TIME GAP marker if needed (e.g., user messages after long gaps)
       timeGapService.checkAndInsertTimeGap(conversationId);

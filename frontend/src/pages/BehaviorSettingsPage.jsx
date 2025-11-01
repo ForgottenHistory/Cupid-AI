@@ -24,7 +24,9 @@ const BehaviorSettingsPage = () => {
     keepUncompactedMessages: 30,
     autoUnmatchInactiveDays: 0,
     dailyAutoMatchEnabled: true,
-    dailySwipeLimit: 5
+    dailySwipeLimit: 5,
+    compactionEnabled: true,
+    maxMemories: 50
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -99,7 +101,9 @@ const BehaviorSettingsPage = () => {
       keepUncompactedMessages: 30,
       autoUnmatchInactiveDays: 0,
       dailyAutoMatchEnabled: true,
-      dailySwipeLimit: 5
+      dailySwipeLimit: 5,
+      compactionEnabled: true,
+      maxMemories: 50
     });
     setSuccess('');
     setError('');
@@ -449,6 +453,23 @@ const BehaviorSettingsPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Automatically summarize old messages to manage context window</p>
             </div>
 
+            {/* Compaction Toggle */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Enable Compaction</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.compactionEnabled}
+                    onChange={(e) => updateSetting('compactionEnabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When disabled, conversations will grow indefinitely without AI summarization (may exceed context window)</p>
+            </div>
+
             {/* Compact Threshold Percent */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -513,6 +534,36 @@ const BehaviorSettingsPage = () => {
                 <span>100</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Always keep this many recent messages uncompacted for context</p>
+            </div>
+
+            {/* Memory System Section Header */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Long-Term Memory System</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">AI extracts and stores important facts from conversations. Needs Compaction to be enabled.</p>
+            </div>
+
+            {/* Max Memories */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Maximum Memories Per Character</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.maxMemories === 0 ? 'Disabled' : `${settings.maxMemories} memories`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={settings.maxMemories}
+                onChange={(e) => updateSetting('maxMemories', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Disabled</span>
+                <span>100</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum important facts AI can remember about conversations. Lowest importance memories are pruned when limit is reached. (0 = disabled, no memories extracted)</p>
             </div>
 
             {/* Auto-Unmatch Section Header */}

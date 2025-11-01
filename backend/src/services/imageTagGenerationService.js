@@ -88,7 +88,7 @@ class ImageTagGenerationService {
       });
 
       // Log full response to see reasoning output
-      console.log('🧠 DeepSeek FULL RESPONSE:', JSON.stringify(response, null, 2));
+      //console.log('🧠 FULL RESPONSE:', JSON.stringify(response, null, 2));
 
       const generatedTags = response.content.trim();
       console.log('🤖 LLM generated tags:', generatedTags);

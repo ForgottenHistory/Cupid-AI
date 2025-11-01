@@ -438,6 +438,16 @@ function runMigrations() {
       console.log('✅ daily_auto_match_enabled column added to users table');
     }
 
+    if (!userColumnNamesRefresh.includes('compaction_enabled')) {
+      db.exec(`ALTER TABLE users ADD COLUMN compaction_enabled INTEGER DEFAULT 1;`);
+      console.log('✅ compaction_enabled column added to users table');
+    }
+
+    if (!userColumnNamesRefresh.includes('max_memories')) {
+      db.exec(`ALTER TABLE users ADD COLUMN max_memories INTEGER DEFAULT 50;`);
+      console.log('✅ max_memories column added to users table');
+    }
+
     // Migration: Update messages table to allow 'system' role
     // Check if the constraint needs updating
     const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();
