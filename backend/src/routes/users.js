@@ -214,14 +214,18 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
     if (contextWindow !== undefined && (contextWindow < 1000 || contextWindow > 200000)) {
       return res.status(400).json({ error: 'Context window must be between 1000 and 200000' });
     }
-    if (topK !== undefined && topK < -1) {
-      return res.status(400).json({ error: 'Top K must be -1 or greater' });
-    }
-    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
-      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
-    }
-    if (minP !== undefined && (minP < 0 || minP > 1)) {
-      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
+
+    // Featherless-specific parameter validation (only validate if provider is featherless)
+    if (provider === 'featherless') {
+      if (topK !== undefined && topK < -1) {
+        return res.status(400).json({ error: 'Top K must be -1 or greater' });
+      }
+      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+      }
+      if (minP !== undefined && (minP < 0 || minP > 1)) {
+        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
+      }
     }
 
     // Build update query dynamically
@@ -376,14 +380,18 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
     if (contextWindow !== undefined && (contextWindow < 1000 || contextWindow > 200000)) {
       return res.status(400).json({ error: 'Context window must be between 1000 and 200000' });
     }
-    if (topK !== undefined && topK < -1) {
-      return res.status(400).json({ error: 'Top K must be -1 or greater' });
-    }
-    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
-      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
-    }
-    if (minP !== undefined && (minP < 0 || minP > 1)) {
-      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
+
+    // Featherless-specific parameter validation (only validate if provider is featherless)
+    if (provider === 'featherless') {
+      if (topK !== undefined && topK < -1) {
+        return res.status(400).json({ error: 'Top K must be -1 or greater' });
+      }
+      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+      }
+      if (minP !== undefined && (minP < 0 || minP > 1)) {
+        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
+      }
     }
 
     // Build update query dynamically
@@ -535,14 +543,18 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
     if (presencePenalty !== undefined && (presencePenalty < -2 || presencePenalty > 2)) {
       return res.status(400).json({ error: 'Presence penalty must be between -2 and 2' });
     }
-    if (topK !== undefined && topK < -1) {
-      return res.status(400).json({ error: 'Top K must be -1 or greater' });
-    }
-    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
-      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
-    }
-    if (minP !== undefined && (minP < 0 || minP > 1)) {
-      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
+
+    // Featherless-specific parameter validation (only validate if provider is featherless)
+    if (provider === 'featherless') {
+      if (topK !== undefined && topK < -1) {
+        return res.status(400).json({ error: 'Top K must be -1 or greater' });
+      }
+      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+      }
+      if (minP !== undefined && (minP < 0 || minP > 1)) {
+        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
+      }
     }
 
     // Build update query dynamically
