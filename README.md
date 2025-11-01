@@ -1,32 +1,76 @@
 # Cupid AI
 
-AI-powered dating app simulator. Swipe on characters, match, chat, and build relationships with AI personalities.
+AI-Powered Dating Simulation with Realistic Character Interactions
 
-## Core Features
+![Cupid AI](hero.png)
 
-**Character Management:**
-- Import PNG character cards (v2 spec)
-- Character Wizard: AI-generated characters (name, description, appearance, image)
-- Dating profiles, weekly schedules, Big Five personality traits
-- Daily swipe limits
+## Overview
 
-**Chat System:**
-- Triple LLM architecture (Content, Decision, Image Tag)
-- Proactive messaging: characters reach out first after time gaps
-- Schedule-based engagement: realistic online/away/busy/offline patterns
-- Left-on-read follow-ups
-- Message pagination (200 messages per page)
-- Conversation compacting: automatic AI summarization to manage context window
-- Long-term memory: AI extracts and stores up to 50 persistent memories per character
-- TIME GAP markers: visual indicators for conversation breaks (30+ minutes)
+Cupid AI is a dating app simulator where you interact with AI-powered characters that exhibit realistic behavior patterns. Characters have schedules, personalities, memories, and can proactively reach out to you. The system uses multiple LLMs to create engaging, dynamic conversations that feel authentic.
 
-**AI Features:**
-- Multi-provider support (OpenRouter, Featherless)
-- Context-aware image generation (Stable Diffusion)
-- Mood effects: dynamic backgrounds based on conversation tone
-- AI reply suggestions (serious/sarcastic/flirty)
-- Message reactions, editing, regeneration
-- Character unmatch system
+## Key Features
+
+### AI Characters
+- **Import character cards** (PNG v2 format) or use the **Character Wizard** to generate new characters
+- AI-generated names, descriptions, appearances, and profile pictures
+- Dating profiles with interests, fun facts, and preferences
+- Weekly schedules with realistic online/away/busy/offline patterns
+- Big Five (OCEAN) personality traits that influence behavior
+
+### Realistic Chat System
+- **Triple LLM Architecture**: Separate models for content generation, decision-making, and image tagging
+- **Proactive Messaging**: Characters initiate conversations after time gaps (personality-based probability)
+- **Schedule-Based Engagement**: Characters respond differently based on their current status and activities
+- **Time-Aware Conversations**: Automatic time gap markers and context-appropriate responses
+- **Memory System**: AI extracts and stores up to 100 important facts per character (configurable 0-100)
+- **Conversation Compacting**: Automatic AI summarization to manage context window efficiently
+- **Message Reactions**: Characters react with emojis to emotionally significant messages
+- **Mood Effects**: Dynamic chat backgrounds based on conversation tone (hearts, stars, fire, etc.)
+
+### Image Generation
+- **Stable Diffusion Integration**: Context-aware image generation during conversations
+- **Smart Image Decisions**: AI decides when to send images (not just on request - can tease or refuse)
+- **Danbooru Tag System**: Separate LLM generates appropriate tags for character images
+- **Character Photos**: Generate dating profile pictures during character creation
+
+### Social Features
+- **Swipe Interface**: Tinder-style discovery (like/pass system with undo)
+- **Daily Auto-Match**: Automatic daily matches based on activity (configurable)
+- **Super Likes**: Personality-based system (2 per day, guarantees first message)
+- **Social Feed**: Characters post updates (text/image posts, personality-driven frequency)
+- **Match Management**: View conversations, unread counts, character details
+
+### Extensive Customization
+
+**Behavior Settings:**
+- Proactive messaging frequency, cooldowns, and daily limits
+- Conversation compacting thresholds (percentage-based)
+- Memory system capacity (0-100 memories per character)
+- Left-on-read triggers and limits
+- Auto-unmatch for inactive conversations
+- Daily swipe limits (0 = unlimited)
+- Max consecutive proactive messages before auto-unmatch
+
+**LLM Configuration (3 Independent Systems):**
+- **Content LLM**: Generates character responses and conversations
+- **Decision LLM**: Makes behavioral decisions (reactions, moods, unmatch, voice/image)
+- **Image Tag LLM**: Generates Danbooru tags for Stable Diffusion
+
+Each LLM has separate provider (OpenRouter/Featherless), model, temperature, tokens, and parameters.
+
+**AI Prompt Customization:**
+- System prompts (conversation style, pacing, NSFW handling)
+- Decision engine prompts (reaction rules, mood criteria, image/voice decisions)
+- Proactive messaging templates (fresh start, callbacks)
+- Memory extraction rules (importance scoring, fact selection)
+- Conversation compaction instructions
+
+**Stable Diffusion Settings:**
+- Sampling method, steps, CFG scale
+- Resolution and upscaling options
+- ADetailer face restoration
+- Custom positive/negative prompts
+- ControlNet support
 
 ## Tech Stack
 
@@ -34,31 +78,36 @@ AI-powered dating app simulator. Swipe on characters, match, chat, and build rel
 - React + Vite
 - Tailwind CSS
 - IndexedDB (character storage)
-- Socket.IO (real-time updates)
+- Socket.IO (real-time chat)
 
 **Backend:**
 - Node.js + Express
 - SQLite (better-sqlite3)
-- JWT authentication
+- JWT Authentication
 - Socket.IO
-- OpenRouter & Featherless API support
+- Multi-provider LLM support (OpenRouter, Featherless)
 
-**AI/Image:**
-- LLM: OpenRouter, Featherless
-- Image: Stable Diffusion WebUI
+**External Services:**
+- OpenRouter / Featherless (LLM providers)
+- Stable Diffusion WebUI (image generation)
 
-## Setup
+## Quick Start
 
 ### Prerequisites
 - Node.js 18+
-- OpenRouter API key (required)
-- Featherless API key (optional)
+- OpenRouter API key ([get one here](https://openrouter.ai/))
+- Featherless API key (optional, [get one here](https://featherless.ai/))
 - Stable Diffusion WebUI (optional, for image generation)
 
 ### Installation
 
-1. Clone repository
-2. Install dependencies:
+1. **Clone the repository**
+```bash
+git clone https://github.com/yourusername/cupid-ai.git
+cd cupid-ai
+```
+
+2. **Install dependencies**
 ```bash
 # Backend
 cd backend
@@ -69,7 +118,7 @@ cd ../frontend
 npm install
 ```
 
-3. Configure environment:
+3. **Configure environment variables**
 
 Create `backend/.env`:
 ```env
@@ -77,113 +126,176 @@ PORT=3000
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-random-secret-here
 
-# Required
+# Required: LLM Provider
 OPENROUTER_API_KEY=your-openrouter-key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
-# Optional: Featherless provider
+# Optional: Alternative LLM Provider
 FEATHERLESS_API_KEY=your-featherless-key
 
-# Optional: Image generation
+# Optional: Image Generation
 SD_SERVER_URL=http://127.0.0.1:7860
 IMAGE_MESSAGES_ENABLED=true
 
-# Disabled features
+# Optional: Voice Messages (not yet implemented)
 VOICE_MESSAGES_ENABLED=false
 TTS_SERVER_URL=http://localhost:5000
 ```
 
-4. Start servers:
+4. **Start the application**
 ```bash
-# Backend (port 3000)
+# Terminal 1: Backend (port 3000)
 cd backend
 npm start
 
-# Frontend (port 5173)
+# Terminal 2: Frontend (port 5173)
 cd frontend
 npm run dev
 ```
 
-5. Open http://localhost:5173
+5. **Open your browser**
+Navigate to `http://localhost:5173`
 
-## Usage
+## Usage Guide
 
-1. **Register/Login**: Create account
-2. **Library**: Import character cards or use Character Wizard
-3. **Home**: Swipe on characters (right = like, left = pass)
-4. **Chat**: Talk with matches, view schedules, memories, generate images
-5. **Feed**: Browse character posts
-6. **Profile**: Configure LLM settings (Content/Decision/Image Tag), behavior, SD settings
-7. **Prompts**: Customize AI behavior prompts (system, proactive, compaction, memory extraction)
+### Getting Started
+1. **Sign up** for an account or log in
+2. **Import characters** from PNG cards or create new ones with the Character Wizard
+3. **Configure your LLM settings** in Profile → LLM Settings (choose models for Content/Decision/Image Tag)
+4. **Swipe on characters** in the Discover tab (right = like, left = pass)
+5. **Chat with matches** and experience realistic AI interactions
 
-## Configuration
+### Pages Overview
 
-### LLM Settings (per user)
-- **Content LLM**: Generates character responses
-- **Decision LLM**: Makes behavioral decisions (reactions, moods, unmatch)
-- **Image Tag LLM**: Generates Danbooru tags for images
+**Discover**
+- Swipe interface for character discovery
+- View dating profiles, schedules, personality traits
+- Like, pass, or super like characters
+- Undo last swipe action
 
-Each has independent provider and model configuration.
+**Chats**
+- View all matched conversations
+- Unread message indicators
+- Character status (online/away/busy/offline)
+- Click to open chat
 
-### Behavior Settings
-- Proactive messaging frequency and limits
-- Conversation compacting thresholds (percentage-based)
-- Memory extraction during compaction
+**Library**
+- Manage imported characters
+- Character Wizard for AI-generated characters
+- View/edit character details (profile, schedule, personality, memories)
+- Sync characters to backend on like
 
-### AI Prompt Customization
-- System prompts (conversation behavior, pacing, NSFW)
-- Proactive message types (fresh start, callback)
-- Conversation compaction summaries
-- Long-term memory extraction rules
+**Feed**
+- Browse character posts
+- View full-screen post details
+- Like and interact with posts
 
-### SD Settings
-- Sampling parameters
-- High-res upscaling
-- ADetailer face fixing
-- Custom prompts
+**Profile**
+- **LLM Settings**: Configure Content/Decision/Image Tag LLMs
+- **Behavior Settings**: Customize proactive messaging, compaction, memory, swipe limits
+- **SD Settings**: Configure Stable Diffusion parameters
+- **Prompts**: Edit AI behavior prompts
+- **Tag Library**: Manage Danbooru tag library for image generation
+- **Voice Library**: Manage TTS voices (future feature)
 
-## Project Structure
+## Advanced Features
 
+### Character Wizard
+Generate AI characters in 4 steps:
+1. **Identity**: Select age, archetype, personality traits
+2. **Description**: AI generates name and detailed character description
+3. **Image**: AI generates appearance description and profile picture
+4. **Options**: Auto-generate dating profile, schedule, and personality traits
+
+### Memory System
+- AI extracts 2-5 important facts per conversation block
+- Memories are scored by importance (0-100)
+- Lowest importance memories pruned when capacity reached
+- Configurable cap: 0 (disabled) to 100 memories per character
+- Memories persist across conversations and compaction
+
+### Conversation Compacting
+- Automatically summarizes old messages to save context window space
+- Triggers at 90% of context window (configurable)
+- Compacts down to 70% of context window (configurable)
+- Keeps last 30 messages uncompacted (configurable)
+- Small blocks (<15 messages) deleted, large blocks summarized
+- Maximum 5 summary slots (oldest deleted when creating 6th)
+- Can be fully disabled in Behavior Settings
+
+### Decision Engine
+Separate LLM analyzes conversations every message to decide:
+- **Reactions**: Emoji reactions (rare, only for significant messages)
+- **Moods**: Special backgrounds (hearts/stars/laugh/sparkles/fire/roses)
+- **Unmatch**: Extremely rare, for serious violations
+- **Voice Messages**: Emotional moments, personality-based (disabled)
+- **Image Sending**: Context-aware, can tease or refuse requests
+- **Thoughts**: Internal monologue (every 10th message)
+
+### Proactive Messaging
+Characters initiate conversations based on:
+- Time since last message (increases probability over time)
+- Character's extraversion level (-25% to +25% modifier)
+- Current online status from schedule
+- Daily limit (5 messages per day default)
+- Message type decisions (fresh start, callback, resume)
+
+## Development
+
+### Project Structure
 ```
 cupid-ai/
 ├── backend/
 │   ├── src/
-│   │   ├── db/              # SQLite database, migrations
-│   │   ├── routes/          # API endpoints
-│   │   ├── services/        # Business logic, AI, queue, compacting, memory
-│   │   ├── middleware/      # Auth
+│   │   ├── db/              # Database schema and migrations
+│   │   ├── routes/          # API endpoints (auth, chat, characters, etc.)
+│   │   ├── services/        # Business logic (AI, memory, compaction, etc.)
+│   │   ├── middleware/      # Authentication, validation
 │   │   └── utils/           # Helpers, logger
-│   ├── config/              # prompts.json (user-editable AI prompts)
-│   ├── logs/                # Auto-cleaning logs (10-min rolling)
+│   ├── config/              # prompts.json (configurable AI prompts)
+│   ├── logs/                # Auto-cleaning logs (10-minute rolling)
 │   └── uploads/             # Generated images
 ├── frontend/
 │   ├── src/
-│   │   ├── components/      # UI components
-│   │   ├── pages/           # Route pages (Chat, Prompts, etc.)
-│   │   ├── hooks/           # React hooks
-│   │   ├── services/        # API, IndexedDB, WebSocket
-│   │   ├── context/         # Auth, Mood contexts
+│   │   ├── components/      # Reusable UI components
+│   │   ├── pages/           # Route pages
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── services/        # API clients, IndexedDB, WebSocket
+│   │   ├── context/         # React contexts (Auth, Mood)
 │   │   └── utils/           # Helpers, debug tools
 │   └── public/              # Static assets
-├── CLAUDE.md                # Technical documentation
-├── FILE_REGISTRY.md         # File documentation (backend & frontend)
-└── IDEAS.md                 # Feature ideas
+├── CLAUDE.md                # Technical documentation for AI
+├── FILE_REGISTRY.md         # Detailed file documentation
+└── IDEAS.md                 # Feature roadmap
 ```
 
-## Development
-
-- Backend auto-restarts on changes (nodemon)
-- Frontend hot-reload (Vite)
-- Logs: `backend/logs/` (server, prompts, responses)
-- Database: `backend/cupid.db` (SQLite)
-
-**Debug Tools (Browser Console):**
+### Debug Tools
+Available in browser console:
 - `window.testCompact()` - Test conversation compacting without saving
 - `window.showBlockStructure()` - Analyze conversation block structure
 - `window.testMemoryExtraction()` - Test memory extraction without saving
 - `window.testCompactUI()` - Test compacting overlay UI
 - `window.showConversationId()` - Display current conversation ID
 
+### Auto-Restart & Hot-Reload
+- Backend: Auto-restarts on changes (nodemon)
+- Frontend: Hot-reload on changes (Vite)
+
+### Logging
+- Location: `backend/logs/`
+- Auto-cleanup: Logs older than 10 minutes deleted every 60 seconds
+- Types: Server logs, prompt logs, LLM response logs
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues or pull requests.
+
 ## License
 
-MIT
+MIT License - see LICENSE file for details
+
+## Acknowledgments
+
+- Character card format based on [TavernAI character spec](https://github.com/TavernAI/TavernAI)
+- Stable Diffusion integration via [AUTOMATIC1111 WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
+- LLM providers: [OpenRouter](https://openrouter.ai/), [Featherless](https://featherless.ai/)

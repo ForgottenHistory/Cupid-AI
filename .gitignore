@@ -56,3 +56,4 @@ backend/danbooru_tags.txt
 backend/config/prompts.json
 backend/config/imageTagPrompts.json
 backend/database.db-journal
+CLAUDE.md
