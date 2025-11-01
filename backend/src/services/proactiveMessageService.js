@@ -656,8 +656,8 @@ class ProactiveMessageService {
         console.log(`📊 Consecutive proactive count: ${newConsecutiveCount}/${maxConsecutive} (next cooldown: ${cooldownDisplay}, multiplier: ${multiplier}x)`);
         console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
 
-        // CHECK FOR UNMATCH: If this exceeds the max consecutive proactive messages
-        if (newConsecutiveCount >= maxConsecutive) {
+        // CHECK FOR UNMATCH: If this exceeds the max consecutive proactive messages (skip if disabled with 0)
+        if (maxConsecutive > 0 && newConsecutiveCount >= maxConsecutive) {
           console.log(`💔 ${characterName} sent ${maxConsecutive} consecutive proactive messages - triggering unmatch for user ${userId}`);
 
           const unmatchReason = `Character unmatched after ${maxConsecutive} consecutive unanswered messages`;

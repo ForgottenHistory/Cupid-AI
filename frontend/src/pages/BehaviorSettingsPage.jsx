@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const BehaviorSettingsPage = () => {
   const navigate = useNavigate();
+  const containerRef = useRef(null);
   const [settings, setSettings] = useState({
     maxEmojisPerMessage: 2,
     proactiveMessageHours: 4,
@@ -21,7 +22,9 @@ const BehaviorSettingsPage = () => {
     compactThresholdPercent: 90,
     compactTargetPercent: 70,
     keepUncompactedMessages: 30,
-    autoUnmatchInactiveDays: 0
+    autoUnmatchInactiveDays: 0,
+    dailyAutoMatchEnabled: true,
+    dailySwipeLimit: 5
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,10 +64,16 @@ const BehaviorSettingsPage = () => {
       await api.put('/users/behavior-settings', settings);
 
       setSuccess('Settings saved successfully!');
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       console.error('Failed to save behavior settings:', err);
       setError(err.response?.data?.error || 'Failed to save settings');
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setSaving(false);
     }
@@ -88,7 +97,9 @@ const BehaviorSettingsPage = () => {
       compactThresholdPercent: 90,
       compactTargetPercent: 70,
       keepUncompactedMessages: 30,
-      autoUnmatchInactiveDays: 0
+      autoUnmatchInactiveDays: 0,
+      dailyAutoMatchEnabled: true,
+      dailySwipeLimit: 5
     });
     setSuccess('');
     setError('');
@@ -103,7 +114,7 @@ const BehaviorSettingsPage = () => {
   }
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar">
+    <div ref={containerRef} className="h-full overflow-y-auto custom-scrollbar">
       <div className="max-w-4xl mx-auto px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -123,6 +134,18 @@ const BehaviorSettingsPage = () => {
         {/* Content */}
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
           <div className="p-6 space-y-6">
+            {/* Messages */}
+            {error && (
+              <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="p-4 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg text-green-700 dark:text-green-300 text-sm">
+                {success}
+              </div>
+            )}
+
             {/* Emoji Usage - HIDDEN (not working) */}
             {false && (
               <div className="space-y-2">
@@ -261,11 +284,13 @@ const BehaviorSettingsPage = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="font-semibold text-gray-900 dark:text-gray-100">Max Consecutive Proactive</label>
-                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.maxConsecutiveProactive} messages</span>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.maxConsecutiveProactive === 0 ? 'Disabled' : `${settings.maxConsecutiveProactive} messages`}
+                </span>
               </div>
               <input
                 type="range"
-                min="1"
+                min="0"
                 max="10"
                 step="1"
                 value={settings.maxConsecutiveProactive}
@@ -273,10 +298,10 @@ const BehaviorSettingsPage = () => {
                 className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                <span>1</span>
+                <span>Disabled</span>
                 <span>10</span>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum unanswered proactive messages before character unmatches. Cooldown doubles after each message.</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum unanswered proactive messages before character unmatches. Cooldown doubles after each message. (0 = disabled, characters won't unmatch)</p>
             </div>
 
             {/* Proactive Cooldown Multiplier */}
@@ -520,6 +545,53 @@ const BehaviorSettingsPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Automatically unmatch characters after this many days with no messages from either party (0 = disabled)</p>
             </div>
 
+            {/* Daily Swipe Limit */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Daily Swipe Limit</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.dailySwipeLimit === 0 ? 'Unlimited' : `${settings.dailySwipeLimit} per day`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="1"
+                value={settings.dailySwipeLimit}
+                onChange={(e) => updateSetting('dailySwipeLimit', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Unlimited</span>
+                <span>10</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum swipes (likes/passes) allowed per day in the Discover tab (0 = unlimited)</p>
+            </div>
+
+            {/* Daily Auto-Match Section Header */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Daily Auto-Match</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Automatically get matched with a random character from your library each day</p>
+            </div>
+
+            {/* Daily Auto-Match Toggle */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Enable Daily Auto-Match</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.dailyAutoMatchEnabled}
+                    onChange={(e) => updateSetting('dailyAutoMatchEnabled', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When enabled, you'll be automatically matched with one random character from your library each day at midnight</p>
+            </div>
+
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 💡 <strong>Tip:</strong> These settings affect all characters. Changes take effect immediately.
@@ -549,7 +621,7 @@ const BehaviorSettingsPage = () => {
                 disabled={saving}
                 className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 dark:hover:from-pink-700 dark:hover:to-purple-800 transition font-semibold shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {saving ? 'Saving...' : 'Save Changes'}
+                {saving ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
           </div>

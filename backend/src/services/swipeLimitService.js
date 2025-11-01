@@ -2,16 +2,20 @@ import db from '../db/database.js';
 
 class SwipeLimitService {
   /**
-   * Check if user can swipe (under daily limit of 5)
+   * Check if user can swipe (under daily limit)
    */
   canSwipe(userId) {
     const user = db.prepare(`
-      SELECT swipes_today, last_swipe_date FROM users WHERE id = ?
+      SELECT swipes_today, last_swipe_date, daily_swipe_limit FROM users WHERE id = ?
     `).get(userId);
 
     if (!user) return false;
 
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const limit = user.daily_swipe_limit || 5; // Default to 5 if not set
+
+    // 0 = unlimited
+    if (limit === 0) return true;
 
     // Reset counter if it's a new day
     if (user.last_swipe_date !== today) {
@@ -23,8 +27,8 @@ class SwipeLimitService {
       return true;
     }
 
-    // Check if under limit (5 per day)
-    return user.swipes_today < 5;
+    // Check if under limit
+    return user.swipes_today < limit;
   }
 
   /**
@@ -45,19 +49,23 @@ class SwipeLimitService {
    */
   getRemainingSwipes(userId) {
     const user = db.prepare(`
-      SELECT swipes_today, last_swipe_date FROM users WHERE id = ?
+      SELECT swipes_today, last_swipe_date, daily_swipe_limit FROM users WHERE id = ?
     `).get(userId);
 
     if (!user) return 5;
 
     const today = new Date().toISOString().split('T')[0];
+    const limit = user.daily_swipe_limit || 5; // Default to 5 if not set
 
-    // If new day, full 5 swipes available
+    // 0 = unlimited
+    if (limit === 0) return Infinity;
+
+    // If new day, full swipes available
     if (user.last_swipe_date !== today) {
-      return 5;
+      return limit;
     }
 
-    return Math.max(0, 5 - user.swipes_today);
+    return Math.max(0, limit - user.swipes_today);
   }
 }
 

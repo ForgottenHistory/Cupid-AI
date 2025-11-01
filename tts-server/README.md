@@ -1,6 +1,8 @@
 # ChatterBox TTS Server
 
-Simple FastAPI server for voice cloning and text-to-speech using ChatterBox.
+Simple FastAPI server for voice cloning and text-to-speech using ChatterBox
+
+**NOT CURRENTLY IN USE. WILL PROBABLY BE DELETED**
 
 ## Setup
 

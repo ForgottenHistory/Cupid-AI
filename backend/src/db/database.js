@@ -428,6 +428,16 @@ function runMigrations() {
       console.log('✅ proactive_cooldown_multiplier column added to users table');
     }
 
+    if (!userColumnNamesRefresh.includes('daily_swipe_limit')) {
+      db.exec(`ALTER TABLE users ADD COLUMN daily_swipe_limit INTEGER DEFAULT 5;`);
+      console.log('✅ daily_swipe_limit column added to users table');
+    }
+
+    if (!userColumnNamesRefresh.includes('daily_auto_match_enabled')) {
+      db.exec(`ALTER TABLE users ADD COLUMN daily_auto_match_enabled INTEGER DEFAULT 1;`);
+      console.log('✅ daily_auto_match_enabled column added to users table');
+    }
+
     // Migration: Update messages table to allow 'system' role
     // Check if the constraint needs updating
     const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();
