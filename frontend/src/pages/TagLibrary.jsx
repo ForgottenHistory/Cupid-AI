@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -9,6 +9,7 @@ import axios from 'axios';
 const TagLibrary = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tags'); // 'tags' or 'prompts'
+  const containerRef = useRef(null);
 
   // Tag Library state
   const [tagContent, setTagContent] = useState('');
@@ -72,10 +73,16 @@ const TagLibrary = () => {
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setTagMessage({ type: 'success', text: 'Tag library saved successfully!' });
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       setTimeout(() => setTagMessage(null), 3000);
     } catch (error) {
       console.error('Failed to save tag library:', error);
       setTagMessage({ type: 'error', text: 'Failed to save tag library' });
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setTagSaving(false);
     }
@@ -197,10 +204,16 @@ const TagLibrary = () => {
         { headers: { Authorization: `Bearer ${token}` }}
       );
       setPromptsMessage({ type: 'success', text: 'Image tag prompts saved successfully!' });
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       setTimeout(() => setPromptsMessage(null), 3000);
     } catch (error) {
       console.error('Failed to save image tag prompts:', error);
       setPromptsMessage({ type: 'error', text: 'Failed to save image tag prompts' });
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setPromptsSaving(false);
     }
@@ -265,15 +278,15 @@ const TagLibrary = () => {
   }
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div ref={containerRef} className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="max-w-7xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Image Generation Settings
+            Image Tag Configuration
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Configure Danbooru tag library and AI image generation prompts
+            Manage Danbooru tags for character image generation. Given to Image Tag LLM as guidelines.
           </p>
         </div>
 
@@ -337,28 +350,28 @@ const TagLibrary = () => {
                 className="px-5 py-2.5 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition text-sm font-medium shadow-md hover:shadow-lg"
                 title="Convert selected lines to comma-separated format"
               >
-                📝 Lines → Comma-separated
+                Lines → Comma-separated
               </button>
               <button
                 onClick={convertToLowercase}
                 className="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition text-sm font-medium shadow-md hover:shadow-lg"
                 title="Convert selected text to lowercase"
               >
-                🔡 Lowercase
+                Lowercase
               </button>
               <button
                 onClick={removeDuplicates}
                 className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition text-sm font-medium shadow-md hover:shadow-lg"
                 title="Remove duplicate tags from selected comma-separated list"
               >
-                🗑️ Remove Duplicates
+                Remove Duplicates
               </button>
               <button
                 onClick={sortAlphabetically}
                 className="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition text-sm font-medium shadow-md hover:shadow-lg"
                 title="Sort selected comma-separated tags alphabetically"
               >
-                🔤 Sort A-Z
+                Sort A-Z
               </button>
             </div>
 
@@ -387,7 +400,7 @@ const TagLibrary = () => {
                     Saving...
                   </>
                 ) : (
-                  <>💾 Save Changes</>
+                  'Save Settings'
                 )}
               </button>
               <button
@@ -395,7 +408,7 @@ const TagLibrary = () => {
                 disabled={tagLoading || tagSaving}
                 className="px-8 py-3 bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white rounded-lg transition font-semibold shadow-lg hover:shadow-xl"
               >
-                🔄 Reload
+                Reload
               </button>
             </div>
 
@@ -451,7 +464,7 @@ const TagLibrary = () => {
                 disabled={promptsSaving}
                 className="px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
-                {promptsSaving ? 'Saving...' : 'Save Changes'}
+                {promptsSaving ? 'Saving...' : 'Save Settings'}
               </button>
               <button
                 onClick={loadImageTagPrompts}
@@ -499,7 +512,7 @@ const TagLibrary = () => {
                 disabled={promptsSaving}
                 className="px-8 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-medium hover:from-purple-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg"
               >
-                {promptsSaving ? 'Saving...' : 'Save Changes'}
+                {promptsSaving ? 'Saving...' : 'Save Settings'}
               </button>
             </div>
           </div>

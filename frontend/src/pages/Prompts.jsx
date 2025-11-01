@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const Prompts = () => {
+  const containerRef = useRef(null);
   const [prompts, setPrompts] = useState({
     systemPrompt: '',
     contextPrompt: '',
@@ -69,10 +70,16 @@ const Prompts = () => {
       }
 
       setMessage({ type: 'success', text: 'Prompts saved successfully!' });
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } catch (error) {
       console.error('Failed to save prompts:', error);
       setMessage({ type: 'error', text: 'Failed to save prompts' });
+      if (containerRef.current) {
+        containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setSaving(false);
     }
@@ -114,9 +121,14 @@ const Prompts = () => {
   };
 
   // Calculate approximate token count (1 token ≈ 4 characters)
-  const calculateTokens = () => {
-    const totalChars = Object.values(prompts).reduce((sum, prompt) => sum + prompt.length, 0);
+  const calculateConversationTokens = () => {
+    const conversationKeys = conversationPromptFields.map(f => f.key);
+    const totalChars = conversationKeys.reduce((sum, key) => sum + prompts[key].length, 0);
     return Math.ceil(totalChars / 4);
+  };
+
+  const calculateFieldTokens = (key) => {
+    return Math.ceil(prompts[key].length / 4);
   };
 
   const conversationPromptFields = [
@@ -221,7 +233,7 @@ const Prompts = () => {
   }
 
   return (
-    <div className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div ref={containerRef} className="h-full overflow-y-auto custom-scrollbar bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="max-w-5xl mx-auto px-8 py-12 pb-24">
         {/* Header */}
         <div className="mb-8">
@@ -233,20 +245,6 @@ const Prompts = () => {
           </p>
         </div>
 
-        {/* Token Counter */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <span className="font-semibold text-blue-800 dark:text-blue-300">
-              Total Behavior Prompts Tokens:
-            </span>
-            <span className="text-blue-700 dark:text-blue-400 font-mono">
-              ~{calculateTokens().toLocaleString()}
-            </span>
-          </div>
-        </div>
 
         {/* Message */}
         {message.text && (
@@ -266,7 +264,7 @@ const Prompts = () => {
             disabled={saving}
             className="px-6 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg font-medium hover:from-pink-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
           <button
             onClick={loadPrompts}
@@ -286,9 +284,25 @@ const Prompts = () => {
 
         {/* Conversation Behavior Prompts */}
         <div className="space-y-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Conversation Behavior
-          </h2>
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Conversation Behavior
+            </h2>
+            {/* Token Counter */}
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span className="font-semibold text-blue-800 dark:text-blue-300">
+                  Conversation Behavior Tokens:
+                </span>
+                <span className="text-blue-700 dark:text-blue-400 font-mono">
+                  ~{calculateConversationTokens().toLocaleString()}
+                </span>
+              </div>
+            </div>
+          </div>
           {conversationPromptFields.map(field => (
             <div key={field.key} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
               <label className="block mb-2">
@@ -326,9 +340,14 @@ const Prompts = () => {
           {characterGenerationPromptFields.map(field => (
             <div key={field.key} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
               <label className="block mb-2">
-                <span className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {field.label}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {field.label}
+                  </span>
+                  <span className="text-sm text-blue-600 dark:text-blue-400 font-mono">
+                    ~{calculateFieldTokens(field.key).toLocaleString()} tokens
+                  </span>
+                </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                   {field.description}
                 </p>
@@ -345,13 +364,13 @@ const Prompts = () => {
         </div>
 
         {/* Bottom Save Button */}
-        <div className="mt-8 sticky bottom-6 flex justify-center">
+        <div className="mt-8 flex justify-center">
           <button
             onClick={savePrompts}
             disabled={saving}
             className="px-8 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg font-medium hover:from-pink-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition shadow-lg"
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </div>
