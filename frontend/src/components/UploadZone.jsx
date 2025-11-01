@@ -78,8 +78,8 @@ const UploadZone = ({ onUpload, multiple = true }) => {
         relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
         transition-all duration-200
         ${isDragging
-          ? 'border-purple-500 bg-purple-50 scale-105'
-          : 'border-gray-300 hover:border-purple-400 hover:bg-gray-50'
+          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20 scale-105'
+          : 'border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-500 hover:bg-gray-50 dark:hover:bg-gray-800/50'
         }
         ${uploading ? 'opacity-50 pointer-events-none' : ''}
       `}
@@ -96,13 +96,13 @@ const UploadZone = ({ onUpload, multiple = true }) => {
       {uploading ? (
         <div className="flex flex-col items-center">
           <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-          <p className="text-gray-600 font-medium">Uploading characters...</p>
+          <p className="text-gray-600 dark:text-gray-400 font-medium">Uploading characters...</p>
         </div>
       ) : (
         <>
           <div className="mb-4">
             <svg
-              className="w-16 h-16 mx-auto text-gray-400"
+              className="w-16 h-16 mx-auto text-gray-400 dark:text-gray-500"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -116,13 +116,13 @@ const UploadZone = ({ onUpload, multiple = true }) => {
             </svg>
           </div>
 
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">
+          <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
             Upload Character Cards
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
             Drag & drop PNG character cards here, or click to browse
           </p>
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-gray-400 dark:text-gray-500">
             Supports Character Card v2 format (.png)
           </p>
         </>

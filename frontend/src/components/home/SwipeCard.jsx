@@ -82,7 +82,7 @@ const SwipeCard = ({ character, onSwipe, isTop, onClick }) => {
       onTouchMove={isTop ? handleDragMove : undefined}
       onTouchEnd={isTop ? () => handleDragEnd(true) : undefined}
     >
-      <div className="relative w-full h-full bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div className="relative w-full h-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
         <img
           src={character.imageUrl}
           alt={character.name}

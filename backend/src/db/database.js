@@ -675,6 +675,8 @@ function runMigrations() {
           sd_main_prompt TEXT DEFAULT 'masterpiece, best quality, amazing quality',
           sd_negative_prompt TEXT DEFAULT 'nsfw, lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry',
           sd_model TEXT DEFAULT '',
+          posts_today INTEGER DEFAULT 0,
+          last_post_date TEXT,
           last_auto_match_date TEXT,
           max_emojis_per_message INTEGER DEFAULT 2,
           proactive_message_hours INTEGER DEFAULT 4,

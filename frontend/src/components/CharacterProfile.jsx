@@ -25,7 +25,6 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         { id: 'profile', label: 'Dating Profile' },
         { id: 'schedule', label: 'Schedule' },
         { id: 'personality', label: 'Personality' },
-        { id: 'voice', label: 'Voice' },
         { id: 'image', label: 'Image' },
         { id: 'overview', label: 'Overview' },
       ];
@@ -544,13 +543,6 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 loading={loading}
                 onGenerate={handleGeneratePersonality}
                 onRevert={handleRevertPersonality}
-              />
-            )}
-
-            {activeTab === 'voice' && (
-              <VoiceTab
-                character={character}
-                onUpdate={onUpdate}
               />
             )}
 

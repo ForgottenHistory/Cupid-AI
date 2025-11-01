@@ -132,10 +132,10 @@ const Home = () => {
         {/* Card Stack */}
         <div className="relative w-full aspect-[3/4] mb-8 overflow-hidden">
           {loading ? (
-            <div className="absolute inset-0 flex items-center justify-center bg-white rounded-2xl shadow-2xl">
+            <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 rounded-2xl shadow-2xl">
               <div className="text-center p-8">
                 <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading characters...</p>
+                <p className="text-gray-600 dark:text-gray-300">Loading characters...</p>
               </div>
             </div>
           ) : currentCards.length === 0 ? (
