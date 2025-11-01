@@ -84,7 +84,6 @@ This is the first public release of Cupid AI, a dating app simulator with AI-pow
 
 - Voice messages feature not yet implemented (marked as future feature)
 - Left-on-read feature currently disabled
-- Character names may default to "Character" when syncing to backend (cosmetic)
 
 ---
 
