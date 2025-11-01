@@ -6,39 +6,39 @@ AI-Powered Dating Simulation with Realistic Character Interactions
 
 ## Overview
 
-Cupid AI is a dating app simulator where you interact with AI-powered characters that exhibit realistic behavior patterns. Characters have schedules, personalities, memories, and can proactively reach out to you. The system uses multiple LLMs to create engaging, dynamic conversations that feel authentic.
+Cupid AI is a dating app simulator where you interact with characters that try to exhibit realistic behavior patterns. Characters have schedules, personalities, memories, and can proactively reach out to you. Uses multiple LLMs to create engaging, dynamic conversations that feel authentic.
+
+## Why Cupid?
+
+Most AI roleplay projects have limited memory, focused on action rather than communication. Characters tend to do whatever you say, which I found boring after a while.
+
+Cupid solves most issues with activities, online statuses and great image generation. Characters have their own life, stick around for a while then go do their thing. They naturally say goodbye, have moods, show off whatever they're doing. It won't replace your other roleplay apps, rather it's more for chilling out and chatting with whoever is online. 
+
+Along with important memories saved and message compaction, the chat's can go on for a long time with less context loss. Overall a neat package for people who like talking a lot.
 
 ## Key Features
 
-### AI Characters
+### Characters
 - **Import character cards** (PNG v2 format) or use the **Character Wizard** to generate new characters
-- AI-generated names, descriptions, appearances, and profile pictures
 - Dating profiles with interests, fun facts, and preferences
-- Weekly schedules with realistic online/away/busy/offline patterns
+- Weekly schedules with online/away/busy/offline patterns
 - Big Five (OCEAN) personality traits that influence behavior
+- Tinder-style discovery (like/pass system with undo) (might change later)
 
-### Realistic Chat System
+### Chat System
 - **Triple LLM Architecture**: Separate models for content generation, decision-making, and image tagging
 - **Proactive Messaging**: Characters initiate conversations after time gaps (personality-based probability)
 - **Schedule-Based Engagement**: Characters respond differently based on their current status and activities
 - **Time-Aware Conversations**: Automatic time gap markers and context-appropriate responses
-- **Memory System**: AI extracts and stores up to 100 important facts per character (configurable 0-100)
+- **Memory System**: AI extracts and stores up to 100 important facts of you per character
 - **Conversation Compacting**: Automatic AI summarization to manage context window efficiently
-- **Message Reactions**: Characters react with emojis to emotionally significant messages
-- **Mood Effects**: Dynamic chat backgrounds based on conversation tone (hearts, stars, fire, etc.)
+- **Mood Effects**: Dynamic chat backgrounds based on conversation tone and message reactions
 
 ### Image Generation
 - **Stable Diffusion Integration**: Context-aware image generation during conversations
 - **Smart Image Decisions**: AI decides when to send images (not just on request - can tease or refuse)
 - **Danbooru Tag System**: Separate LLM generates appropriate tags for character images
-- **Character Photos**: Generate dating profile pictures during character creation
-
-### Social Features
-- **Swipe Interface**: Tinder-style discovery (like/pass system with undo)
-- **Daily Auto-Match**: Automatic daily matches based on activity (configurable)
-- **Super Likes**: Personality-based system (2 per day, guarantees first message)
-- **Social Feed**: Characters post updates (text/image posts, personality-driven frequency)
-- **Match Management**: View conversations, unread counts, character details
+**Result:** Varied pictures based on character activities
 
 ### Extensive Customization
 
@@ -46,7 +46,6 @@ Cupid AI is a dating app simulator where you interact with AI-powered characters
 - Proactive messaging frequency, cooldowns, and daily limits
 - Conversation compacting thresholds (percentage-based)
 - Memory system capacity (0-100 memories per character)
-- Left-on-read triggers and limits
 - Auto-unmatch for inactive conversations
 - Daily swipe limits (0 = unlimited)
 - Max consecutive proactive messages before auto-unmatch
@@ -126,20 +125,14 @@ PORT=3000
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-random-secret-here
 
-# Required: LLM Provider
+# LLM providers (can use both)
 OPENROUTER_API_KEY=your-openrouter-key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
-
-# Optional: Alternative LLM Provider
 FEATHERLESS_API_KEY=your-featherless-key
 
 # Optional: Image Generation
 SD_SERVER_URL=http://127.0.0.1:7860
 IMAGE_MESSAGES_ENABLED=true
-
-# Optional: Voice Messages (not yet implemented)
-VOICE_MESSAGES_ENABLED=false
-TTS_SERVER_URL=http://localhost:5000
 ```
 
 4. **Start the application**
@@ -163,34 +156,15 @@ Navigate to `http://localhost:5173`
 2. **Import characters** from PNG cards or create new ones with the Character Wizard
 3. **Configure your LLM settings** in Profile → LLM Settings (choose models for Content/Decision/Image Tag)
 4. **Swipe on characters** in the Discover tab (right = like, left = pass)
-5. **Chat with matches** and experience realistic AI interactions
+5. **Chat with matches** and enjoy
 
 ### Pages Overview
 
-**Discover**
-- Swipe interface for character discovery
-- View dating profiles, schedules, personality traits
-- Like, pass, or super like characters
-- Undo last swipe action
+**Discover:** Swipe interface for character discovery
+**Chats:** Main chat window
+**Library:** Manage imported characters & create characters
 
-**Chats**
-- View all matched conversations
-- Unread message indicators
-- Character status (online/away/busy/offline)
-- Click to open chat
-
-**Library**
-- Manage imported characters
-- Character Wizard for AI-generated characters
-- View/edit character details (profile, schedule, personality, memories)
-- Sync characters to backend on like
-
-**Feed**
-- Browse character posts
-- View full-screen post details
-- Like and interact with posts
-
-**Profile**
+**Settings**
 - **LLM Settings**: Configure Content/Decision/Image Tag LLMs
 - **Behavior Settings**: Customize proactive messaging, compaction, memory, swipe limits
 - **SD Settings**: Configure Stable Diffusion parameters
@@ -199,13 +173,6 @@ Navigate to `http://localhost:5173`
 - **Voice Library**: Manage TTS voices (future feature)
 
 ## Advanced Features
-
-### Character Wizard
-Generate AI characters in 4 steps:
-1. **Identity**: Select age, archetype, personality traits
-2. **Description**: AI generates name and detailed character description
-3. **Image**: AI generates appearance description and profile picture
-4. **Options**: Auto-generate dating profile, schedule, and personality traits
 
 ### Memory System
 - AI extracts 2-5 important facts per conversation block
@@ -240,6 +207,13 @@ Characters initiate conversations based on:
 - Daily limit (5 messages per day default)
 - Message type decisions (fresh start, callback, resume)
 
+### Character Wizard
+Generate AI characters in 4 steps:
+1. **Identity**: Select age, archetype, personality traits
+2. **Description**: AI generates name and detailed character description
+3. **Image**: AI generates appearance description and profile picture
+4. **Options**: Auto-generate dating profile, schedule, and personality traits
+
 ## Development
 
 ### Project Structure
@@ -269,26 +243,14 @@ cupid-ai/
 └── IDEAS.md                 # Feature roadmap
 ```
 
-### Debug Tools
-Available in browser console:
-- `window.testCompact()` - Test conversation compacting without saving
-- `window.showBlockStructure()` - Analyze conversation block structure
-- `window.testMemoryExtraction()` - Test memory extraction without saving
-- `window.testCompactUI()` - Test compacting overlay UI
-- `window.showConversationId()` - Display current conversation ID
-
-### Auto-Restart & Hot-Reload
-- Backend: Auto-restarts on changes (nodemon)
-- Frontend: Hot-reload on changes (Vite)
-
 ### Logging
 - Location: `backend/logs/`
-- Auto-cleanup: Logs older than 10 minutes deleted every 60 seconds
-- Types: Server logs, prompt logs, LLM response logs
+- Auto-cleanup: Logs older than 10 minutes deleted every 60 seconds. 
+- Types: Server logs, prompt logs, LLM response logs. Only 5 logs saved at a time per type.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues or pull requests.
+Contributions are welcome! Feel free to submit issues or pull requests. Especially for other LLM & Image & Voice providers support
 
 ## License
 
