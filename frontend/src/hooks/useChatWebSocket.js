@@ -194,10 +194,11 @@ export const useChatWebSocket = ({
     const handleCharacterUnmatched = async (data) => {
       console.log('💔 Character has unmatched:', data);
 
-      // Unlike character in IndexedDB (do this regardless of which chat we're viewing)
+      // Delete character from IndexedDB (do this regardless of which chat we're viewing)
       try {
         const characterService = (await import('../services/characterService')).default;
-        await characterService.unlikeCharacter(data.characterId);
+        // Use deleteCharacter instead of unlikeCharacter to fully remove from IndexedDB
+        await characterService.deleteCharacter(data.characterId);
 
         // Notify other components to refresh
         window.dispatchEvent(new Event('characterUpdated'));

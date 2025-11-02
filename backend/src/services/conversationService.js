@@ -64,7 +64,7 @@ class ConversationService {
       const lastSystemMessage = db.prepare(`
         SELECT content FROM messages
         WHERE conversation_id = ? AND role = 'system'
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT 1
       `).get(conversation.id);
 

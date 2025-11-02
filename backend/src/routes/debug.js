@@ -171,7 +171,7 @@ router.post('/test-compact/:conversationId', authenticateToken, async (req, res)
       SELECT id, role, content, message_type, created_at
       FROM messages
       WHERE conversation_id = ?
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     console.log(`📊 [DEBUG] Total messages in conversation: ${allMessages.length}`);
@@ -227,7 +227,7 @@ router.post('/test-compact/:conversationId', authenticateToken, async (req, res)
       SELECT id, role, content, message_type, created_at
       FROM messages
       WHERE conversation_id = ? AND role != 'system'
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     // Build blocks array
@@ -408,7 +408,7 @@ router.get('/block-structure/:conversationId', authenticateToken, (req, res) => 
       SELECT id, role, content, message_type, created_at, conversation_id
       FROM messages
       WHERE conversation_id = ?
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     console.log(`📊 [DEBUG] Total messages (raw, no filter): ${allMessagesRaw.length}`);
@@ -418,7 +418,7 @@ router.get('/block-structure/:conversationId', authenticateToken, (req, res) => 
       SELECT id, role, content, message_type, created_at
       FROM messages
       WHERE conversation_id = ? AND role != 'system'
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     console.log(`📊 [DEBUG] Total messages (excluding system): ${messages.length}`);
@@ -612,7 +612,7 @@ router.post('/test-memory-extraction/:conversationId', authenticateToken, async 
       SELECT id, role, content, message_type, created_at
       FROM messages
       WHERE conversation_id = ? AND role != 'system'
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     if (messagesNonSystem.length === 0) {

@@ -69,7 +69,7 @@ class CompactService {
         SELECT id, role, content, created_at, message_type
         FROM messages
         WHERE conversation_id = ? AND id BETWEEN ? AND ?
-        ORDER BY created_at ASC
+        ORDER BY created_at ASC, id ASC
       `).all(conversationId, startMessageId, endMessageId);
 
       // Get character ID for memory extraction
@@ -138,7 +138,7 @@ class CompactService {
         SELECT id, role, content, created_at, message_type
         FROM messages
         WHERE conversation_id = ? AND id BETWEEN ? AND ?
-        ORDER BY created_at ASC
+        ORDER BY created_at ASC, id ASC
       `).all(conversationId, startMessageId, endMessageId);
 
       if (messages.length === 0) {

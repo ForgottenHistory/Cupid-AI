@@ -19,7 +19,7 @@ class MessageService {
     const messages = db.prepare(`
       SELECT * FROM messages
       WHERE conversation_id = ?
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     // Convert timestamps to ISO format
@@ -45,10 +45,11 @@ class MessageService {
     const total = countResult.total;
 
     // Get messages in reverse order (newest first), skip offset, take limit
+    // Use id as tiebreaker to handle messages with identical timestamps (multi-line messages)
     const messages = db.prepare(`
       SELECT * FROM messages
       WHERE conversation_id = ?
-      ORDER BY created_at DESC
+      ORDER BY created_at DESC, id DESC
       LIMIT ? OFFSET ?
     `).all(conversationId, limit, offset);
 
@@ -103,7 +104,7 @@ class MessageService {
     const messages = db.prepare(`
       SELECT role, content, message_type, image_tags, gap_duration_hours FROM messages
       WHERE conversation_id = ?
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     const result = [];
@@ -196,7 +197,7 @@ class MessageService {
       WHERE conversation_id = ?
       AND message_type NOT IN ('time_gap', 'summary')
       AND role != 'system'
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
     if (messages.length <= keepRecentN) {
@@ -297,7 +298,7 @@ class MessageService {
       SELECT *
       FROM messages
       WHERE conversation_id = ? AND message_type = 'summary'
-      ORDER BY created_at ASC
+      ORDER BY created_at ASC, id ASC
       LIMIT 1
     `).get(conversationId);
   }
