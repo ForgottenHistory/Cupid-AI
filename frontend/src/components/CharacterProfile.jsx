@@ -586,6 +586,61 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{character.name}</h2>
                 {mode === 'library' && !isEditingTags && (
                   <div className="flex gap-2">
+                    {/* Like/Unlike Button */}
+                    {character.isLiked ? (
+                      onUnlike && (
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to unmatch with ${character.name}?`)) {
+                              console.log('Unmatch button clicked for:', character.name);
+                              try {
+                                await onUnlike();
+                                console.log('Unmatch completed successfully');
+                              } catch (error) {
+                                console.error('Unmatch failed:', error);
+                              }
+                            }
+                          }}
+                          className="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition flex items-center gap-1"
+                          title="Unmatch"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                          Unmatch
+                        </button>
+                      )
+                    ) : (
+                      onLike && (
+                        <button
+                          onClick={async () => {
+                            console.log('Like button clicked for:', character.name);
+                            try {
+                              await onLike();
+                              console.log('Like completed successfully');
+                            } catch (error) {
+                              console.error('Like failed:', error);
+                            }
+                          }}
+                          className="px-3 py-1 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition flex items-center gap-1"
+                          title="Like"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path
+                              fillRule="evenodd"
+                              d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          Like
+                        </button>
+                      )
+                    )}
                     <button
                       onClick={handleStartEditingName}
                       className="px-3 py-1 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
@@ -794,45 +849,22 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         </div>
 
         {/* Action Buttons */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/50 flex gap-3 flex-shrink-0">
-          {/* Show Start Chat if character is liked */}
-          {character.isLiked && (
-            <>
-              <button
-                onClick={() => {
-                  onClose();
-                  navigate(`/chat/${character.id}`);
-                }}
-                className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 hover:from-pink-600 hover:to-purple-700 dark:hover:from-pink-700 dark:hover:to-purple-800 text-white font-semibold py-3 rounded-lg transition shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-                Start Chat
-              </button>
-              {/* Show Unmatch button in library mode or if onUnlike provided */}
-              {onUnlike && (
-                <button
-                  onClick={() => {
-                    onUnlike();
-                    onClose();
-                  }}
-                  className="bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition flex items-center justify-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                  Unmatch
-                </button>
-              )}
-            </>
-          )}
-        </div>
+        {character.isLiked && (
+          <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/50 flex gap-3 flex-shrink-0">
+            <button
+              onClick={() => {
+                onClose();
+                navigate(`/chat/${character.id}`);
+              }}
+              className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 hover:from-pink-600 hover:to-purple-700 dark:hover:from-pink-700 dark:hover:to-purple-800 text-white font-semibold py-3 rounded-lg transition shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Start Chat
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

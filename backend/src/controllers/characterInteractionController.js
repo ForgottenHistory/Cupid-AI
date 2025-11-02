@@ -60,12 +60,17 @@ export async function likeCharacter(req, res) {
       return res.status(400).json({ error: 'Character data is required' });
     }
 
-    // Check max matches limit
+    // Check max matches limit (only count characters with active conversations)
     const user = db.prepare('SELECT max_matches FROM users WHERE id = ?').get(userId);
     const maxMatches = user?.max_matches || 0;
 
     if (maxMatches > 0) {
-      const currentMatches = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ?').get(userId);
+      const currentMatches = db.prepare(`
+        SELECT COUNT(DISTINCT c.id) as count
+        FROM characters c
+        INNER JOIN conversations conv ON c.id = conv.character_id AND conv.user_id = ?
+        WHERE c.user_id = ?
+      `).get(userId, userId);
       if (currentMatches.count >= maxMatches) {
         return res.status(400).json({ error: `Maximum matches limit reached (${maxMatches}). Unmatch characters to make room for new matches.` });
       }
@@ -134,10 +139,15 @@ export async function performDailyAutoMatch(req, res) {
       return res.json({ autoMatched: false, reason: 'Already matched today' });
     }
 
-    // Check max matches limit
+    // Check max matches limit (only count characters with active conversations)
     const maxMatches = user?.max_matches || 0;
     if (maxMatches > 0) {
-      const currentMatches = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ?').get(userId);
+      const currentMatches = db.prepare(`
+        SELECT COUNT(DISTINCT c.id) as count
+        FROM characters c
+        INNER JOIN conversations conv ON c.id = conv.character_id AND conv.user_id = ?
+        WHERE c.user_id = ?
+      `).get(userId, userId);
       if (currentMatches.count >= maxMatches) {
         console.log(`  ⏭️ Max matches limit reached (${currentMatches.count}/${maxMatches})`);
         return res.json({ autoMatched: false, reason: `Maximum matches limit reached (${maxMatches})` });

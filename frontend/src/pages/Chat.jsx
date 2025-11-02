@@ -153,9 +153,10 @@ const Chat = () => {
     setImageDescription('');
     // Reset auto-scroll state and flag
     setAutoScrollEnabled(false);
-    setCurrentImageIndex(0);
+    // Randomize initial image index
+    setCurrentImageIndex(receivedImages.length > 0 ? Math.floor(Math.random() * receivedImages.length) : 0);
     hasAutoEnabledRef.current = false;
-  }, [characterId]);
+  }, [characterId, receivedImages.length]);
 
   // Auto-scroll timer for cycling through received images
   useEffect(() => {
@@ -187,12 +188,12 @@ const Chat = () => {
     };
   }, [autoScrollEnabled, receivedImages.length]);
 
-  // Reset image index when toggling auto-scroll or when images change
+  // Randomize image index when toggling auto-scroll or when images change
   useEffect(() => {
-    if (!autoScrollEnabled) {
-      setCurrentImageIndex(0);
+    if (!autoScrollEnabled && receivedImages.length > 0) {
+      setCurrentImageIndex(Math.floor(Math.random() * receivedImages.length));
     }
-  }, [autoScrollEnabled]);
+  }, [autoScrollEnabled, receivedImages.length]);
 
   // Auto-enable auto-scroll when images are available (only once per character)
   useEffect(() => {

@@ -217,6 +217,8 @@ const Library = () => {
               window.dispatchEvent(new Event('characterUpdated'));
             } catch (error) {
               console.error('Failed to like character:', error);
+              // Show user-friendly error message
+              alert(error.message || 'Failed to like character');
             }
           }}
           onUnlike={async () => {
@@ -229,6 +231,8 @@ const Library = () => {
               window.dispatchEvent(new Event('characterUpdated'));
             } catch (error) {
               console.error('Failed to unlike character:', error);
+              // Show user-friendly error message
+              alert(error.message || 'Failed to unmatch character');
             }
           }}
           onPass={() => {
