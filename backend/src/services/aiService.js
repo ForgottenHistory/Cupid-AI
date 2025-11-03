@@ -83,7 +83,7 @@ class AIService {
    */
   async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null }) {
     try {
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate);
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName);
       const userSettings = llmSettingsService.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;

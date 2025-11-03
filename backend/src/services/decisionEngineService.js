@@ -64,7 +64,7 @@ class DecisionEngineService {
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
       // Build system prompt (same as chat) - include characterId for memories
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule);
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, false, false, null, null, null, null, 'User');
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {
@@ -212,7 +212,7 @@ ${decisionPromptTemplate}`;
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
       // Build system prompt (same as chat) - include characterId for memories
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule);
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, false, false, null, null, null, null, 'User');
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {

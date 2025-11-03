@@ -60,7 +60,7 @@ class PromptBuilderService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, characterId = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, matchedDate = null) {
+  buildSystemPrompt(characterData, characterId = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, matchedDate = null, userName = null) {
     const parts = [];
 
     // Add current date and time
@@ -156,7 +156,15 @@ class PromptBuilderService {
       if (memories.length > 0) {
         // Memories are objects with { importance, text } - sort by importance and display text
         const sortedMemories = [...memories].sort((a, b) => b.importance - a.importance);
-        parts.push(`\n\nWHAT YOU REMEMBER ABOUT THEM:\n${sortedMemories.map((m, i) => `${i + 1}. ${m.text}`).join('\n')}`);
+
+        // Replace "User" with actual user name if available
+        const displayName = userName || 'User';
+        const memoriesText = sortedMemories.map((m, i) => {
+          const text = m.text.replace(/\bUser\b/g, displayName);
+          return `${i + 1}. ${text}`;
+        }).join('\n');
+
+        parts.push(`\n\nWHAT YOU REMEMBER ABOUT THEM:\n${memoriesText}`);
       }
     }
 
