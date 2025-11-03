@@ -159,6 +159,19 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
     }
   };
 
+  // Clear all memories
+  const handleClearAllMemories = async () => {
+    try {
+      const response = await api.delete(`/characters/${character.id}/memories`);
+      setMemories(response.data.memories || []);
+      return true;
+    } catch (error) {
+      console.error('Failed to clear memories:', error);
+      alert('Failed to clear memories. Please try again.');
+      return false;
+    }
+  };
+
   return (
     <div className="relative flex-shrink-0">
       {/* Banner Image */}
@@ -474,6 +487,7 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
         onAdd={handleAddMemory}
         onEdit={handleEditMemory}
         onDelete={handleDeleteMemory}
+        onClearAll={handleClearAllMemories}
       />
     </div>
   );

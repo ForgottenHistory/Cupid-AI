@@ -275,6 +275,32 @@ router.delete('/:characterId/memories/:index', authenticateToken, (req, res) => 
   }
 });
 
+// DELETE - Clear all memories
+router.delete('/:characterId/memories', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+
+    // Verify user has access to this character
+    const character = db.prepare(`
+      SELECT id FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Clear all memories
+    memoryService.saveCharacterMemories(characterId, [], userId);
+
+    console.log(`🗑️  Cleared all memories for character ${characterId}`);
+    res.json({ success: true, memories: [] });
+  } catch (error) {
+    console.error('Failed to clear memories:', error);
+    res.status(500).json({ error: 'Failed to clear memories' });
+  }
+});
+
 // ===== Delete Character Route =====
 router.delete('/:characterId', authenticateToken, (req, res) => {
   try {

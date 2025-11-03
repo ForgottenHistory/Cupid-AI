@@ -4,7 +4,7 @@ import { useState } from 'react';
 /**
  * Modal component to display and manage character memories
  */
-const MemoriesModal = ({ isOpen, onClose, characterId, characterName, memories, loading, onAdd, onEdit, onDelete }) => {
+const MemoriesModal = ({ isOpen, onClose, characterId, characterName, memories, loading, onAdd, onEdit, onDelete, onClearAll }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [newMemory, setNewMemory] = useState({ text: '', importance: 50 });
@@ -35,6 +35,16 @@ const MemoriesModal = ({ isOpen, onClose, characterId, characterName, memories, 
   const handleDelete = async (index) => {
     if (confirm('Are you sure you want to delete this memory?')) {
       await onDelete(index);
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (confirm(`Are you sure you want to delete ALL ${memories.length} memories? This cannot be undone.`)) {
+      const success = await onClearAll();
+      if (success) {
+        setIsAdding(false);
+        setEditingIndex(null);
+      }
     }
   };
 
@@ -279,13 +289,25 @@ const MemoriesModal = ({ isOpen, onClose, characterId, characterName, memories, 
         {/* Footer */}
         {memories.length > 0 && (
           <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>
-                {memories.length} of 50 memory slots used • Updated as conversations are compacted
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                  {memories.length} of 50 memory slots used • Updated as conversations are compacted
+                </span>
+              </div>
+              <button
+                onClick={handleClearAll}
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors text-xs font-medium flex items-center gap-1"
+                title="Remove all memories"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Remove All
+              </button>
             </div>
           </div>
         )}
