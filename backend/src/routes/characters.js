@@ -116,7 +116,9 @@ router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
   }
 });
 
-// ===== Character Memories Route =====
+// ===== Character Memories Routes =====
+
+// GET memories
 router.get('/:characterId/memories', authenticateToken, (req, res) => {
   try {
     const { characterId } = req.params;
@@ -138,6 +140,138 @@ router.get('/:characterId/memories', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Failed to get character memories:', error);
     res.status(500).json({ error: 'Failed to get character memories' });
+  }
+});
+
+// POST - Add new memory
+router.post('/:characterId/memories', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+    const { text, importance } = req.body;
+
+    // Validate input
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return res.status(400).json({ error: 'Memory text is required' });
+    }
+
+    if (importance === undefined || typeof importance !== 'number' || importance < 0 || importance > 100) {
+      return res.status(400).json({ error: 'Importance must be a number between 0 and 100' });
+    }
+
+    // Verify user has access to this character
+    const character = db.prepare(`
+      SELECT id FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Get existing memories
+    const memories = memoryService.getCharacterMemories(characterId);
+
+    // Add new memory
+    memories.push({ importance, text: text.trim() });
+
+    // Save updated memories
+    memoryService.saveCharacterMemories(characterId, memories, userId);
+
+    res.json({ success: true, memories: memoryService.getCharacterMemories(characterId) });
+  } catch (error) {
+    console.error('Failed to add memory:', error);
+    res.status(500).json({ error: 'Failed to add memory' });
+  }
+});
+
+// PUT - Update existing memory
+router.put('/:characterId/memories/:index', authenticateToken, (req, res) => {
+  try {
+    const { characterId, index } = req.params;
+    const userId = req.user.id;
+    const { text, importance } = req.body;
+    const memoryIndex = parseInt(index, 10);
+
+    // Validate input
+    if (isNaN(memoryIndex) || memoryIndex < 0) {
+      return res.status(400).json({ error: 'Invalid memory index' });
+    }
+
+    if (!text || typeof text !== 'string' || text.trim().length === 0) {
+      return res.status(400).json({ error: 'Memory text is required' });
+    }
+
+    if (importance === undefined || typeof importance !== 'number' || importance < 0 || importance > 100) {
+      return res.status(400).json({ error: 'Importance must be a number between 0 and 100' });
+    }
+
+    // Verify user has access to this character
+    const character = db.prepare(`
+      SELECT id FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Get existing memories
+    const memories = memoryService.getCharacterMemories(characterId);
+
+    if (memoryIndex >= memories.length) {
+      return res.status(404).json({ error: 'Memory not found' });
+    }
+
+    // Update memory
+    memories[memoryIndex] = { importance, text: text.trim() };
+
+    // Save updated memories
+    memoryService.saveCharacterMemories(characterId, memories, userId);
+
+    res.json({ success: true, memories: memoryService.getCharacterMemories(characterId) });
+  } catch (error) {
+    console.error('Failed to update memory:', error);
+    res.status(500).json({ error: 'Failed to update memory' });
+  }
+});
+
+// DELETE - Remove memory
+router.delete('/:characterId/memories/:index', authenticateToken, (req, res) => {
+  try {
+    const { characterId, index } = req.params;
+    const userId = req.user.id;
+    const memoryIndex = parseInt(index, 10);
+
+    // Validate input
+    if (isNaN(memoryIndex) || memoryIndex < 0) {
+      return res.status(400).json({ error: 'Invalid memory index' });
+    }
+
+    // Verify user has access to this character
+    const character = db.prepare(`
+      SELECT id FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Get existing memories
+    const memories = memoryService.getCharacterMemories(characterId);
+
+    if (memoryIndex >= memories.length) {
+      return res.status(404).json({ error: 'Memory not found' });
+    }
+
+    // Remove memory
+    memories.splice(memoryIndex, 1);
+
+    // Save updated memories
+    memoryService.saveCharacterMemories(characterId, memories, userId);
+
+    res.json({ success: true, memories: memoryService.getCharacterMemories(characterId) });
+  } catch (error) {
+    console.error('Failed to delete memory:', error);
+    res.status(500).json({ error: 'Failed to delete memory' });
   }
 });
 

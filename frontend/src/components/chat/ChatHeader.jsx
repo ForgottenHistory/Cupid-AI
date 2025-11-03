@@ -120,6 +120,45 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
     }
   };
 
+  // Add new memory
+  const handleAddMemory = async (text, importance) => {
+    try {
+      const response = await api.post(`/characters/${character.id}/memories`, { text, importance });
+      setMemories(response.data.memories || []);
+      return true;
+    } catch (error) {
+      console.error('Failed to add memory:', error);
+      alert('Failed to add memory. Please try again.');
+      return false;
+    }
+  };
+
+  // Edit existing memory
+  const handleEditMemory = async (index, text, importance) => {
+    try {
+      const response = await api.put(`/characters/${character.id}/memories/${index}`, { text, importance });
+      setMemories(response.data.memories || []);
+      return true;
+    } catch (error) {
+      console.error('Failed to edit memory:', error);
+      alert('Failed to edit memory. Please try again.');
+      return false;
+    }
+  };
+
+  // Delete memory
+  const handleDeleteMemory = async (index) => {
+    try {
+      const response = await api.delete(`/characters/${character.id}/memories/${index}`);
+      setMemories(response.data.memories || []);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete memory:', error);
+      alert('Failed to delete memory. Please try again.');
+      return false;
+    }
+  };
+
   return (
     <div className="relative flex-shrink-0">
       {/* Banner Image */}
@@ -428,9 +467,13 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
       <MemoriesModal
         isOpen={showMemories}
         onClose={() => setShowMemories(false)}
+        characterId={character.id}
         characterName={character.name}
         memories={memories}
         loading={loadingMemories}
+        onAdd={handleAddMemory}
+        onEdit={handleEditMemory}
+        onDelete={handleDeleteMemory}
       />
     </div>
   );
