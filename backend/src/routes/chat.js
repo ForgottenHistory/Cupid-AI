@@ -400,6 +400,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     const decision = await aiService.makeDecision({
       messages: aiMessages,
       characterData: characterData,
+      characterId: characterId,
       userMessage: userMessage,
       userId: userId,
       isEngaged: true, // Assume engaged for regenerate
@@ -510,6 +511,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     const aiResponse = await aiService.createChatCompletion({
       messages: aiMessages,
       characterData: characterData,
+      characterId: characterId,
       userId: userId,
       currentStatus: currentStatusInfo,
       userBio: userBio,

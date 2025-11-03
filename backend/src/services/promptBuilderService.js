@@ -146,10 +146,6 @@ class PromptBuilderService {
       parts.push(`\n\nPerson you're talking to: ${userBio}`);
     }
 
-    if (characterData.system_prompt) {
-      parts.push(`\n\n${characterData.system_prompt}`);
-    }
-
     parts.push(`\n\n${prompts.contextPrompt}`);
 
     parts.push(`\n\n${prompts.systemPrompt}`);
