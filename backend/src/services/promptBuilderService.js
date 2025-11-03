@@ -154,11 +154,13 @@ class PromptBuilderService {
 
     parts.push(`\n\n${prompts.systemPrompt}`);
 
-    // Add memories if available
+    // Add memories if available (between system prompt and closing prompt)
     if (characterId) {
       const memories = memoryService.getCharacterMemories(characterId);
       if (memories.length > 0) {
-        parts.push(`\n\nWHAT YOU REMEMBER ABOUT THEM:\n${memories.map((m, i) => `${i + 1}. ${m}`).join('\n')}`);
+        // Memories are objects with { importance, text } - sort by importance and display text
+        const sortedMemories = [...memories].sort((a, b) => b.importance - a.importance);
+        parts.push(`\n\nWHAT YOU REMEMBER ABOUT THEM:\n${sortedMemories.map((m, i) => `${i + 1}. ${m.text}`).join('\n')}`);
       }
     }
 

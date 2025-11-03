@@ -158,6 +158,7 @@ class MessageProcessor {
       const decision = await aiService.makeDecision({
         messages: aiMessages,
         characterData: characterData,
+        characterId: characterId,
         userMessage: userMessage,
         userId: userId,
         isEngaged: currentlyEngaged,

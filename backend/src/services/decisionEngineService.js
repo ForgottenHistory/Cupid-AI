@@ -22,7 +22,7 @@ class DecisionEngineService {
    * Decision Engine: Analyze conversation and decide on actions
    * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, thought: string|null, imageContext: string|null }
    */
-  async makeDecision({ messages, characterData, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null }) {
+  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null }) {
     try {
       const aiService = await this.getAIService();
       // Check mood cooldown (30 minutes)
@@ -63,8 +63,8 @@ class DecisionEngineService {
       // Extract character name
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
-      // Build system prompt (same as chat)
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, null, currentStatus, userBio, schedule);
+      // Build system prompt (same as chat) - include characterId for memories
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule);
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {
@@ -203,7 +203,7 @@ ${decisionPromptTemplate}`;
    * Proactive Decision Engine: Decide if character should send proactive message
    * Returns: { shouldSend: boolean, messageType: "fresh", reason: string }
    */
-  async makeProactiveDecision({ messages, characterData, gapHours, userId, currentStatus = null, schedule = null, userBio = null }) {
+  async makeProactiveDecision({ messages, characterData, characterId = null, gapHours, userId, currentStatus = null, schedule = null, userBio = null }) {
     try {
       const aiService = await this.getAIService();
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
@@ -211,8 +211,8 @@ ${decisionPromptTemplate}`;
       // Extract character name
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
-      // Build system prompt (same as chat)
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, null, currentStatus, userBio, schedule);
+      // Build system prompt (same as chat) - include characterId for memories
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule);
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {

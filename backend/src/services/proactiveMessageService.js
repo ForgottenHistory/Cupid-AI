@@ -445,6 +445,7 @@ class ProactiveMessageService {
           decision = await aiService.makeProactiveDecision({
             messages: messages,
             characterData: characterData,
+            characterId: characterId,
             gapHours: gapHours,
             userId: userId,
             currentStatus: currentStatusInfo,
