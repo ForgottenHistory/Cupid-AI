@@ -22,7 +22,8 @@ const BehaviorSettingsPage = () => {
     dailySwipeLimit: 5,
     compactionEnabled: true,
     maxMemories: 50,
-    maxMatches: 0
+    maxMatches: 0,
+    thoughtFrequency: 10
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -95,7 +96,8 @@ const BehaviorSettingsPage = () => {
       dailySwipeLimit: 5,
       compactionEnabled: true,
       maxMemories: 50,
-      maxMatches: 0
+      maxMatches: 0,
+      thoughtFrequency: 10
     });
     setSuccess('');
     setError('');
@@ -532,6 +534,30 @@ const BehaviorSettingsPage = () => {
                 <span>100</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Maximum important facts AI can remember about conversations. Lowest importance memories are pruned when limit is reached. (0 = disabled, no memories extracted)</p>
+            </div>
+
+            {/* Thought Frequency */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Thought Frequency</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.thoughtFrequency === 0 ? 'Disabled' : `Every ${settings.thoughtFrequency} messages`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="25"
+                step="1"
+                value={settings.thoughtFrequency}
+                onChange={(e) => updateSetting('thoughtFrequency', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Disabled</span>
+                <span>Every 25</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">How often characters share their internal thoughts with you. Thoughts reveal what they're really thinking about the conversation. (0 = disabled)</p>
             </div>
 
             {/* Auto-Unmatch Section Header */}

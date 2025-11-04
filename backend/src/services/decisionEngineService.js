@@ -40,11 +40,18 @@ class DecisionEngineService {
 
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
 
-      // Check if this is a thought message (every 10th message)
-      const shouldGenerateThought = (assistantMessageCount + 1) % 10 === 0;
+      // Get thought frequency setting (0 = disabled, 1-25 = every Nth message)
+      const db = (await import('../db/database.js')).default;
+      const thoughtSettings = db.prepare('SELECT thought_frequency FROM users WHERE id = ?').get(userId);
+      const thoughtFrequency = thoughtSettings?.thought_frequency ?? 10;
+
+      // Check if this is a thought message (based on user setting)
+      const shouldGenerateThought = thoughtFrequency > 0 && (assistantMessageCount + 1) % thoughtFrequency === 0;
 
       if (shouldGenerateThought) {
-        console.log(`💭 Decision Engine: Thought will be requested (message ${assistantMessageCount + 1})`);
+        console.log(`💭 Decision Engine: Thought will be requested (message ${assistantMessageCount + 1}, frequency: every ${thoughtFrequency})`);
+      } else if (thoughtFrequency === 0) {
+        console.log(`💭 Decision Engine: Thoughts disabled by user setting`);
       }
 
       // Get personality data if available
