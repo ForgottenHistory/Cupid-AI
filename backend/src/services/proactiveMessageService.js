@@ -187,7 +187,22 @@ class ProactiveMessageService {
           continue;
         }
 
+        // Check if minimum time has passed since last proactive message
+        // This enforces the proactive_message_hours setting between consecutive proactive messages
+        const minHours = user.proactive_message_hours || 4;
+
+        if (character.last_proactive_at) {
+          const lastProactiveTime = new Date(character.last_proactive_at);
+          const now = new Date();
+          const hoursSinceProactive = (now - lastProactiveTime) / (1000 * 60 * 60);
+
+          if (hoursSinceProactive < minHours) {
+            continue; // Not enough time since last proactive message
+          }
+        }
+
         // Calculate time gap: either from user's last message OR from match time (if no messages)
+        // This is used for probability calculation and first message detection
         let gapHours;
         let isFirstMessage = false;
 
@@ -204,8 +219,7 @@ class ProactiveMessageService {
           isFirstMessage = true;
         }
 
-        // Skip if not enough time has passed (default: 4 hours)
-        const minHours = user.proactive_message_hours || 4;
+        // Also enforce minimum hours from user's last message (for first proactive after user reply)
         if (gapHours < minHours) {
           continue;
         }
