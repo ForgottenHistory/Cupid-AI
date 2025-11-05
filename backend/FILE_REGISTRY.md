@@ -14,6 +14,8 @@
 - `tts.js` - Voice library (DISABLED)
 - `debug.js` - Debug proactive/image generation, test compact, test memory extraction, block structure
 - `prompts.js` - Get/update/reset AI behavior prompts (system, proactive, compaction, memory, etc.)
+- `imageTagPrompts.js` - Image tag prompt management (get/update/reset)
+- `tagLibrary.js` - Tag library CRUD operations
 
 ## Controllers
 - `characterInteractionController.js` - Swipe limits, likes, daily auto-match
@@ -27,7 +29,7 @@
 - `messageService.js` - Message CRUD, history, pagination (200/page), edit/delete, block detection (30-min gaps)
 - `decisionEngineService.js` - Decision LLM: reactions, moods, unmatch, media, proactive
 - `engagementService.js` - Time-based engagement, departures, cooldowns
-- `proactiveMessageService.js` - Background proactive: candidates, probability, first messages
+- `proactiveMessageService.js` - Background proactive: candidates, probability, first messages, enforces proactive_message_hours between consecutive messages
 - `postGenerationService.js` - Background posts: personality-based, 10/day
 - `characterWizardService.js` - Wizard AI: names, descriptions, appearances, tags
 - `personalityService.js` - Big Five (OCEAN) generation
@@ -42,6 +44,7 @@
 - `compactService.js` - Conversation compacting: summary generation, block deletion, 5-slot cap
 - `memoryService.js` - Long-term memory extraction and storage (50 memories max per character)
 - `timeGapService.js` - TIME GAP marker insertion for conversation breaks (30+ min gaps)
+- `autoUnmatchService.js` - Automatic unmatch for inactive conversations (configurable days)
 
 ## Database
 - `database.js` - SQLite init, auto-migrations

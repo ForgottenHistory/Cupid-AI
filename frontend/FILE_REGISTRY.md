@@ -12,10 +12,15 @@
 - `Library.jsx` - Character management, Character Wizard button
 - `Chat.jsx` - Individual chat conversations, compacting overlay
 - `Feed.jsx` - Full-screen social media feed (Instagram Stories style)
-- `Profile.jsx` - User settings: profile, LLM, behavior, SD settings
+- `Profile.jsx` - User settings hub with navigation to dedicated settings pages
+- `LLMSettingsPage.jsx` - Dedicated page for Content/Decision/Image Tag LLM settings
+- `BehaviorSettingsPage.jsx` - Dedicated page for behavior settings (proactive, compaction, memory, etc.)
+- `SDSettingsPage.jsx` - Dedicated page for Stable Diffusion settings
+- `TagLibrary.jsx` - Tag library management page for Danbooru tags
 - `Prompts.jsx` - AI behavior prompt editor (system, proactive, compaction, memory, etc.)
 - `CharacterWizard.jsx` - 4-step AI character creation
 - `VoiceLibrary.jsx` - Voice sample management (DISABLED)
+- `HeroImage.jsx` - Hero/banner image component or page
 
 ## Layout
 - `MainLayout.jsx` - Sidebar with matches, unread indicators, nav
@@ -106,6 +111,10 @@
 - `messageUtils.js` - Split messages by newlines for progressive display
 - `syncCharacterImages.js` - Sync character images to backend
 - `debugCompact.js` - Debug functions: testCompact, showBlockStructure, testMemoryExtraction, testCompactUI
+
+## Data Files
+- `archetypes.txt` - Plain text character archetypes for wizard (located in src/data/)
+- `personalityTraits.txt` - Plain text personality traits for wizard (located in src/data/)
 
 ## Config
 - `vite.config.js` - Vite bundler config
