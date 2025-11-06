@@ -301,6 +301,65 @@ router.delete('/:characterId/memories', authenticateToken, (req, res) => {
   }
 });
 
+// ===== Post Instructions Routes =====
+
+// GET post instructions
+router.get('/:characterId/post-instructions', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+
+    // Get character with post instructions
+    const character = db.prepare(`
+      SELECT post_instructions FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    res.json({ postInstructions: character.post_instructions || '' });
+  } catch (error) {
+    console.error('Failed to get post instructions:', error);
+    res.status(500).json({ error: 'Failed to get post instructions' });
+  }
+});
+
+// PUT - Update post instructions
+router.put('/:characterId/post-instructions', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+    const { postInstructions } = req.body;
+
+    // Validate input
+    if (postInstructions !== null && postInstructions !== undefined && typeof postInstructions !== 'string') {
+      return res.status(400).json({ error: 'Post instructions must be a string' });
+    }
+
+    // Verify user has access to this character
+    const character = db.prepare(`
+      SELECT id FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Update post instructions
+    const trimmedInstructions = postInstructions ? postInstructions.trim() : null;
+    db.prepare(`
+      UPDATE characters SET post_instructions = ? WHERE id = ? AND user_id = ?
+    `).run(trimmedInstructions, characterId, userId);
+
+    console.log(`✅ Updated post instructions for character ${characterId}`);
+    res.json({ success: true, postInstructions: trimmedInstructions || '' });
+  } catch (error) {
+    console.error('Failed to update post instructions:', error);
+    res.status(500).json({ error: 'Failed to update post instructions' });
+  }
+});
+
 // ===== Delete Character Route =====
 router.delete('/:characterId', authenticateToken, (req, res) => {
   try {

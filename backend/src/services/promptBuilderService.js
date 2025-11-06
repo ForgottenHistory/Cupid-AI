@@ -1,5 +1,6 @@
 import { loadPrompts } from '../routes/prompts.js';
 import memoryService from './memoryService.js';
+import db from '../db/database.js';
 
 class PromptBuilderService {
   /**
@@ -177,6 +178,21 @@ class PromptBuilderService {
     }
 
     parts.push(`\n\n${prompts.closingPrompt}`);
+
+    // Add character-specific post instructions if available
+    if (characterId) {
+      try {
+        const character = db.prepare(`
+          SELECT post_instructions FROM characters WHERE id = ?
+        `).get(characterId);
+
+        if (character?.post_instructions && character.post_instructions.trim()) {
+          parts.push(`\n\n${character.post_instructions.trim()}`);
+        }
+      } catch (error) {
+        console.error(`Failed to load post instructions for character ${characterId}:`, error);
+      }
+    }
 
     return parts.join('');
   }

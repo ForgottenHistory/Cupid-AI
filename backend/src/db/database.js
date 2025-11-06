@@ -622,6 +622,12 @@ function runMigrations() {
       console.log('✅ memory_data column added to characters table for long-term memory');
     }
 
+    // Migration: Add post_instructions column to characters table
+    if (!charactersColumnNamesRefreshMemory.includes('post_instructions')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN post_instructions TEXT;`);
+      console.log('✅ post_instructions column added to characters table');
+    }
+
     // Migration: Make email column optional (nullable)
     // SQLite doesn't support ALTER COLUMN, so we recreate the table if email is NOT NULL
     const usersSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
