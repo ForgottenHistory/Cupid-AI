@@ -448,10 +448,18 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
           FROM users WHERE id = ?
         `).get(userId);
 
+        // Fetch character-specific prompt overrides
+        const character = db.prepare(`
+          SELECT main_prompt_override, negative_prompt_override
+          FROM characters WHERE id = ? AND user_id = ?
+        `).get(characterId, userId);
+
         const imageResult = await sdService.generateImage({
           characterTags: backendCharacter.image_tags,
           contextTags: generatedContextTags,
-          userSettings: sdSettings
+          userSettings: sdSettings,
+          mainPromptOverride: character?.main_prompt_override,
+          negativePromptOverride: character?.negative_prompt_override
         });
 
         if (imageResult.success) {
