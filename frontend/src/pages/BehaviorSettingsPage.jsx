@@ -18,12 +18,14 @@ const BehaviorSettingsPage = () => {
     compactTargetPercent: 70,
     keepUncompactedMessages: 30,
     autoUnmatchInactiveDays: 0,
+    autoUnmatchAfterProactive: true,
     dailyAutoMatchEnabled: true,
     dailySwipeLimit: 5,
     compactionEnabled: true,
     maxMemories: 50,
     maxMatches: 0,
-    thoughtFrequency: 10
+    thoughtFrequency: 10,
+    memoryDegradationPoints: 0
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -259,7 +261,7 @@ const BehaviorSettingsPage = () => {
               <div className="flex items-center justify-between">
                 <label className="font-semibold text-gray-900 dark:text-gray-100">Max Consecutive Proactive</label>
                 <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                  {settings.maxConsecutiveProactive === 0 ? 'Disabled' : `${settings.maxConsecutiveProactive} messages`}
+                  {settings.maxConsecutiveProactive === 0 ? 'Unlimited' : `${settings.maxConsecutiveProactive} messages`}
                 </span>
               </div>
               <input
@@ -272,10 +274,10 @@ const BehaviorSettingsPage = () => {
                 className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                <span>Disabled</span>
+                <span>Unlimited</span>
                 <span>10</span>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum unanswered proactive messages before character unmatches. Cooldown doubles after each message. (0 = disabled, characters won't unmatch)</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum unanswered proactive messages before cooldown escalation stops. Cooldown doubles after each message. (0 = unlimited, no cap)</p>
             </div>
 
             {/* Proactive Cooldown Multiplier */}
@@ -417,6 +419,30 @@ const BehaviorSettingsPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">How characters pace romantic/intimate development</p>
             </div>
 
+            {/* Thought Frequency */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Thought Frequency</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.thoughtFrequency === 0 ? 'Disabled' : `Every ${settings.thoughtFrequency} messages`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="25"
+                step="1"
+                value={settings.thoughtFrequency}
+                onChange={(e) => updateSetting('thoughtFrequency', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Disabled</span>
+                <span>Every 25</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">How often characters share their internal thoughts with you. Thoughts reveal what they're really thinking about the conversation. (0 = disabled)</p>
+            </div>
+
             {/* Conversation Compacting Section Header */}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Conversation Compacting</h3>
@@ -536,40 +562,57 @@ const BehaviorSettingsPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Maximum important facts AI can remember about conversations. Lowest importance memories are pruned when limit is reached. (0 = disabled, no memories extracted)</p>
             </div>
 
-            {/* Thought Frequency */}
+            {/* Memory Degradation Points */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="font-semibold text-gray-900 dark:text-gray-100">Thought Frequency</label>
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Memory Degradation</label>
                 <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
-                  {settings.thoughtFrequency === 0 ? 'Disabled' : `Every ${settings.thoughtFrequency} messages`}
+                  {settings.memoryDegradationPoints === 0 ? 'Disabled' : `${settings.memoryDegradationPoints} points`}
                 </span>
               </div>
               <input
                 type="range"
                 min="0"
-                max="25"
+                max="100"
                 step="1"
-                value={settings.thoughtFrequency}
-                onChange={(e) => updateSetting('thoughtFrequency', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                value={settings.memoryDegradationPoints}
+                onChange={(e) => updateSetting('memoryDegradationPoints', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Disabled</span>
-                <span>Every 25</span>
+                <span>100 points</span>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">How often characters share their internal thoughts with you. Thoughts reveal what they're really thinking about the conversation. (0 = disabled)</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When new memories are created, existing memories lose this many importance points. Higher values make old memories fade faster (0 = disabled)</p>
             </div>
 
             {/* Auto-Unmatch Section Header */}
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Auto-Unmatch Inactive Matches</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Automatically unmatch characters after a period of inactivity</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Auto-Unmatch Settings</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Configure when characters automatically unmatch</p>
             </div>
 
-            {/* Auto-Unmatch After Days */}
+            {/* Auto-Unmatch After Consecutive Proactive Messages */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="font-semibold text-gray-900 dark:text-gray-100">Auto-Unmatch After</label>
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Unmatch After Consecutive Proactive</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.autoUnmatchAfterProactive}
+                    onChange={(e) => updateSetting('autoUnmatchAfterProactive', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When enabled, characters will unmatch after reaching the max consecutive proactive messages limit without a response. When disabled, they just stop sending more proactive messages.</p>
+            </div>
+
+            {/* Auto-Unmatch After Inactivity */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Unmatch After Inactivity</label>
                 <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
                   {settings.autoUnmatchInactiveDays === 0 ? 'Disabled' : `${settings.autoUnmatchInactiveDays} days`}
                 </span>

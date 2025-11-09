@@ -458,6 +458,16 @@ function runMigrations() {
       console.log('✅ max_matches column added to users table');
     }
 
+    if (!userColumnNamesRefresh.includes('memory_degradation_points')) {
+      db.exec(`ALTER TABLE users ADD COLUMN memory_degradation_points INTEGER DEFAULT 0;`);
+      console.log('✅ memory_degradation_points column added to users table');
+    }
+
+    if (!userColumnNamesRefresh.includes('auto_unmatch_after_proactive')) {
+      db.exec(`ALTER TABLE users ADD COLUMN auto_unmatch_after_proactive INTEGER DEFAULT 1;`);
+      console.log('✅ auto_unmatch_after_proactive column added to users table');
+    }
+
     // Migration: Update messages table to allow 'system' role
     // Check if the constraint needs updating
     const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();

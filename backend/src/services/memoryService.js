@@ -81,6 +81,29 @@ class MemoryService {
   }
 
   /**
+   * Apply memory degradation to existing memories
+   * @param {Array<{importance: number, text: string}>} existingMemories - Current memories
+   * @param {number} degradationPoints - Points to degrade each memory (0 = disabled)
+   * @returns {Array<{importance: number, text: string}>} Degraded memories
+   * @private
+   */
+  _applyMemoryDegradation(existingMemories, degradationPoints) {
+    if (degradationPoints === 0 || !existingMemories || existingMemories.length === 0) {
+      return existingMemories;
+    }
+
+    // Degrade each existing memory's importance
+    const degradedMemories = existingMemories.map(memory => ({
+      ...memory,
+      importance: Math.max(0, memory.importance - degradationPoints) // Don't go below 0
+    }));
+
+    console.log(`📉 Degraded ${existingMemories.length} existing memories by ${degradationPoints} points`);
+
+    return degradedMemories;
+  }
+
+  /**
    * Extract NEW memories from conversation block and merge with existing ones
    *
    * @param {string} characterId - Character ID
@@ -90,8 +113,9 @@ class MemoryService {
    */
   async extractMemories(characterId, messages, userId) {
     // Check if memory system is enabled for this user
-    const user = db.prepare('SELECT max_memories FROM users WHERE id = ?').get(userId);
+    const user = db.prepare('SELECT max_memories, memory_degradation_points FROM users WHERE id = ?').get(userId);
     const maxMemories = user?.max_memories ?? 50;
+    const degradationPoints = user?.memory_degradation_points ?? 0;
 
     // If max_memories is 0, memories are disabled - return empty array
     if (maxMemories === 0) {
@@ -115,8 +139,11 @@ class MemoryService {
 
     const characterName = characterData.data?.name || characterData.name || character.name || 'Character';
 
-    // Get existing memories
-    const existingMemories = this.getCharacterMemories(characterId);
+    // Get existing memories and apply degradation if enabled
+    let existingMemories = this.getCharacterMemories(characterId);
+    if (degradationPoints > 0) {
+      existingMemories = this._applyMemoryDegradation(existingMemories, degradationPoints);
+    }
 
     // Format conversation block
     const conversationHistory = messages.map(m => {

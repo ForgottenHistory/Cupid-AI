@@ -671,8 +671,10 @@ class ProactiveMessageService {
         console.log(`📊 Consecutive proactive count: ${newConsecutiveCount}/${maxConsecutive} (next cooldown: ${cooldownDisplay}, multiplier: ${multiplier}x)`);
         console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
 
-        // CHECK FOR UNMATCH: If this exceeds the max consecutive proactive messages (skip if disabled with 0)
-        if (maxConsecutive > 0 && newConsecutiveCount >= maxConsecutive) {
+        // CHECK FOR UNMATCH: If this exceeds the max consecutive proactive messages
+        // Only unmatch if (1) max_consecutive_proactive > 0, (2) auto_unmatch_after_proactive is enabled
+        const autoUnmatchAfterProactive = userSettings?.autoUnmatchAfterProactive ?? true;
+        if (maxConsecutive > 0 && autoUnmatchAfterProactive && newConsecutiveCount >= maxConsecutive) {
           console.log(`💔 ${characterName} sent ${maxConsecutive} consecutive proactive messages - triggering unmatch for user ${userId}`);
 
           const unmatchReason = `Character unmatched after ${maxConsecutive} consecutive unanswered messages`;
@@ -705,6 +707,9 @@ class ProactiveMessageService {
 
           console.log(`✅ Unmatch complete for ${characterName} and user ${userId} (conversation preserved)`);
           return true; // Message was sent, but unmatch occurred
+        } else if (maxConsecutive > 0 && !autoUnmatchAfterProactive && newConsecutiveCount >= maxConsecutive) {
+          // Just log that the cap is reached, but don't unmatch
+          console.log(`🔔 ${characterName} at consecutive cap (${newConsecutiveCount}/${maxConsecutive}) - auto-unmatch disabled, cooldown escalation stopped`);
         }
       }
 

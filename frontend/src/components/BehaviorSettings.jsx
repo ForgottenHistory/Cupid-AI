@@ -19,7 +19,8 @@ const BehaviorSettings = ({ onClose }) => {
     compactThresholdPercent: 90,
     compactTargetPercent: 70,
     keepUncompactedMessages: 30,
-    autoUnmatchInactiveDays: 0
+    autoUnmatchInactiveDays: 0,
+    memoryDegradationPoints: 0
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -86,7 +87,8 @@ const BehaviorSettings = ({ onClose }) => {
       compactThresholdPercent: 90,
       compactTargetPercent: 70,
       keepUncompactedMessages: 30,
-      autoUnmatchInactiveDays: 0
+      autoUnmatchInactiveDays: 0,
+      memoryDegradationPoints: 0
     });
     setSuccess('');
     setError('');

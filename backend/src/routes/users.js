@@ -726,8 +726,9 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
-             auto_unmatch_inactive_days, daily_swipe_limit, daily_auto_match_enabled,
-             compaction_enabled, max_memories, max_matches, thought_frequency
+             auto_unmatch_inactive_days, auto_unmatch_after_proactive, daily_swipe_limit, daily_auto_match_enabled,
+             compaction_enabled, max_memories, max_matches, thought_frequency,
+             memory_degradation_points
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -748,12 +749,14 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       compactTargetPercent: settings.compact_target_percent,
       keepUncompactedMessages: settings.keep_uncompacted_messages,
       autoUnmatchInactiveDays: settings.auto_unmatch_inactive_days,
+      autoUnmatchAfterProactive: Boolean(settings.auto_unmatch_after_proactive),
       dailySwipeLimit: settings.daily_swipe_limit,
       dailyAutoMatchEnabled: Boolean(settings.daily_auto_match_enabled),
       compactionEnabled: Boolean(settings.compaction_enabled),
       maxMemories: settings.max_memories,
       maxMatches: settings.max_matches,
-      thoughtFrequency: settings.thought_frequency
+      thoughtFrequency: settings.thought_frequency,
+      memoryDegradationPoints: settings.memory_degradation_points
     });
   } catch (error) {
     console.error('Get behavior settings error:', error);
@@ -767,7 +770,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches, thoughtFrequency } = req.body;
+    const { proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, autoUnmatchAfterProactive, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches, thoughtFrequency, memoryDegradationPoints } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -807,6 +810,9 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     if (autoUnmatchInactiveDays !== undefined && (autoUnmatchInactiveDays < 0 || autoUnmatchInactiveDays > 90)) {
       return res.status(400).json({ error: 'Auto-unmatch inactive days must be between 0 and 90' });
     }
+    if (autoUnmatchAfterProactive !== undefined && typeof autoUnmatchAfterProactive !== 'boolean') {
+      return res.status(400).json({ error: 'Auto-unmatch after proactive must be a boolean' });
+    }
     if (dailySwipeLimit !== undefined && (dailySwipeLimit < 0 || dailySwipeLimit > 10)) {
       return res.status(400).json({ error: 'Daily swipe limit must be between 0 and 10' });
     }
@@ -818,6 +824,9 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     }
     if (thoughtFrequency !== undefined && (thoughtFrequency < 0 || thoughtFrequency > 25)) {
       return res.status(400).json({ error: 'Thought frequency must be between 0 and 25' });
+    }
+    if (memoryDegradationPoints !== undefined && (memoryDegradationPoints < 0 || memoryDegradationPoints > 100)) {
+      return res.status(400).json({ error: 'Memory degradation points must be between 0 and 100' });
     }
 
     // Build update query dynamically
@@ -872,6 +881,10 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('auto_unmatch_inactive_days = ?');
       values.push(autoUnmatchInactiveDays);
     }
+    if (autoUnmatchAfterProactive !== undefined) {
+      updates.push('auto_unmatch_after_proactive = ?');
+      values.push(autoUnmatchAfterProactive ? 1 : 0);
+    }
     if (dailySwipeLimit !== undefined) {
       updates.push('daily_swipe_limit = ?');
       values.push(dailySwipeLimit);
@@ -896,6 +909,10 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('thought_frequency = ?');
       values.push(thoughtFrequency);
     }
+    if (memoryDegradationPoints !== undefined) {
+      updates.push('memory_degradation_points = ?');
+      values.push(memoryDegradationPoints);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -913,8 +930,9 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
              proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
-             auto_unmatch_inactive_days, daily_swipe_limit, daily_auto_match_enabled,
-             compaction_enabled, max_memories, max_matches, thought_frequency
+             auto_unmatch_inactive_days, auto_unmatch_after_proactive, daily_swipe_limit, daily_auto_match_enabled,
+             compaction_enabled, max_memories, max_matches, thought_frequency,
+             memory_degradation_points
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -931,12 +949,14 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       compactTargetPercent: settings.compact_target_percent,
       keepUncompactedMessages: settings.keep_uncompacted_messages,
       autoUnmatchInactiveDays: settings.auto_unmatch_inactive_days,
+      autoUnmatchAfterProactive: Boolean(settings.auto_unmatch_after_proactive),
       dailySwipeLimit: settings.daily_swipe_limit,
       dailyAutoMatchEnabled: Boolean(settings.daily_auto_match_enabled),
       compactionEnabled: Boolean(settings.compaction_enabled),
       maxMemories: settings.max_memories,
       maxMatches: settings.max_matches,
-      thoughtFrequency: settings.thought_frequency
+      thoughtFrequency: settings.thought_frequency,
+      memoryDegradationPoints: settings.memory_degradation_points
     });
   } catch (error) {
     console.error('Update behavior settings error:', error);
