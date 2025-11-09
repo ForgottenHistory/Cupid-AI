@@ -84,18 +84,20 @@ router.get('/:characterId', authenticateToken, (req, res) => {
 router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
   try {
     const { characterId } = req.params;
-    const { image_tags, contextual_tags } = req.body;
+    const { image_tags, contextual_tags, main_prompt_override, negative_prompt_override } = req.body;
     const userId = req.user.id;
 
     console.log(`💾 Updating image tags for character ${characterId}:`, image_tags);
     console.log(`💾 Updating contextual tags for character ${characterId}:`, contextual_tags);
+    console.log(`💾 Updating main prompt override for character ${characterId}:`, main_prompt_override);
+    console.log(`💾 Updating negative prompt override for character ${characterId}:`, negative_prompt_override);
 
-    // Update character image_tags and contextual_tags
+    // Update character image_tags, contextual_tags, and prompt overrides
     const result = db.prepare(`
       UPDATE characters
-      SET image_tags = ?, contextual_tags = ?
+      SET image_tags = ?, contextual_tags = ?, main_prompt_override = ?, negative_prompt_override = ?
       WHERE id = ? AND user_id = ?
-    `).run(image_tags, contextual_tags, characterId, userId);
+    `).run(image_tags, contextual_tags, main_prompt_override, negative_prompt_override, characterId, userId);
 
     console.log(`✅ Update result: ${result.changes} row(s) affected`);
 
@@ -105,11 +107,19 @@ router.put('/:characterId/image-tags', authenticateToken, (req, res) => {
     }
 
     // Verify the update by reading back
-    const character = db.prepare('SELECT image_tags, contextual_tags FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+    const character = db.prepare('SELECT image_tags, contextual_tags, main_prompt_override, negative_prompt_override FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
     console.log(`📝 Verified image_tags in DB:`, character?.image_tags);
     console.log(`📝 Verified contextual_tags in DB:`, character?.contextual_tags);
+    console.log(`📝 Verified main_prompt_override in DB:`, character?.main_prompt_override);
+    console.log(`📝 Verified negative_prompt_override in DB:`, character?.negative_prompt_override);
 
-    res.json({ success: true, image_tags: character?.image_tags, contextual_tags: character?.contextual_tags });
+    res.json({
+      success: true,
+      image_tags: character?.image_tags,
+      contextual_tags: character?.contextual_tags,
+      main_prompt_override: character?.main_prompt_override,
+      negative_prompt_override: character?.negative_prompt_override
+    });
   } catch (error) {
     console.error('Failed to update character tags:', error);
     res.status(500).json({ error: 'Failed to update character tags' });

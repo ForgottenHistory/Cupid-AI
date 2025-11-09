@@ -245,6 +245,17 @@ function runMigrations() {
       console.log('✅ contextual_tags column added to characters table');
     }
 
+    // Migration: Add prompt override columns to characters table
+    if (!charactersColumnNames.includes('main_prompt_override')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN main_prompt_override TEXT;`);
+      console.log('✅ main_prompt_override column added to characters table');
+    }
+
+    if (!charactersColumnNames.includes('negative_prompt_override')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN negative_prompt_override TEXT;`);
+      console.log('✅ negative_prompt_override column added to characters table');
+    }
+
     // Migration: Add image_url column to messages table
     if (!messagesColumnNames.includes('image_url')) {
       db.exec(`ALTER TABLE messages ADD COLUMN image_url TEXT;`);

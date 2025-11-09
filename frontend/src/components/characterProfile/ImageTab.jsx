@@ -5,6 +5,8 @@ import characterService from '../../services/characterService';
 const ImageTab = ({ character, onUpdate }) => {
   const [imageTags, setImageTags] = useState('');
   const [contextualTags, setContextualTags] = useState('');
+  const [mainPromptOverride, setMainPromptOverride] = useState('');
+  const [negativePromptOverride, setNegativePromptOverride] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -29,8 +31,12 @@ const ImageTab = ({ character, onUpdate }) => {
       console.log('✅ Backend response:', response.data);
       console.log('📝 Image tags from backend:', response.data.image_tags);
       console.log('📝 Contextual tags from backend:', response.data.contextual_tags);
+      console.log('📝 Main prompt override from backend:', response.data.main_prompt_override);
+      console.log('📝 Negative prompt override from backend:', response.data.negative_prompt_override);
       setImageTags(response.data.image_tags || '');
       setContextualTags(response.data.contextual_tags || '');
+      setMainPromptOverride(response.data.main_prompt_override || '');
+      setNegativePromptOverride(response.data.negative_prompt_override || '');
       setError(null);
     } catch (err) {
       // If 404 (character not synced to backend yet), try loading from local cardData
@@ -38,6 +44,8 @@ const ImageTab = ({ character, onUpdate }) => {
         console.log('⚠️ Character not in backend (404), loading from cardData:', character.cardData.data.imageTags);
         setImageTags(character.cardData.data.imageTags);
         setContextualTags(character.cardData.data.contextualTags || '');
+        setMainPromptOverride(character.cardData.data.mainPromptOverride || '');
+        setNegativePromptOverride(character.cardData.data.negativePromptOverride || '');
         setError(null);
       } else {
         console.error('❌ Failed to load image tags:', err);
@@ -55,6 +63,8 @@ const ImageTab = ({ character, onUpdate }) => {
 
       console.log(`💾 Saving image tags for character ${character.id}:`, imageTags.trim());
       console.log(`💾 Saving contextual tags for character ${character.id}:`, contextualTags.trim());
+      console.log(`💾 Saving main prompt override for character ${character.id}:`, mainPromptOverride.trim());
+      console.log(`💾 Saving negative prompt override for character ${character.id}:`, negativePromptOverride.trim());
 
       // Save to IndexedDB first (this is the source of truth)
       const updates = {
@@ -63,7 +73,9 @@ const ImageTab = ({ character, onUpdate }) => {
           data: {
             ...character.cardData.data,
             imageTags: imageTags.trim() || '',
-            contextualTags: contextualTags.trim() || ''
+            contextualTags: contextualTags.trim() || '',
+            mainPromptOverride: mainPromptOverride.trim() || '',
+            negativePromptOverride: negativePromptOverride.trim() || ''
           }
         }
       };
@@ -75,9 +87,11 @@ const ImageTab = ({ character, onUpdate }) => {
       try {
         const response = await api.put(`/characters/${character.id}/image-tags`, {
           image_tags: imageTags.trim() || null,
-          contextual_tags: contextualTags.trim() || null
+          contextual_tags: contextualTags.trim() || null,
+          main_prompt_override: mainPromptOverride.trim() || null,
+          negative_prompt_override: negativePromptOverride.trim() || null
         });
-        console.log('✅ Tags saved to backend:', response.data);
+        console.log('✅ Tags and prompts saved to backend:', response.data);
       } catch (err) {
         if (err.response?.status === 404) {
           console.log('⚠️ Character not synced to backend yet, saved to IndexedDB only');
@@ -421,6 +435,53 @@ const ImageTab = ({ character, onUpdate }) => {
         />
       </div>
 
+      {/* Divider */}
+      <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+      {/* Prompt Overrides Section */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Prompt Overrides (Optional)</h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Override global prompt settings for this character only. Leave empty to use global defaults.
+          </p>
+        </div>
+
+        {/* Main Prompt Override */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Main Prompt Override
+          </label>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Replaces the global main prompt (default: "masterpiece, best quality, amazing quality, 1girl, solo")
+          </p>
+          <textarea
+            value={mainPromptOverride}
+            onChange={(e) => setMainPromptOverride(e.target.value)}
+            placeholder="e.g., masterpiece, best quality, 1boy, solo, photorealistic"
+            rows={3}
+            className="w-full px-4 py-3 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm border border-purple-200/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-500 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 font-mono text-sm"
+          />
+        </div>
+
+        {/* Negative Prompt Override */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Negative Prompt Override
+          </label>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            Replaces the global negative prompt (things to avoid in generated images)
+          </p>
+          <textarea
+            value={negativePromptOverride}
+            onChange={(e) => setNegativePromptOverride(e.target.value)}
+            placeholder="e.g., lowres, bad anatomy, bad hands, text, error, cropped"
+            rows={3}
+            className="w-full px-4 py-3 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm border border-purple-200/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-purple-400 dark:focus:ring-purple-500 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 font-mono text-sm"
+          />
+        </div>
+      </div>
+
       {/* Save Button */}
       <button
         onClick={handleSave}
@@ -433,7 +494,7 @@ const ImageTab = ({ character, onUpdate }) => {
             Saving...
           </>
         ) : (
-          'Save All Tags'
+          'Save All Settings'
         )}
       </button>
 

@@ -38,13 +38,17 @@ class SDService {
    * @param {string} params.additionalPrompt - Optional additional user-provided prompt
    * @param {string} params.negativePrompt - Optional custom negative prompt
    * @param {Object} params.userSettings - User's SD settings from database
+   * @param {string} params.mainPromptOverride - Character-specific main prompt override
+   * @param {string} params.negativePromptOverride - Character-specific negative prompt override
    */
   async generateImage({
     characterTags = '',
     contextTags = '',
     additionalPrompt = '',
     negativePrompt = null,
-    userSettings = null
+    userSettings = null,
+    mainPromptOverride = null,
+    negativePromptOverride = null
   }) {
     try {
       // Use user settings or defaults
@@ -66,14 +70,14 @@ class SDService {
         sd_model: ''
       };
 
-      // Build full prompt using user's main prompt
-      const mainPrompt = settings.sd_main_prompt || 'masterpiece, best quality, amazing quality, 1girl, solo';
+      // Build full prompt using character override, user's main prompt, or default
+      const mainPrompt = mainPromptOverride || settings.sd_main_prompt || 'masterpiece, best quality, amazing quality, 1girl, solo';
       const fullPrompt = [mainPrompt, characterTags, contextTags, additionalPrompt]
         .filter(p => p && p.trim())
         .join(', ');
 
-      // Use user's negative prompt
-      const mainNegative = settings.sd_negative_prompt || 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, speech bubble, multiple views,';
+      // Use character override, user's negative prompt, or default
+      const mainNegative = negativePromptOverride || settings.sd_negative_prompt || 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, speech bubble, multiple views,';
       const fullNegative = negativePrompt || mainNegative;
 
       console.log(`🎨 Generating image with SD...`);

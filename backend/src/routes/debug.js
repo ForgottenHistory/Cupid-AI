@@ -112,12 +112,20 @@ router.post('/generate-image/:characterId', authenticateToken, async (req, res) 
       FROM users WHERE id = ?
     `).get(userId);
 
+    // Fetch character-specific prompt overrides
+    const character = db.prepare(`
+      SELECT main_prompt_override, negative_prompt_override
+      FROM characters WHERE id = ? AND user_id = ?
+    `).get(characterId, userId);
+
     // Generate image
     const imageResult = await sdService.generateImage({
       characterTags: imageTags,
       contextTags: contextTags || '',
       additionalPrompt: additionalPrompt || '',
-      userSettings: userSettings
+      userSettings: userSettings,
+      mainPromptOverride: character?.main_prompt_override,
+      negativePromptOverride: character?.negative_prompt_override
     });
 
     if (!imageResult.success) {
