@@ -473,6 +473,14 @@ class MessageProcessor {
           throw new Error('AI generated empty response');
         }
 
+        // Check if the new message is a 1:1 copy of the last AI message
+        const lastAiMessage = aiMessages.slice().reverse().find(msg => msg.role === 'assistant');
+        if (lastAiMessage && lastAiMessage.content === cleanedContent) {
+          const characterName = characterData.data?.name || characterData.name || 'Character';
+          console.warn(`⚠️ ${characterName} generated duplicate message (exact copy of previous response)`);
+          throw new Error('AI generated duplicate response');
+        }
+
         // Save first part as media message (image/voice/text with all metadata)
         const firstPart = contentParts[0];
         const savedMessage = messageService.saveMessage(
