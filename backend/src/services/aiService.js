@@ -305,6 +305,15 @@ class AIService {
       // Extract reasoning if present (separate field for some models like DeepSeek)
       const reasoning = message.reasoning || null;
 
+      // Check for incomplete <think> tags (opening without closing)
+      // This happens when the response is truncated due to output length limits
+      const openThinkTags = (content.match(/<think>/gi) || []).length;
+      const closeThinkTags = (content.match(/<\/think>/gi) || []).length;
+      if (openThinkTags > closeThinkTags) {
+        console.error('❌ Incomplete <think> tag detected - response truncated');
+        throw new Error('Response contains incomplete <think> tag - response was truncated. Please retry or increase max_tokens.');
+      }
+
       // Strip any <think></think> tags (reasoning/thinking output from models that use tags)
       // First remove complete pairs, then remove any stray opening or closing tags
       content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
