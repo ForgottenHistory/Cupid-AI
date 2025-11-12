@@ -199,6 +199,15 @@ class AIService {
       // TIME GAP messages are already included if they immediately precede the last 5
       finalMessages.push(...last5Messages);
 
+      // Add character-specific post instructions right before character name primer
+      const postInstructions = promptBuilderService.getPostInstructions(characterId);
+      if (postInstructions) {
+        finalMessages.push({
+          role: 'system',
+          content: postInstructions
+        });
+      }
+
       // Add character name prompt at the very end to prime the response
       // If sending image/voice, add tags on first line, then character name on second line
       const characterName = characterData.data?.name || characterData.name || 'Character';
@@ -520,10 +529,23 @@ class AIService {
         const rawContent = message.content; // Save raw content before processing
         let content = message.content;
 
+        // Debug: Log the entire message object if content is empty but tokens were used
+        if ((!content || content.trim() === '') && response.data.usage?.completion_tokens > 0) {
+          console.warn('⚠️ Empty content but completion_tokens > 0. Full message object:');
+          console.warn(JSON.stringify(message, null, 2));
+        }
+
         // Strip any <think></think> tags (reasoning/thinking output from some models)
         // First remove complete pairs, then remove any stray opening or closing tags
         content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
         content = content.replace(/<\/?think>/gi, '').trim();
+
+        // Check if content is empty after stripping think tags
+        if (!content && rawContent) {
+          console.warn('⚠️ Response contains only <think> tags with no actual content');
+          console.warn('Raw content length:', rawContent.length);
+          throw new Error('Response was truncated or incomplete. The model may have used all tokens for thinking without outputting the result. Try increasing max_tokens.');
+        }
 
         // Log raw response for debugging reasoning mode
         if (options.reasoning_effort) {

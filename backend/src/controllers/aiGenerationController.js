@@ -17,8 +17,6 @@ export async function cleanupDescription(req, res) {
     const prompt = buildCleanupDescriptionPrompt(description);
 
     const response = await aiService.createBasicCompletion(prompt, {
-      temperature: 0.7,
-      max_tokens: 4000,
       messageType: 'cleanup-description',
       userId: req.user.id,
       llmType: 'metadata'
@@ -46,8 +44,6 @@ export async function generateDatingProfile(req, res) {
     const prompt = buildDatingProfilePrompt(description, name);
 
     const response = await aiService.createBasicCompletion(prompt, {
-      temperature: 0.8,
-      max_tokens: 3000,
       messageType: 'dating-profile',
       characterName: name || 'Character',
       userId: req.user.id,
@@ -88,8 +84,6 @@ export async function generateSchedule(req, res) {
     const prompt = buildSchedulePrompt(description, name, day ? day.toUpperCase() : null, extraInstructions);
 
     const response = await aiService.createBasicCompletion(prompt, {
-      temperature: 0.5,
-      max_tokens: day ? 10000 : 10000, // Single day needs more tokens for reasoning models
       messageType: day ? `schedule-${day.toLowerCase()}` : 'schedule',
       characterName: name || 'Character',
       userId: req.user.id,

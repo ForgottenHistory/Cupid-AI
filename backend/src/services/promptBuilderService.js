@@ -179,22 +179,29 @@ class PromptBuilderService {
 
     parts.push(`\n\n${prompts.closingPrompt}`);
 
-    // Add character-specific post instructions if available
-    if (characterId) {
-      try {
-        const character = db.prepare(`
-          SELECT post_instructions FROM characters WHERE id = ?
-        `).get(characterId);
+    return parts.join('');
+  }
 
-        if (character?.post_instructions && character.post_instructions.trim()) {
-          parts.push(`\n\n${character.post_instructions.trim()}`);
-        }
-      } catch (error) {
-        console.error(`Failed to load post instructions for character ${characterId}:`, error);
+  /**
+   * Get character-specific post instructions
+   * These go right before the character name primer
+   */
+  getPostInstructions(characterId) {
+    if (!characterId) return null;
+
+    try {
+      const character = db.prepare(`
+        SELECT post_instructions FROM characters WHERE id = ?
+      `).get(characterId);
+
+      if (character?.post_instructions && character.post_instructions.trim()) {
+        return `${character.post_instructions.trim()}`;
       }
+    } catch (error) {
+      console.error(`Failed to load post instructions for character ${characterId}:`, error);
     }
 
-    return parts.join('');
+    return null;
   }
 
   /**

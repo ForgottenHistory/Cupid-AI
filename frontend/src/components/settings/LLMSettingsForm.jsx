@@ -40,9 +40,13 @@ const LLMSettingsForm = ({
               <>
                 <strong>Decision LLM:</strong> Used to make behavioral decisions (reactions, mood changes, events). A smaller, faster model is recommended for quick decision-making.
               </>
-            ) : (
+            ) : type === 'imagetag' ? (
               <>
                 <strong>Image Tag LLM:</strong> Used to generate Danbooru-style tags for character image generation. A thinking model is recommended for smart tag generation.
+              </>
+            ) : (
+              <>
+                <strong>Metadata LLM:</strong> Used to generate character metadata (dating profiles, schedules, personality traits, descriptions). Used outside of chat conversations.
               </>
             )}
           </p>
