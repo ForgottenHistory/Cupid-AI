@@ -20,7 +20,8 @@ export async function cleanupDescription(req, res) {
       temperature: 0.7,
       max_tokens: 4000,
       messageType: 'cleanup-description',
-      userId: req.user.id
+      userId: req.user.id,
+      llmType: 'metadata'
     });
 
     res.json({ cleanedDescription: response.content.trim() });
@@ -49,7 +50,8 @@ export async function generateDatingProfile(req, res) {
       max_tokens: 3000,
       messageType: 'dating-profile',
       characterName: name || 'Character',
-      userId: req.user.id
+      userId: req.user.id,
+      llmType: 'metadata'
     });
 
     // Parse plaintext response
@@ -90,7 +92,8 @@ export async function generateSchedule(req, res) {
       max_tokens: day ? 10000 : 10000, // Single day needs more tokens for reasoning models
       messageType: day ? `schedule-${day.toLowerCase()}` : 'schedule',
       characterName: name || 'Character',
-      userId: req.user.id
+      userId: req.user.id,
+      llmType: 'metadata'
     });
 
     // Parse plaintext response into JSON

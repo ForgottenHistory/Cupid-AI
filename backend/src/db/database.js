@@ -411,6 +411,34 @@ function runMigrations() {
       console.log('✅ Image Tag LLM settings columns added to users table');
     }
 
+    // Migration: Add Metadata LLM settings columns to users table
+    if (!userColumnNames.includes('metadata_llm_model')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN metadata_llm_provider TEXT DEFAULT 'openrouter';
+        ALTER TABLE users ADD COLUMN metadata_llm_model TEXT DEFAULT 'deepseek/deepseek-chat-v3';
+        ALTER TABLE users ADD COLUMN metadata_llm_temperature REAL DEFAULT 0.8;
+        ALTER TABLE users ADD COLUMN metadata_llm_max_tokens INTEGER DEFAULT 4000;
+        ALTER TABLE users ADD COLUMN metadata_llm_top_p REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN metadata_llm_frequency_penalty REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN metadata_llm_presence_penalty REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN metadata_llm_context_window INTEGER DEFAULT 8000;
+        ALTER TABLE users ADD COLUMN metadata_llm_top_k INTEGER DEFAULT -1;
+        ALTER TABLE users ADD COLUMN metadata_llm_repetition_penalty REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN metadata_llm_min_p REAL DEFAULT 0.0;
+      `);
+      console.log('✅ Metadata LLM settings columns added to users table');
+    }
+
+    // Migration: Add Featherless-specific columns to Metadata LLM (if missing)
+    if (!userColumnNames.includes('metadata_llm_top_k')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN metadata_llm_top_k INTEGER DEFAULT -1;
+        ALTER TABLE users ADD COLUMN metadata_llm_repetition_penalty REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN metadata_llm_min_p REAL DEFAULT 0.0;
+      `);
+      console.log('✅ Metadata LLM Featherless-specific columns added to users table');
+    }
+
     // Migration: Add consecutive proactive tracking columns to characters table
     // Refresh charactersColumnNames before checking
     const charactersColumnsRefresh = db.pragma('table_info(characters)');

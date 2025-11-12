@@ -639,6 +639,173 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
 });
 
 /**
+ * GET /api/users/metadata-llm-settings
+ * Get user's Metadata LLM settings
+ */
+router.get('/metadata-llm-settings', authenticateToken, (req, res) => {
+  try {
+    const settings = db.prepare(`
+      SELECT metadata_llm_provider, metadata_llm_model, metadata_llm_temperature, metadata_llm_max_tokens, metadata_llm_top_p,
+             metadata_llm_frequency_penalty, metadata_llm_presence_penalty, metadata_llm_context_window,
+             metadata_llm_top_k, metadata_llm_repetition_penalty, metadata_llm_min_p
+      FROM users WHERE id = ?
+    `).get(req.user.id);
+
+    if (!settings) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      provider: settings.metadata_llm_provider || 'openrouter',
+      model: settings.metadata_llm_model,
+      temperature: settings.metadata_llm_temperature,
+      maxTokens: settings.metadata_llm_max_tokens,
+      topP: settings.metadata_llm_top_p,
+      frequencyPenalty: settings.metadata_llm_frequency_penalty,
+      presencePenalty: settings.metadata_llm_presence_penalty,
+      contextWindow: settings.metadata_llm_context_window,
+      topK: settings.metadata_llm_top_k,
+      repetitionPenalty: settings.metadata_llm_repetition_penalty,
+      minP: settings.metadata_llm_min_p
+    });
+  } catch (error) {
+    console.error('Get Metadata LLM settings error:', error);
+    res.status(500).json({ error: 'Failed to get Metadata LLM settings' });
+  }
+});
+
+/**
+ * PUT /api/users/metadata-llm-settings
+ * Update user's Metadata LLM settings
+ */
+router.put('/metadata-llm-settings', authenticateToken, (req, res) => {
+  try {
+    const { provider, model, temperature, maxTokens, topP, frequencyPenalty, presencePenalty, contextWindow, topK, repetitionPenalty, minP } = req.body;
+    const userId = req.user.id;
+
+    // Validate parameters
+    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    }
+    if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
+      return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
+    }
+    if (maxTokens !== undefined && (maxTokens < 1 || maxTokens > 16000)) {
+      return res.status(400).json({ error: 'Max tokens must be between 1 and 16000' });
+    }
+    if (topP !== undefined && (topP < 0 || topP > 1)) {
+      return res.status(400).json({ error: 'Top P must be between 0 and 1' });
+    }
+    if (frequencyPenalty !== undefined && (frequencyPenalty < -2 || frequencyPenalty > 2)) {
+      return res.status(400).json({ error: 'Frequency penalty must be between -2 and 2' });
+    }
+    if (presencePenalty !== undefined && (presencePenalty < -2 || presencePenalty > 2)) {
+      return res.status(400).json({ error: 'Presence penalty must be between -2 and 2' });
+    }
+    if (contextWindow !== undefined && (contextWindow < 1 || contextWindow > 32000)) {
+      return res.status(400).json({ error: 'Context window must be between 1 and 32000' });
+    }
+
+    // Featherless-specific parameter validation (only validate if provider is featherless)
+    if (provider === 'featherless') {
+      if (topK !== undefined && topK < -1) {
+        return res.status(400).json({ error: 'Top K must be -1 or greater' });
+      }
+      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+      }
+      if (minP !== undefined && (minP < 0 || minP > 1)) {
+        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
+      }
+    }
+
+    // Build update query dynamically
+    const updates = [];
+    const values = [];
+
+    if (provider !== undefined) {
+      updates.push('metadata_llm_provider = ?');
+      values.push(provider);
+    }
+    if (model !== undefined) {
+      updates.push('metadata_llm_model = ?');
+      values.push(model);
+    }
+    if (temperature !== undefined) {
+      updates.push('metadata_llm_temperature = ?');
+      values.push(temperature);
+    }
+    if (maxTokens !== undefined) {
+      updates.push('metadata_llm_max_tokens = ?');
+      values.push(maxTokens);
+    }
+    if (topP !== undefined) {
+      updates.push('metadata_llm_top_p = ?');
+      values.push(topP);
+    }
+    if (frequencyPenalty !== undefined) {
+      updates.push('metadata_llm_frequency_penalty = ?');
+      values.push(frequencyPenalty);
+    }
+    if (presencePenalty !== undefined) {
+      updates.push('metadata_llm_presence_penalty = ?');
+      values.push(presencePenalty);
+    }
+    if (contextWindow !== undefined) {
+      updates.push('metadata_llm_context_window = ?');
+      values.push(contextWindow);
+    }
+    if (topK !== undefined) {
+      updates.push('metadata_llm_top_k = ?');
+      values.push(topK);
+    }
+    if (repetitionPenalty !== undefined) {
+      updates.push('metadata_llm_repetition_penalty = ?');
+      values.push(repetitionPenalty);
+    }
+    if (minP !== undefined) {
+      updates.push('metadata_llm_min_p = ?');
+      values.push(minP);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(userId);
+
+    if (updates.length === 1) { // Only updated_at
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+    db.prepare(query).run(...values);
+
+    // Get updated settings
+    const settings = db.prepare(`
+      SELECT metadata_llm_provider, metadata_llm_model, metadata_llm_temperature, metadata_llm_max_tokens, metadata_llm_top_p,
+             metadata_llm_frequency_penalty, metadata_llm_presence_penalty, metadata_llm_context_window,
+             metadata_llm_top_k, metadata_llm_repetition_penalty, metadata_llm_min_p
+      FROM users WHERE id = ?
+    `).get(userId);
+
+    res.json({
+      provider: settings.metadata_llm_provider || 'openrouter',
+      model: settings.metadata_llm_model,
+      temperature: settings.metadata_llm_temperature,
+      maxTokens: settings.metadata_llm_max_tokens,
+      topP: settings.metadata_llm_top_p,
+      frequencyPenalty: settings.metadata_llm_frequency_penalty,
+      presencePenalty: settings.metadata_llm_presence_penalty,
+      contextWindow: settings.metadata_llm_context_window,
+      topK: settings.metadata_llm_top_k,
+      repetitionPenalty: settings.metadata_llm_repetition_penalty,
+      minP: settings.metadata_llm_min_p
+    });
+  } catch (error) {
+    console.error('Update Metadata LLM settings error:', error);
+    res.status(500).json({ error: 'Failed to update Metadata LLM settings' });
+  }
+});
+
+/**
  * GET /api/users/sd-settings
  * Get user's Stable Diffusion settings
  */

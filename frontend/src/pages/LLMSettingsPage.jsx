@@ -6,7 +6,7 @@ import LLMSettingsForm from '../components/settings/LLMSettingsForm';
 const LLMSettingsPage = () => {
   const navigate = useNavigate();
   const containerRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('content'); // 'content', 'decision', or 'imagetag'
+  const [activeTab, setActiveTab] = useState('content'); // 'content', 'decision', 'imagetag', or 'metadata'
 
   // Hook for Content LLM settings
   const contentLLM = useLLMSettings('content');
@@ -17,8 +17,11 @@ const LLMSettingsPage = () => {
   // Hook for Image Tag LLM settings
   const imagetagLLM = useLLMSettings('imagetag');
 
+  // Hook for Metadata LLM settings
+  const metadataLLM = useLLMSettings('metadata');
+
   // Get current tab's settings
-  const currentSettings = activeTab === 'content' ? contentLLM : activeTab === 'decision' ? decisionLLM : imagetagLLM;
+  const currentSettings = activeTab === 'content' ? contentLLM : activeTab === 'decision' ? decisionLLM : activeTab === 'imagetag' ? imagetagLLM : metadataLLM;
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -78,6 +81,16 @@ const LLMSettingsPage = () => {
             }`}
           >
             Image Tag LLM
+          </button>
+          <button
+            onClick={() => setActiveTab('metadata')}
+            className={`flex-1 px-6 py-3 font-semibold transition ${
+              activeTab === 'metadata'
+                ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400 bg-white dark:bg-gray-800'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            Metadata LLM
           </button>
         </div>
 

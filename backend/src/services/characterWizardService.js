@@ -18,8 +18,8 @@ class CharacterWizardService {
     }
 
     try {
-      // Get user's Content LLM settings
-      const userSettings = llmSettingsService.getUserSettings(userId);
+      // Get user's Metadata LLM settings (for character generation)
+      const userSettings = llmSettingsService.getMetadataSettings(userId);
 
       const prompt = `Create a unique female character for a dating app AI:
 
@@ -93,8 +93,8 @@ This description will be used to guide the AI's behavior in conversations. Make 
     }
 
     try {
-      // Get user's Content LLM settings
-      const userSettings = llmSettingsService.getUserSettings(userId);
+      // Get user's Metadata LLM settings (for character generation)
+      const userSettings = llmSettingsService.getMetadataSettings(userId);
 
       const prompt = `Based on this character profile, suggest a cohesive appearance:
 
@@ -267,8 +267,8 @@ STYLE: [Casual|Elegant|Sporty|Gothic|Cute|Professional]`;
     }
 
     try {
-      // Get user's Content LLM settings
-      const userSettings = llmSettingsService.getUserSettings(userId);
+      // Get user's Metadata LLM settings (for character generation)
+      const userSettings = llmSettingsService.getMetadataSettings(userId);
 
       // Build base appearance tags
       const baseAppearanceTags = this.buildImageTags(appearance);

@@ -185,6 +185,64 @@ class LLMSettingsService {
       min_p: 0.0
     };
   }
+
+  /**
+   * Get user's Metadata LLM settings from database
+   */
+  getMetadataSettings(userId) {
+    if (!userId) {
+      return this.getDefaultMetadataSettings();
+    }
+
+    try {
+      const settings = db.prepare(`
+        SELECT metadata_llm_provider, metadata_llm_model, metadata_llm_temperature, metadata_llm_max_tokens, metadata_llm_top_p,
+               metadata_llm_frequency_penalty, metadata_llm_presence_penalty, metadata_llm_context_window,
+               metadata_llm_top_k, metadata_llm_repetition_penalty, metadata_llm_min_p
+        FROM users WHERE id = ?
+      `).get(userId);
+
+      if (!settings) {
+        return this.getDefaultMetadataSettings();
+      }
+
+      return {
+        provider: settings.metadata_llm_provider || 'openrouter',
+        model: settings.metadata_llm_model || this.defaultModel,
+        temperature: settings.metadata_llm_temperature ?? 0.8,
+        max_tokens: settings.metadata_llm_max_tokens ?? 4000,
+        top_p: settings.metadata_llm_top_p ?? 1.0,
+        frequency_penalty: settings.metadata_llm_frequency_penalty ?? 0.0,
+        presence_penalty: settings.metadata_llm_presence_penalty ?? 0.0,
+        context_window: settings.metadata_llm_context_window ?? 8000,
+        top_k: settings.metadata_llm_top_k ?? -1,
+        repetition_penalty: settings.metadata_llm_repetition_penalty ?? 1.0,
+        min_p: settings.metadata_llm_min_p ?? 0.0
+      };
+    } catch (error) {
+      console.error('Error fetching user Metadata LLM settings:', error);
+      return this.getDefaultMetadataSettings();
+    }
+  }
+
+  /**
+   * Get default metadata LLM settings
+   */
+  getDefaultMetadataSettings() {
+    return {
+      provider: 'openrouter',
+      model: this.defaultModel,
+      temperature: 0.8,
+      max_tokens: 4000,
+      top_p: 1.0,
+      frequency_penalty: 0.0,
+      presence_penalty: 0.0,
+      context_window: 8000,
+      top_k: -1,
+      repetition_penalty: 1.0,
+      min_p: 0.0
+    };
+  }
 }
 
 export default new LLMSettingsService();

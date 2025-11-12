@@ -416,10 +416,33 @@ class AIService {
    * Includes retry logic with exponential backoff for reliability
    */
   async createBasicCompletion(prompt, options = {}) {
-    // Use user's Content LLM settings if userId provided, otherwise use defaults
-    const userSettings = options.userId
-      ? llmSettingsService.getUserSettings(options.userId)
-      : llmSettingsService.getDefaultContentSettings();
+    // Use user's LLM settings based on llmType (defaults to 'content')
+    // llmType can be: 'content', 'decision', 'imagetag', or 'metadata'
+    const llmType = options.llmType || 'content';
+
+    let userSettings;
+    if (options.userId) {
+      if (llmType === 'metadata') {
+        userSettings = llmSettingsService.getMetadataSettings(options.userId);
+      } else if (llmType === 'decision') {
+        userSettings = llmSettingsService.getDecisionSettings(options.userId);
+      } else if (llmType === 'imagetag') {
+        userSettings = llmSettingsService.getImageTagSettings(options.userId);
+      } else {
+        userSettings = llmSettingsService.getUserSettings(options.userId);
+      }
+    } else {
+      // No userId provided - use defaults
+      if (llmType === 'metadata') {
+        userSettings = llmSettingsService.getDefaultMetadataSettings();
+      } else if (llmType === 'decision') {
+        userSettings = llmSettingsService.getDefaultDecisionSettings();
+      } else if (llmType === 'imagetag') {
+        userSettings = llmSettingsService.getDefaultImageTagSettings();
+      } else {
+        userSettings = llmSettingsService.getDefaultContentSettings();
+      }
+    }
 
     const model = options.model || userSettings.model;
     const temperature = options.temperature ?? userSettings.temperature;
