@@ -113,6 +113,20 @@ class TimeGapService {
     const gapHours = this.calculateTimeGap(secondLastMessage.created_at, lastMessage.created_at);
 
     if (gapHours !== null) {
+      // Check if a TIME GAP marker already exists between these two messages
+      const existingGap = db.prepare(`
+        SELECT id FROM messages
+        WHERE conversation_id = ?
+        AND message_type = 'time_gap'
+        AND created_at > ?
+        AND created_at < ?
+      `).get(conversationId, secondLastMessage.created_at, lastMessage.created_at);
+
+      if (existingGap) {
+        console.log(`⏰ TIME GAP marker already exists between messages - skipping`);
+        return false;
+      }
+
       // Insert TIME GAP marker with timestamp just before the last message
       // This ensures it appears chronologically between the two messages
       const lastMessageTime = new Date(lastMessage.created_at);

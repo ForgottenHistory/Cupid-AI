@@ -108,16 +108,26 @@ class MessageService {
     `).all(conversationId);
 
     const result = [];
+    let lastWasTimeGap = false;
 
     messages.forEach((msg) => {
       // Handle TIME GAP markers using message_type (no more string parsing!)
       if (timeGapService.isTimeGapMarker(msg)) {
+        // Skip duplicate consecutive TIME GAP markers
+        if (lastWasTimeGap) {
+          return;
+        }
+
         result.push({
           role: 'system',
           content: timeGapService.formatTimeGapContent(msg.gap_duration_hours)
         });
+        lastWasTimeGap = true;
         return;
       }
+
+      // Reset TIME GAP tracking when we hit a real message
+      lastWasTimeGap = false;
 
       // Process message content
       let content = msg.content;

@@ -15,6 +15,8 @@ class MessageProcessor {
    * Process AI response asynchronously with engagement system and delays
    */
   async processMessage(io, userId, characterId, conversationId, characterData) {
+    let insertedTimeGapId = null; // Track TIME GAP insertion for rollback on error
+
     try {
       // Get user settings for compaction
       const userSettings = db.prepare('SELECT compaction_enabled FROM users WHERE id = ?').get(userId);
@@ -26,7 +28,18 @@ class MessageProcessor {
       }
 
       // Check and insert TIME GAP marker if needed (e.g., user messages after long gaps)
-      timeGapService.checkAndInsertTimeGap(conversationId);
+      const timeGapInserted = timeGapService.checkAndInsertTimeGap(conversationId);
+      if (timeGapInserted) {
+        // Get the ID of the TIME GAP we just inserted so we can roll it back on error
+        const lastTimeGap = db.prepare(`
+          SELECT id FROM messages
+          WHERE conversation_id = ?
+          AND message_type = 'time_gap'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).get(conversationId);
+        insertedTimeGapId = lastTimeGap?.id;
+      }
 
       // Get conversation to access matched date
       const conversation = conversationService.getConversationById(conversationId);
@@ -559,6 +572,17 @@ class MessageProcessor {
       }
     } catch (error) {
       console.error('Process AI response async error:', error);
+
+      // Roll back TIME GAP marker if we inserted one (don't leave dangling TIME GAPs on error)
+      if (insertedTimeGapId) {
+        try {
+          db.prepare('DELETE FROM messages WHERE id = ?').run(insertedTimeGapId);
+          console.log(`🔄 Rolled back TIME GAP marker (id: ${insertedTimeGapId}) due to error`);
+        } catch (rollbackError) {
+          console.error('Failed to roll back TIME GAP marker:', rollbackError);
+        }
+      }
+
       // Emit error to frontend
       io.to(`user:${userId}`).emit('ai_response_error', {
         characterId,

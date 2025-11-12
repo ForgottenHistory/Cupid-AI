@@ -388,6 +388,8 @@ class ProactiveMessageService {
    * Process a single candidate for proactive messaging
    */
   async processCandidate(candidate, io, debugMode = false) {
+    let insertedTimeGapId = null; // Track TIME GAP insertion for rollback on error
+
     try {
       const { userId, characterId, conversationId, gapHours, characterData, personality, schedule, isFirstMessage, triggerType, minutesSinceRead, userSettings } = candidate;
 
@@ -478,7 +480,19 @@ class ProactiveMessageService {
 
       // All decisions passed - NOW insert TIME GAP marker (only if message will actually be sent)
       // Use special proactive method that checks gap between last message and NOW
-      timeGapService.checkAndInsertTimeGapForProactive(conversationId);
+      const timeGapInserted = timeGapService.checkAndInsertTimeGapForProactive(conversationId);
+
+      if (timeGapInserted) {
+        // Get the ID of the TIME GAP we just inserted so we can roll it back on error
+        const lastTimeGap = db.prepare(`
+          SELECT id FROM messages
+          WHERE conversation_id = ?
+          AND message_type = 'time_gap'
+          ORDER BY created_at DESC
+          LIMIT 1
+        `).get(conversationId);
+        insertedTimeGapId = lastTimeGap?.id;
+      }
 
       // Refresh conversation history to include the TIME GAP marker we just inserted
       const updatedMessages = messageService.getConversationHistory(conversationId);
@@ -776,6 +790,17 @@ class ProactiveMessageService {
     } catch (error) {
       console.error('❌ Process proactive candidate error:', error.message);
       console.error('Stack:', error.stack);
+
+      // Roll back TIME GAP marker if we inserted one (don't leave dangling TIME GAPs on error)
+      if (insertedTimeGapId) {
+        try {
+          db.prepare('DELETE FROM messages WHERE id = ?').run(insertedTimeGapId);
+          console.log(`🔄 Rolled back TIME GAP marker (id: ${insertedTimeGapId}) due to proactive message error`);
+        } catch (rollbackError) {
+          console.error('Failed to roll back TIME GAP marker:', rollbackError);
+        }
+      }
+
       return false;
     }
   }
