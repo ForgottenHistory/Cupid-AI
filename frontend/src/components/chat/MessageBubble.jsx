@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { shouldShowTimestamp, formatRelativeTime } from '../../utils/messageUtils';
 import AudioPlayer from './AudioPlayer';
 import ImageModal from '../ImageModal';
@@ -25,6 +25,8 @@ const MessageBubble = ({
   const [showImageModal, setShowImageModal] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
   const [, setUpdateTrigger] = useState(0);
+  const textareaRef = useRef(null);
+  const measureRef = useRef(null);
 
   // Update timestamps every minute
   useEffect(() => {
@@ -34,37 +36,104 @@ const MessageBubble = ({
 
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-resize textarea to match content dimensions when editing starts
+  useEffect(() => {
+    if (isEditing && textareaRef.current && measureRef.current) {
+      const measure = measureRef.current;
+      const textarea = textareaRef.current;
+
+      // Copy text to measure div to get natural dimensions
+      measure.textContent = editingText || ' ';
+
+      // Set textarea dimensions to match measure div
+      textarea.style.width = measure.offsetWidth + 'px';
+      textarea.style.height = measure.offsetHeight + 'px';
+    }
+  }, [isEditing, editingText]);
   // Render edit mode
   if (isEditing) {
     return (
       <div className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'} group`}>
-        {message.role === 'assistant' && <div className="w-12"></div>}
-
-        <div className="max-w-[70%] space-y-2">
-          <textarea
-            value={editingText}
-            onChange={(e) => setEditingText(e.target.value)}
-            className="w-full px-4 py-3 bg-white/80 dark:bg-gray-700/80 backdrop-blur-md border-2 border-purple-400/50 dark:border-purple-600/50 rounded-2xl focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-purple-500 dark:focus:border-purple-400 focus:bg-white dark:focus:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none shadow-lg transition-all"
-            rows={3}
-            autoFocus
-          />
-          <div className="flex gap-2 justify-end">
+        {/* Action Buttons (left side for assistant, right side for user) */}
+        {message.role === 'assistant' && (
+          <div className="flex items-end gap-1 opacity-100 transition-opacity">
             <button
               onClick={onCancelEdit}
-              className="px-3 py-1.5 text-sm bg-white/60 dark:bg-gray-600/60 backdrop-blur-sm text-gray-700 dark:text-gray-300 rounded-lg hover:bg-white/80 dark:hover:bg-gray-500/80 hover:scale-105 transition-all border border-gray-200/50 dark:border-gray-500/50 shadow-md"
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-gray-200/50 dark:hover:border-gray-600/50"
+              title="Cancel edit"
             >
-              Cancel
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
             <button
               onClick={() => onSaveEdit(message.id)}
-              className="px-3 py-1.5 text-sm bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 hover:scale-105 transition-all shadow-md hover:shadow-lg"
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50/80 dark:hover:bg-green-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-green-200/50 dark:hover:border-green-600/50"
+              title="Save edit"
             >
-              Save
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
             </button>
+          </div>
+        )}
+
+        {/* Message Bubble with Textarea */}
+        <div
+          className={`relative max-w-[70%] rounded-2xl px-5 py-3 ${
+            message.role === 'user'
+              ? 'bg-gradient-to-r from-pink-500 to-purple-600 dark:from-purple-800 dark:to-purple-900 text-white shadow-lg shadow-pink-200/50 dark:shadow-purple-900/50 border border-pink-300/20 dark:border-purple-700/50'
+              : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
+          }`}
+        >
+          <div className="relative inline-block min-w-full">
+            {/* Hidden span to set width based on text content */}
+            <span
+              ref={measureRef}
+              className="break-words leading-relaxed whitespace-pre-wrap invisible"
+              style={{ display: 'block', minWidth: '100px' }}
+            >
+              {editingText || ' '}
+            </span>
+
+            {/* Textarea positioned absolutely over the measuring span */}
+            <textarea
+              ref={textareaRef}
+              value={editingText}
+              onChange={(e) => setEditingText(e.target.value)}
+              className={`absolute top-0 left-0 w-full h-full bg-transparent border-none outline-none resize-none leading-relaxed break-words ${
+                message.role === 'user' ? 'text-white placeholder-white/60' : 'text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500'
+              }`}
+              style={{ padding: 0, margin: 0 }}
+              autoFocus
+            />
           </div>
         </div>
 
-        {message.role === 'user' && <div className="w-12"></div>}
+        {/* Action Buttons (right side for user) */}
+        {message.role === 'user' && (
+          <div className="flex items-end gap-1 opacity-100 transition-opacity">
+            <button
+              onClick={onCancelEdit}
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50/80 dark:hover:bg-gray-700/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-gray-200/50 dark:hover:border-gray-600/50"
+              title="Cancel edit"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <button
+              onClick={() => onSaveEdit(message.id)}
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50/80 dark:hover:bg-green-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-green-200/50 dark:hover:border-green-600/50"
+              title="Save edit"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     );
   }
