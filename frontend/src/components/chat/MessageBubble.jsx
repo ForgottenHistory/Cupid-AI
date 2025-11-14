@@ -26,7 +26,7 @@ const MessageBubble = ({
   const [showReasoning, setShowReasoning] = useState(false);
   const [, setUpdateTrigger] = useState(0);
   const textareaRef = useRef(null);
-  const measureRef = useRef(null);
+  const initializedRef = useRef(false);
 
   // Update timestamps every minute
   useEffect(() => {
@@ -37,20 +37,27 @@ const MessageBubble = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-resize textarea to match content dimensions when editing starts
+  // Set initial content and focus when editing starts (only once per edit session)
   useEffect(() => {
-    if (isEditing && textareaRef.current && measureRef.current) {
-      const measure = measureRef.current;
-      const textarea = textareaRef.current;
-
-      // Copy text to measure div to get natural dimensions
-      measure.textContent = editingText || ' ';
-
-      // Set textarea dimensions to match measure div
-      textarea.style.width = measure.offsetWidth + 'px';
-      textarea.style.height = measure.offsetHeight + 'px';
+    if (isEditing && textareaRef.current && !initializedRef.current) {
+      const element = textareaRef.current;
+      // Set initial text content
+      element.textContent = editingText;
+      element.focus();
+      // Move cursor to end
+      const range = document.createRange();
+      const selection = window.getSelection();
+      range.selectNodeContents(element);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      initializedRef.current = true;
+    } else if (!isEditing) {
+      // Reset when exiting edit mode
+      initializedRef.current = false;
     }
   }, [isEditing, editingText]);
+
   // Render edit mode
   if (isEditing) {
     return (
@@ -79,7 +86,7 @@ const MessageBubble = ({
           </div>
         )}
 
-        {/* Message Bubble with Textarea */}
+        {/* Message Bubble with contenteditable div - EXACT same structure as normal message */}
         <div
           className={`relative max-w-[70%] rounded-2xl px-5 py-3 ${
             message.role === 'user'
@@ -87,28 +94,16 @@ const MessageBubble = ({
               : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
           }`}
         >
-          <div className="relative inline-block min-w-full">
-            {/* Hidden span to set width based on text content */}
-            <span
-              ref={measureRef}
-              className="break-words leading-relaxed whitespace-pre-wrap invisible"
-              style={{ display: 'block', minWidth: '100px' }}
-            >
-              {editingText || ' '}
-            </span>
-
-            {/* Textarea positioned absolutely over the measuring span */}
-            <textarea
-              ref={textareaRef}
-              value={editingText}
-              onChange={(e) => setEditingText(e.target.value)}
-              className={`absolute top-0 left-0 w-full h-full bg-transparent border-none outline-none resize-none leading-relaxed break-words ${
-                message.role === 'user' ? 'text-white placeholder-white/60' : 'text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500'
-              }`}
-              style={{ padding: 0, margin: 0 }}
-              autoFocus
-            />
-          </div>
+          <div
+            ref={textareaRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => setEditingText(e.currentTarget.textContent)}
+            className={`break-words leading-relaxed outline-none ${
+              message.role === 'user' ? 'text-white' : 'text-gray-900 dark:text-gray-100'
+            }`}
+            style={{ whiteSpace: 'pre-wrap' }}
+          />
         </div>
 
         {/* Action Buttons (right side for user) */}
