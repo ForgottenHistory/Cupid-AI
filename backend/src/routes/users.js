@@ -956,8 +956,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     if (pacingStyle !== undefined && !['slow', 'balanced', 'forward'].includes(pacingStyle)) {
       return res.status(400).json({ error: 'Pacing style must be slow, balanced, or forward' });
     }
-    if (proactiveCheckInterval !== undefined && (proactiveCheckInterval < 1 || proactiveCheckInterval > 60)) {
-      return res.status(400).json({ error: 'Proactive check interval must be between 1 and 60 minutes' });
+    if (proactiveCheckInterval !== undefined && (proactiveCheckInterval < 5 || proactiveCheckInterval > 300)) {
+      return res.status(400).json({ error: 'Proactive check interval must be between 5 and 300 minutes' });
     }
     if (maxConsecutiveProactive !== undefined && (maxConsecutiveProactive < 0 || maxConsecutiveProactive > 10)) {
       return res.status(400).json({ error: 'Max consecutive proactive must be between 0 and 10' });
