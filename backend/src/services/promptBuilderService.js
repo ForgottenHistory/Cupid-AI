@@ -4,6 +4,24 @@ import db from '../db/database.js';
 
 class PromptBuilderService {
   /**
+   * Get a random opener variety and format it as a string
+   */
+  getRandomOpenerVariety() {
+    const prompts = loadPrompts();
+    const varieties = prompts.openerVarieties;
+
+    if (!varieties || varieties.length === 0) {
+      return null;
+    }
+
+    const selected = varieties[Math.floor(Math.random() * varieties.length)];
+
+    // Format the opener variety as a string
+    const examplesText = selected.examples.map(e => `"${e}"`).join(', ');
+    return `**${selected.name}** (${selected.description}):\n- Examples: ${examplesText}\n- ${selected.instruction}`;
+  }
+
+  /**
    * Get surrounding activities from schedule (3 before, 3 after current)
    */
   getSurroundingActivities(schedule) {
@@ -310,8 +328,10 @@ class PromptBuilderService {
     const timeGapText = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since their last message.` : ' Some time has passed.';
     parts.push(`\n\n💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
 
-    // Always use fresh prompt
-    parts.push(`\n\n${prompts.proactiveFreshPrompt}`);
+    // Always use fresh prompt with randomly selected opener variety
+    const openerVariety = this.getRandomOpenerVariety();
+    const freshPrompt = prompts.proactiveFreshPrompt.replace('{openerVariety}', openerVariety || 'Start with something interesting and engaging');
+    parts.push(`\n\n${freshPrompt}`);
     parts.push(`\n\n${prompts.proactiveClosingPrompt}`);
 
     // Add time-specific guidance

@@ -198,16 +198,16 @@ const BehaviorSettingsPage = () => {
               </div>
               <input
                 type="range"
-                min="1"
-                max="60"
-                step="1"
+                min="5"
+                max="300"
+                step="5"
                 value={settings.proactiveCheckInterval}
                 onChange={(e) => updateSetting('proactiveCheckInterval', parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                <span>1 min</span>
-                <span>60 min</span>
+                <span>5 min</span>
+                <span>5 hours</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">How often the system checks if characters should send proactive messages</p>
             </div>

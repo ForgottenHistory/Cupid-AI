@@ -233,6 +233,10 @@ ${decisionPromptTemplate}`;
       const { loadPrompts } = await import('../routes/prompts.js');
       const prompts = loadPrompts();
 
+      // Get random opener variety and inject it into the fresh prompt
+      const openerVariety = promptBuilderService.getRandomOpenerVariety();
+      const freshPrompt = prompts.proactiveFreshPrompt.replace('{openerVariety}', openerVariety || 'Start with something interesting and engaging');
+
       const decisionPrompt = `${systemPrompt}
 
 Time since last message: ${gapHours.toFixed(1)} hours
@@ -240,7 +244,7 @@ Time since last message: ${gapHours.toFixed(1)} hours
 Conversation history:
 ${conversationHistory}
 
-${prompts.proactiveFreshPrompt}
+${freshPrompt}
 
 ${prompts.proactiveDecisionPrompt}`;
 
