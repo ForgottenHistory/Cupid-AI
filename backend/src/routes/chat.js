@@ -195,8 +195,8 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
       isSuperLike: isSuperLike,
     });
 
-    // Clean up em dashes (replace with periods)
-    const cleanedContent = aiResponse.content.replace(/—/g, '. ');
+    // Clean up em dashes (replace with periods and capitalize next letter)
+    const cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
 
     // Split content by newlines to create separate messages
     const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
@@ -529,8 +529,8 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       proactiveType: proactiveType  // Use 'fresh' type for proactive regeneration
     });
 
-    // Clean up em dashes (replace with periods)
-    const cleanedContent = aiResponse.content.replace(/—/g, '. ');
+    // Clean up em dashes (replace with periods and capitalize next letter)
+    const cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
 
     // Update last_mood_change timestamp if mood was set
     if (decision.mood && decision.mood !== 'none') {
