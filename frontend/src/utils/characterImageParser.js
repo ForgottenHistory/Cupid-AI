@@ -261,6 +261,12 @@ class CharacterImageParser {
       const parsed = JSON.parse(jsonText);
 
       if (this.isValidCharacterCard(parsed)) {
+        // Check if it's V1 format and convert to V2
+        if (!parsed.spec && parsed.name) {
+          console.log('V1 character card found, converting to V2:', parsed.name);
+          return this.convertV1ToV2(parsed);
+        }
+
         console.log('Valid character card found:', parsed.data.name);
         return parsed;
       }
@@ -279,21 +285,52 @@ class CharacterImageParser {
   }
 
   isValidCharacterCard(data) {
-    const isValid = data &&
-      typeof data === 'object' &&
-      data.spec === 'chara_card_v2' &&
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+
+    // Check for V2 format
+    const isV2 = data.spec === 'chara_card_v2' &&
       data.data &&
       typeof data.data.name === 'string';
 
+    // Check for V1 format (flat structure)
+    const isV1 = !data.spec &&
+      typeof data.name === 'string';
+
     console.log('Character card validation:', {
       hasData: !!data,
-      hasSpec: data?.spec === 'chara_card_v2',
-      hasDataObject: !!data?.data,
-      hasName: typeof data?.data?.name === 'string',
-      isValid
+      isV2,
+      isV1,
+      hasName: typeof (data.data?.name || data.name) === 'string',
+      isValid: isV2 || isV1
     });
 
-    return isValid;
+    return isV2 || isV1;
+  }
+
+  convertV1ToV2(v1Data) {
+    // Convert V1 format to V2 format
+    return {
+      spec: 'chara_card_v2',
+      spec_version: '2.0',
+      data: {
+        name: v1Data.name || '',
+        description: v1Data.description || '',
+        personality: v1Data.personality || '',
+        scenario: v1Data.scenario || '',
+        first_mes: v1Data.first_mes || '',
+        mes_example: v1Data.mes_example || '',
+        creator_notes: v1Data.creator_notes || '',
+        system_prompt: v1Data.system_prompt || '',
+        post_history_instructions: v1Data.post_history_instructions || '',
+        tags: v1Data.tags || [],
+        creator: v1Data.creator || '',
+        character_version: v1Data.character_version || '',
+        alternate_greetings: v1Data.alternate_greetings || [],
+        extensions: v1Data.extensions || {}
+      }
+    };
   }
 }
 
