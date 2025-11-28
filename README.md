@@ -16,6 +16,8 @@ Cupid solves most issues with activities, online statuses and great image genera
 
 Along with important memories saved and message compaction, the chat's can go on for a long time with less context loss. Overall a neat package for people who like talking a lot.
 
+If you like the layout but not the specific aspects, I've created a template app: https://github.com/ForgottenHistory/AI-Chat-Template 
+
 ![Cupid AI](images/chat-example.png)
 
 ## Key Features
