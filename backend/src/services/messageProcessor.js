@@ -28,6 +28,21 @@ class MessageProcessor {
       }
 
       // Check and insert TIME GAP marker if needed (e.g., user messages after long gaps)
+      // This also combines consecutive TIME GAPs and emits updates to frontend
+      const combineResult = timeGapService.combineConsecutiveTimeGaps(conversationId);
+      if (combineResult.deletedIds.length > 0) {
+        // Emit event to frontend to remove deleted messages and update the combined one
+        const updatedMessage = combineResult.updatedId
+          ? db.prepare('SELECT * FROM messages WHERE id = ?').get(combineResult.updatedId)
+          : null;
+        io.to(`user:${userId}`).emit('messages_combined', {
+          characterId,
+          conversationId,
+          deletedIds: combineResult.deletedIds,
+          updatedMessage
+        });
+      }
+
       const timeGapInserted = timeGapService.checkAndInsertTimeGap(conversationId);
       if (timeGapInserted) {
         // Get the ID of the TIME GAP we just inserted so we can roll it back on error

@@ -269,6 +269,27 @@ export const useChatWebSocket = ({
       setIsCompacting(false);
     };
 
+    const handleMessagesCombined = (data) => {
+      // Only update UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+
+      console.log('🔗 TIME GAPs combined:', data);
+
+      // Remove deleted messages and update the combined one
+      setMessages(prev => {
+        let updated = prev.filter(msg => !data.deletedIds.includes(msg.id));
+
+        // Update the combined message if provided
+        if (data.updatedMessage) {
+          updated = updated.map(msg =>
+            msg.id === data.updatedMessage.id ? data.updatedMessage : msg
+          );
+        }
+
+        return updated;
+      });
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
@@ -278,6 +299,7 @@ export const useChatWebSocket = ({
     socketService.on('character_thought', handleCharacterThought);
     socketService.on('compacting_start', handleCompactingStart);
     socketService.on('compacting_end', handleCompactingEnd);
+    socketService.on('messages_combined', handleMessagesCombined);
 
     // Cleanup
     return () => {
@@ -290,6 +312,7 @@ export const useChatWebSocket = ({
       socketService.off('character_thought', handleCharacterThought);
       socketService.off('compacting_start', handleCompactingStart);
       socketService.off('compacting_end', handleCompactingEnd);
+      socketService.off('messages_combined', handleMessagesCombined);
     };
   }, [user, characterId, setMoodEffect]);
 

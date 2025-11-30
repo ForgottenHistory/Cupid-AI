@@ -180,6 +180,82 @@ class TimeGapService {
   }
 
   /**
+   * Combine consecutive TIME GAP markers into a single marker
+   * Keeps the most recent one with summed duration, deletes the rest
+   * @param {number} conversationId - Conversation ID
+   * @returns {object} { deletedIds: number[], updatedId: number|null } - IDs of deleted and updated messages
+   */
+  combineConsecutiveTimeGaps(conversationId) {
+    // Get all messages in order to find consecutive TIME GAPs
+    const messages = db.prepare(`
+      SELECT id, message_type, gap_duration_hours, created_at, content
+      FROM messages
+      WHERE conversation_id = ?
+      ORDER BY created_at ASC
+    `).all(conversationId);
+
+    console.log(`🔍 Checking ${messages.length} messages for consecutive TIME GAPs`);
+
+    // Debug: show message types in order
+    const typeSequence = messages.map(m => m.message_type === 'time_gap' ? 'GAP' : m.message_type?.substring(0,3) || 'txt').join(' -> ');
+    console.log(`📋 Message sequence: ${typeSequence}`);
+
+    const toDelete = [];
+    let updatedId = null;
+
+    let i = 0;
+    while (i < messages.length) {
+      if (messages[i].message_type === 'time_gap') {
+        // Found a TIME GAP, look for consecutive ones
+        const consecutiveGaps = [messages[i]];
+        let j = i + 1;
+
+        while (j < messages.length && messages[j].message_type === 'time_gap') {
+          consecutiveGaps.push(messages[j]);
+          j++;
+        }
+
+        console.log(`⏰ Found ${consecutiveGaps.length} consecutive TIME GAP(s) starting at index ${i}`);
+
+        if (consecutiveGaps.length > 1) {
+          // Sum up all gap durations
+          const totalHours = consecutiveGaps.reduce((sum, gap) => sum + (gap.gap_duration_hours || 0), 0);
+
+          // Keep the last one (most recent), delete the rest
+          const keepGap = consecutiveGaps[consecutiveGaps.length - 1];
+          const deleteGaps = consecutiveGaps.slice(0, -1);
+
+          // Update the kept gap with the total duration
+          const newContent = this.formatTimeGapContent(totalHours);
+          db.prepare(`
+            UPDATE messages
+            SET content = ?, gap_duration_hours = ?
+            WHERE id = ?
+          `).run(newContent, totalHours, keepGap.id);
+
+          updatedId = keepGap.id;
+
+          // Mark others for deletion
+          toDelete.push(...deleteGaps.map(g => g.id));
+
+          console.log(`⏰ Combined ${consecutiveGaps.length} TIME GAPs into one (${totalHours.toFixed(1)} hours total)`);
+        }
+
+        i = j;
+      } else {
+        i++;
+      }
+    }
+
+    // Delete the redundant gaps
+    if (toDelete.length > 0) {
+      db.prepare(`DELETE FROM messages WHERE id IN (${toDelete.join(',')})`).run();
+    }
+
+    return { deletedIds: toDelete, updatedId };
+  }
+
+  /**
    * Get all TIME GAP markers in a conversation
    * @param {number} conversationId - Conversation ID
    * @returns {Array} Array of TIME GAP messages
