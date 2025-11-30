@@ -5,6 +5,70 @@ All notable changes to Cupid AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-11-30
+
+### Added
+
+#### Library Improvements
+- **Search**: Search characters by name and tags with debounced input
+- **Pagination**: 24 items per page (grid), 50 items per page (compact)
+- **Compact View**: Toggle between grid and list views
+- **Lazy Loading**: Images only load when scrolled into view
+
+#### Sidebar Improvements
+- **Search**: Click "Matches" title to search matches by name
+- **Thumbnails**: Auto-generated thumbnails for faster sidebar loading
+
+#### Chat Features
+- **Message Swipes**: Navigate between message variants with arrow buttons
+- **Image Regeneration**: Regenerate image messages with new SD generation
+- **Conversation Export**: Export chat history as JSON from header menu
+- **Persistent UI States**: Avatar visibility and banner collapsed states saved
+- **TIME GAP Combining**: Consecutive time gap markers merged into single marker
+
+#### Character System
+- **V1 Card Support**: Import JanitorAI and other V1 format character cards
+- **Character-Specific Image Prompts**: Override main/negative prompts per character
+- **Post Instructions**: Custom instructions for character social media posts
+
+#### Memory System
+- **Memory Management UI**: Add, edit, delete memories from chat header
+- **Remove All**: Bulk delete all memories with confirmation
+- **Memory in Prompts**: Memories now included in all AI prompts
+- **Memory Degradation**: Configurable point-based memory decay system
+- **User Name in Memories**: Display actual username instead of "User"
+
+#### LLM Configuration
+- **Metadata LLM**: Fourth LLM type for character generation (profiles, schedules, personality)
+- **Token Counter**: View token usage in Overview tab
+
+#### Settings
+- **Max Matches Limit**: Set maximum number of active matches (0-50)
+- **Thought Frequency**: Configure how often characters share internal thoughts
+
+### Changed
+- Proactive message opener now randomly selects one variety instead of listing all
+- Proactive check interval range extended to 5 minutes - 5 hours
+- Message edit window now matches bubble size exactly
+- Character profile layout changed to side-by-side
+
+### Fixed
+- Multi-line message ordering (messages with same timestamp now sort by ID)
+- Duplicate AI responses now rejected and trigger retry
+- Incomplete think tags detected and rejected
+- LLM settings validation for OpenRouter provider
+- Max matches limit now only counts characters with active conversations
+- Duplicate TIME GAP markers prevented
+- EM DASH replacement now properly uppercases next letter
+- Character-specific image prompt overrides now properly applied
+- Proactive message timing enforces interval between consecutive messages
+
+### Removed
+- Deprecated maxEmojisPerMessage setting
+- Left-on-read settings (will reimplement later)
+
+---
+
 ## [1.0.0] - 2025-11-01
 
 ### Initial Release

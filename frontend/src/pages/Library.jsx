@@ -21,7 +21,7 @@ const Library = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [thumbnails, setThumbnails] = useState({});
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'compact'
-  const ITEMS_PER_PAGE = viewMode === 'compact' ? 50 : 25;
+  const ITEMS_PER_PAGE = viewMode === 'compact' ? 50 : 24;
 
   useEffect(() => {
     loadCharacters();
