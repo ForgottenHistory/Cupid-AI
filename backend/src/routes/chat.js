@@ -285,6 +285,76 @@ router.delete('/conversations/:conversationId', authenticateToken, (req, res) =>
 });
 
 /**
+ * GET /api/chat/conversations/:conversationId/export
+ * Export conversation as JSON file
+ */
+router.get('/conversations/:conversationId/export', authenticateToken, (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+
+    // Get conversation and verify ownership
+    const conversation = conversationService.getConversationById(parseInt(conversationId));
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (conversation.user_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Get all messages
+    const messages = messageService.getMessages(parseInt(conversationId));
+
+    // Get character info
+    const character = db.prepare(`
+      SELECT id, name, card_data FROM characters
+      WHERE id = ? AND user_id = ?
+    `).get(conversation.character_id, userId);
+
+    // Build export object
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      conversation: {
+        id: conversation.id,
+        characterId: conversation.character_id,
+        characterName: character?.name || conversation.character_name || 'Unknown',
+        createdAt: conversation.created_at,
+        lastMessage: conversation.last_message,
+        messageCount: messages.length
+      },
+      character: character ? {
+        id: character.id,
+        name: character.name,
+        cardData: character.card_data ? JSON.parse(character.card_data) : null
+      } : null,
+      messages: messages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        messageType: msg.message_type || 'text',
+        createdAt: msg.created_at,
+        reaction: msg.reaction,
+        imageUrl: msg.image_url,
+        audioUrl: msg.audio_url,
+        reasoning: msg.reasoning
+      }))
+    };
+
+    // Set headers for file download
+    const filename = `conversation-${conversation.character_name || 'export'}-${Date.now()}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    res.json(exportData);
+  } catch (error) {
+    console.error('Export conversation error:', error);
+    res.status(500).json({ error: error.message || 'Failed to export conversation' });
+  }
+});
+
+/**
  * PUT /api/chat/messages/:messageId
  * Edit a message's content
  */

@@ -545,6 +545,7 @@ const Chat = () => {
             hasMoreMessages={hasMoreMessages}
             onBack={() => navigate('/')}
             onUnmatch={handleUnmatch}
+            conversationId={conversation?.id}
           />
         </div>
       )}

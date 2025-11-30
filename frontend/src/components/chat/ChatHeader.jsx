@@ -3,11 +3,12 @@ import { createPortal } from 'react-dom';
 import MemoriesModal from './MemoriesModal';
 import PostInstructionsModal from './PostInstructionsModal';
 import api from '../../services/api';
+import chatService from '../../services/chatService';
 
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMoreMessages, onBack, onUnmatch }) => {
+const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
@@ -16,6 +17,7 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
   const [memories, setMemories] = useState([]);
   const [loadingMemories, setLoadingMemories] = useState(false);
   const [showPostInstructions, setShowPostInstructions] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Calculate approximate token count (1 token ≈ 4 characters) for loaded messages
   const calculateTokens = () => {
@@ -174,6 +176,22 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
     }
   };
 
+  // Export conversation
+  const handleExport = async () => {
+    if (!conversationId || exporting) return;
+
+    setExporting(true);
+    try {
+      await chatService.exportConversation(conversationId);
+    } catch (error) {
+      console.error('Failed to export conversation:', error);
+      alert('Failed to export conversation. Please try again.');
+    } finally {
+      setExporting(false);
+      setShowMenu(false);
+    }
+  };
+
   return (
     <div className="relative flex-shrink-0">
       {/* Banner Image */}
@@ -280,6 +298,16 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                   Post Instructions
+                </button>
+                <button
+                  onClick={handleExport}
+                  disabled={exporting || !conversationId}
+                  className="w-full text-left px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  {exporting ? 'Exporting...' : 'Export Chat'}
                 </button>
                 <button
                   onClick={() => {

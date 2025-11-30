@@ -132,6 +132,26 @@ class ChatService {
     const response = await api.get(`/chat/messages/${messageId}/swipes`);
     return response.data;
   }
+
+  /**
+   * Export conversation as JSON file
+   */
+  async exportConversation(conversationId) {
+    const response = await api.get(`/chat/conversations/${conversationId}/export`);
+
+    // Create and download the file
+    const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `conversation-${response.data.conversation?.characterName || 'export'}-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    return response.data;
+  }
 }
 
 export default new ChatService();
