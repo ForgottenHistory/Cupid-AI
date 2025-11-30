@@ -1,5 +1,7 @@
 import express from 'express';
 import multer from 'multer';
+import sharp from 'sharp';
+import fs from 'fs';
 import { authenticateToken } from '../middleware/auth.js';
 import db from '../db/database.js';
 import path from 'path';
@@ -43,7 +45,7 @@ const upload = multer({
 router.get('/profile', authenticateToken, (req, res) => {
   try {
     const user = db.prepare(`
-      SELECT id, username, display_name, bio, profile_image, created_at
+      SELECT id, username, display_name, bio, profile_image, profile_thumbnail, created_at
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -106,23 +108,39 @@ router.put('/profile', authenticateToken, (req, res) => {
 
 /**
  * POST /api/users/profile/image
- * Upload profile image
+ * Upload profile image and generate thumbnail
  */
-router.post('/profile/image', authenticateToken, upload.single('image'), (req, res) => {
+router.post('/profile/image', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No image file provided' });
     }
 
     const imageUrl = `/uploads/${req.file.filename}`;
+    let thumbnailUrl = null;
 
-    // Update user's profile image
+    // Generate thumbnail
+    try {
+      const thumbnailFilename = `thumb-${req.file.filename}`;
+      const thumbnailPath = path.join(__dirname, '..', '..', 'uploads', thumbnailFilename);
+
+      await sharp(req.file.path)
+        .resize(64, 64, { fit: 'cover' })
+        .png({ quality: 80 })
+        .toFile(thumbnailPath);
+
+      thumbnailUrl = `/uploads/${thumbnailFilename}`;
+    } catch (thumbError) {
+      console.warn('Failed to generate profile thumbnail:', thumbError.message);
+    }
+
+    // Update user's profile image and thumbnail
     db.prepare(`
-      UPDATE users SET profile_image = ?, updated_at = CURRENT_TIMESTAMP
+      UPDATE users SET profile_image = ?, profile_thumbnail = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).run(imageUrl, req.user.id);
+    `).run(imageUrl, thumbnailUrl, req.user.id);
 
-    res.json({ imageUrl });
+    res.json({ imageUrl, thumbnailUrl });
   } catch (error) {
     console.error('Upload image error:', error);
     res.status(500).json({ error: 'Failed to upload image' });
@@ -131,12 +149,12 @@ router.post('/profile/image', authenticateToken, upload.single('image'), (req, r
 
 /**
  * DELETE /api/users/profile/image
- * Remove profile image
+ * Remove profile image and thumbnail
  */
 router.delete('/profile/image', authenticateToken, (req, res) => {
   try {
     db.prepare(`
-      UPDATE users SET profile_image = NULL, updated_at = CURRENT_TIMESTAMP
+      UPDATE users SET profile_image = NULL, profile_thumbnail = NULL, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(req.user.id);
 

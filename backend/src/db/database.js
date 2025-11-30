@@ -1,7 +1,8 @@
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
+import sharp from 'sharp';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -24,6 +25,130 @@ function initializeDatabase() {
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
     throw error;
+  }
+}
+
+/**
+ * Generate thumbnails for existing user profile images
+ * Runs asynchronously in the background on server startup
+ */
+async function generateMissingProfileThumbnails() {
+  try {
+    const users = db.prepare(`
+      SELECT id, profile_image FROM users
+      WHERE profile_image IS NOT NULL
+      AND profile_thumbnail IS NULL
+    `).all();
+
+    if (users.length === 0) {
+      return;
+    }
+
+    console.log(`🖼️  Generating profile thumbnails for ${users.length} users...`);
+
+    let generated = 0;
+    let failed = 0;
+
+    for (const user of users) {
+      try {
+        // Profile images are stored as file paths like /uploads/profile-123.png
+        const imagePath = join(__dirname, '..', '..', user.profile_image);
+
+        if (!existsSync(imagePath)) {
+          failed++;
+          continue;
+        }
+
+        // Generate thumbnail filename
+        const filename = user.profile_image.split('/').pop();
+        const thumbnailFilename = `thumb-${filename}`;
+        const thumbnailPath = join(__dirname, '..', '..', 'uploads', thumbnailFilename);
+
+        // Generate 64x64 thumbnail
+        await sharp(imagePath)
+          .resize(64, 64, { fit: 'cover' })
+          .png({ quality: 80 })
+          .toFile(thumbnailPath);
+
+        const thumbnailUrl = `/uploads/${thumbnailFilename}`;
+
+        // Update the user with the thumbnail
+        db.prepare('UPDATE users SET profile_thumbnail = ? WHERE id = ?')
+          .run(thumbnailUrl, user.id);
+
+        generated++;
+      } catch (error) {
+        console.warn(`Failed to generate profile thumbnail for user ${user.id}:`, error.message);
+        failed++;
+      }
+    }
+
+    console.log(`✅ Generated ${generated} profile thumbnails (${failed} failed)`);
+  } catch (error) {
+    console.error('Failed to generate missing profile thumbnails:', error);
+  }
+}
+
+/**
+ * Generate thumbnails for existing characters that have image_url but no thumbnail_url
+ * Runs asynchronously in the background on server startup
+ */
+async function generateMissingThumbnails() {
+  try {
+    const characters = db.prepare(`
+      SELECT id, image_url FROM characters
+      WHERE image_url IS NOT NULL
+      AND thumbnail_url IS NULL
+    `).all();
+
+    if (characters.length === 0) {
+      return;
+    }
+
+    console.log(`🖼️  Generating thumbnails for ${characters.length} existing characters...`);
+
+    let generated = 0;
+    let failed = 0;
+
+    for (const char of characters) {
+      try {
+        // Check if image_url is a base64 data URL
+        if (!char.image_url || !char.image_url.startsWith('data:')) {
+          failed++;
+          continue;
+        }
+
+        // Extract base64 data from data URL
+        const base64Match = char.image_url.match(/^data:image\/\w+;base64,(.+)$/);
+        if (!base64Match) {
+          failed++;
+          continue;
+        }
+
+        const imageBuffer = Buffer.from(base64Match[1], 'base64');
+
+        // Generate 128x170 thumbnail
+        const thumbnailBuffer = await sharp(imageBuffer)
+          .resize(128, 170, { fit: 'cover' })
+          .png({ quality: 80 })
+          .toBuffer();
+
+        const thumbnailUrl = `data:image/png;base64,${thumbnailBuffer.toString('base64')}`;
+
+        // Update the character with the thumbnail
+        db.prepare('UPDATE characters SET thumbnail_url = ? WHERE id = ?')
+          .run(thumbnailUrl, char.id);
+
+        generated++;
+      } catch (error) {
+        console.warn(`Failed to generate thumbnail for character ${char.id}:`, error.message);
+        failed++;
+      }
+    }
+
+    console.log(`✅ Generated ${generated} thumbnails (${failed} failed)`);
+  } catch (error) {
+    console.error('Failed to generate missing thumbnails:', error);
   }
 }
 
@@ -592,6 +717,15 @@ function runMigrations() {
       console.log('✅ auto_unmatch_inactive_days column added to users table');
     }
 
+    // Migration: Add profile_thumbnail column to users table
+    if (!userColumnNamesRefresh.includes('profile_thumbnail')) {
+      db.exec(`ALTER TABLE users ADD COLUMN profile_thumbnail TEXT;`);
+      console.log('✅ profile_thumbnail column added to users table');
+    }
+
+    // Migration: Generate thumbnails for existing user profile images
+    generateMissingProfileThumbnails();
+
     // Migration: Add gap_duration_hours column to messages table and migrate TIME GAP markers
     // Refresh messagesColumnNames before checking
     const messagesColumnsRefresh = db.pragma('table_info(messages)');
@@ -685,6 +819,16 @@ function runMigrations() {
       db.exec(`ALTER TABLE characters ADD COLUMN post_instructions TEXT;`);
       console.log('✅ post_instructions column added to characters table');
     }
+
+    // Migration: Add thumbnail_url column to characters table
+    if (!charactersColumnNamesRefreshMemory.includes('thumbnail_url')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN thumbnail_url TEXT;`);
+      console.log('✅ thumbnail_url column added to characters table');
+    }
+
+    // Migration: Generate thumbnails for existing characters that have image_url but no thumbnail_url
+    // This is async so we run it in the background
+    generateMissingThumbnails();
 
     // Migration: Make email column optional (nullable)
     // SQLite doesn't support ALTER COLUMN, so we recreate the table if email is NOT NULL

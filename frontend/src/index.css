@@ -3,6 +3,15 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ============================================
+   DESIGN SYSTEM - CSS CUSTOM PROPERTIES
+   ============================================
+   Use these semantic color tokens throughout the app
+   for consistent styling in both light and dark modes.
+
+   Usage in Tailwind: text-[--text-primary], bg-[--bg-surface], etc.
+   ============================================ */
+
 :root {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
@@ -17,6 +26,70 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+
+  /* === TEXT COLORS === */
+  --text-primary: #111827;      /* Main text - gray-900 */
+  --text-secondary: #4b5563;    /* Secondary text - gray-600 */
+  --text-tertiary: #6b7280;     /* Tertiary/muted text - gray-500 */
+  --text-muted: #9ca3af;        /* Muted/placeholder - gray-400 */
+  --text-faint: #d1d5db;        /* Very faint text - gray-300 */
+
+  /* === BACKGROUND COLORS === */
+  --bg-base: #f9fafb;           /* Page background - gray-50 */
+  --bg-surface: #ffffff;        /* Card/surface background - white */
+  --bg-elevated: #ffffff;       /* Elevated surface - white */
+  --bg-hover: #f3f4f6;          /* Hover state - gray-100 */
+  --bg-active: #e5e7eb;         /* Active/pressed state - gray-200 */
+
+  /* === BORDER COLORS === */
+  --border-light: #e5e7eb;      /* Light borders - gray-200 */
+  --border-default: #d1d5db;    /* Default borders - gray-300 */
+  --border-strong: #9ca3af;     /* Strong borders - gray-400 */
+
+  /* === ACCENT COLORS (Purple/Pink gradient theme) === */
+  --accent-primary: #9333ea;    /* Primary accent - purple-600 */
+  --accent-secondary: #a855f7;  /* Secondary accent - purple-500 */
+  --accent-hover: #7e22ce;      /* Accent hover - purple-700 */
+  --accent-pink: #ec4899;       /* Pink accent - pink-500 */
+  --accent-pink-hover: #db2777; /* Pink hover - pink-600 */
+
+  /* === STATUS COLORS === */
+  --status-online: #4ade80;     /* Online - green-400 */
+  --status-away: #facc15;       /* Away - yellow-400 */
+  --status-busy: #f87171;       /* Busy - red-400 */
+  --status-offline: #9ca3af;    /* Offline - gray-400 */
+
+  /* === ICON COLORS === */
+  --icon-default: #6b7280;      /* Default icon - gray-500 */
+  --icon-muted: #9ca3af;        /* Muted icon - gray-400 */
+  --icon-hover: #9333ea;        /* Icon hover - purple-600 */
+}
+
+/* === DARK MODE OVERRIDES === */
+.dark {
+  --text-primary: #e5e7eb;      /* Main text - gray-200 */
+  --text-secondary: #6b7280;    /* Secondary text - gray-500 */
+  --text-tertiary: #4b5563;     /* Tertiary text - gray-600 */
+  --text-muted: #374151;        /* Muted text - gray-700 */
+  --text-faint: #1f2937;        /* Very faint text - gray-800 */
+
+  --bg-base: #111827;           /* Page background - gray-900 */
+  --bg-surface: #1f2937;        /* Card/surface - gray-800 */
+  --bg-elevated: #374151;       /* Elevated surface - gray-700 */
+  --bg-hover: #374151;          /* Hover state - gray-700 */
+  --bg-active: #4b5563;         /* Active state - gray-600 */
+
+  --border-light: #374151;      /* Light borders - gray-700 */
+  --border-default: #4b5563;    /* Default borders - gray-600 */
+  --border-strong: #6b7280;     /* Strong borders - gray-500 */
+
+  --accent-primary: #a855f7;    /* Primary accent - purple-500 */
+  --accent-secondary: #c084fc;  /* Secondary accent - purple-400 */
+  --accent-hover: #9333ea;      /* Accent hover - purple-600 */
+
+  --icon-default: #9ca3af;      /* Default icon - gray-400 */
+  --icon-muted: #6b7280;        /* Muted icon - gray-500 */
+  --icon-hover: #a855f7;        /* Icon hover - purple-500 */
 }
 
 /* Custom scrollbar styles */

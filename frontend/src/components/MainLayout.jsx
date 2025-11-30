@@ -5,7 +5,7 @@ import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
 import { useDarkMode } from '../hooks/useDarkMode';
-import { syncAllCharacters, clearAllPosts } from '../utils/syncCharacterImages';
+import { syncAllCharacters, syncCharacterImages, clearAllPosts } from '../utils/syncCharacterImages';
 import DailyMatchModal from './DailyMatchModal';
 import api from '../services/api';
 
@@ -18,6 +18,7 @@ const MainLayout = ({ children }) => {
   const [stats, setStats] = useState({ total: 0, liked: 0, remaining: 0 });
   const [conversations, setConversations] = useState([]);
   const [characterStatuses, setCharacterStatuses] = useState({});
+  const [characterThumbnails, setCharacterThumbnails] = useState({});
   const [dailyMatchCharacter, setDailyMatchCharacter] = useState(null);
   const [showDailyMatchModal, setShowDailyMatchModal] = useState(false);
 
@@ -27,6 +28,13 @@ const MainLayout = ({ children }) => {
     if (user?.id) {
       syncAllCharacters(user.id).catch(error => {
         console.error('Failed to sync characters:', error);
+      });
+      // Also sync images to generate thumbnails
+      syncCharacterImages(user.id).then(() => {
+        // Reload thumbnails after sync
+        loadThumbnails();
+      }).catch(error => {
+        console.error('Failed to sync character images:', error);
       });
     }
   }, [user?.id]);
@@ -151,6 +159,7 @@ const MainLayout = ({ children }) => {
     loadMatches();
     loadStats();
     loadConversations();
+    loadThumbnails();
   }, [user?.id, location.pathname]);
 
   useEffect(() => {
@@ -160,6 +169,7 @@ const MainLayout = ({ children }) => {
       loadStats();
       loadConversations();
       loadCharacterStatuses();
+      loadThumbnails();
     };
 
     window.addEventListener('characterUpdated', handleCharacterUpdate);
@@ -254,6 +264,18 @@ const MainLayout = ({ children }) => {
     }
   };
 
+  const loadThumbnails = async () => {
+    if (!user?.id) return;
+    try {
+      const response = await api.get('/sync/character-thumbnails');
+      if (response.data.success) {
+        setCharacterThumbnails(response.data.thumbnails);
+      }
+    } catch (error) {
+      console.error('Failed to load thumbnails:', error);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -335,7 +357,7 @@ const MainLayout = ({ children }) => {
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <div className="p-5">
             <div className="mb-5 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-blue-500/10 backdrop-blur-md border border-purple-200/30 dark:border-purple-700/30">
-              <h2 className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 uppercase tracking-wider">
+              <h2 className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-500 uppercase tracking-wider">
                 Matches ({stats.liked})
               </h2>
             </div>
@@ -347,8 +369,8 @@ const MainLayout = ({ children }) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                 </div>
-                <p className="text-gray-700 dark:text-gray-300 font-semibold text-sm mb-1">No matches yet</p>
-                <p className="text-gray-500 dark:text-gray-400 text-xs">Start swiping to find characters you like!</p>
+                <p className="text-[--text-secondary] font-semibold text-sm mb-1">No matches yet</p>
+                <p className="text-[--text-tertiary] text-xs">Start swiping to find characters you like!</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -365,7 +387,7 @@ const MainLayout = ({ children }) => {
                         <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-xl blur-md opacity-40 group-hover:opacity-60 transition-opacity"></div>
                         <div className="relative p-0.5 bg-gradient-to-br from-pink-400 to-purple-500 rounded-xl">
                           <img
-                            src={match.imageUrl}
+                            src={characterThumbnails[match.id] || match.imageUrl}
                             alt={match.name}
                             className="w-16 h-20 rounded-lg object-cover border-2 border-white"
                             style={{
@@ -392,7 +414,7 @@ const MainLayout = ({ children }) => {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-0.5">
-                          <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate">
+                          <h3 className="font-bold text-[--text-primary] truncate">
                             {match.name}
                           </h3>
                         </div>
@@ -438,7 +460,7 @@ const MainLayout = ({ children }) => {
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full blur-sm opacity-50"></div>
                   <img
-                    src={getImageUrl(user.profile_image)}
+                    src={getImageUrl(user.profile_thumbnail || user.profile_image)}
                     alt="Profile"
                     className="relative w-10 h-10 rounded-full object-cover border-2 border-white shadow-md"
                   />
@@ -452,17 +474,14 @@ const MainLayout = ({ children }) => {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 dark:text-gray-100 truncate text-sm">
+                <h3 className="font-bold text-[--text-primary] truncate text-sm">
                   {user?.display_name || user?.username}
                 </h3>
-                <p className="text-xs font-medium text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600">
-                  {stats.remaining} to swipe
-                </p>
               </div>
             </div>
             <button
               onClick={() => navigate('/settings/llm')}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
+              className="p-2 text-[--icon-default] hover:text-[--icon-hover] hover:bg-[--bg-hover] rounded-lg transition-all"
               title="LLM Settings"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -472,7 +491,7 @@ const MainLayout = ({ children }) => {
             </button>
             <button
               onClick={() => navigate('/settings/image')}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
+              className="p-2 text-[--icon-default] hover:text-[--icon-hover] hover:bg-[--bg-hover] rounded-lg transition-all"
               title="Image Generation Settings"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -481,7 +500,7 @@ const MainLayout = ({ children }) => {
             </button>
             <button
               onClick={() => navigate('/settings/behavior')}
-              className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-white/60 dark:hover:bg-gray-600/60 rounded-lg transition-all"
+              className="p-2 text-[--icon-default] hover:text-[--icon-hover] hover:bg-[--bg-hover] rounded-lg transition-all"
               title="Behavior Settings"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -503,7 +522,7 @@ const MainLayout = ({ children }) => {
                 className={`px-4 py-2 rounded-lg font-medium transition ${
                   isActive('/')
                     ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    : 'text-[--text-secondary] hover:bg-[--bg-hover]'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -521,7 +540,7 @@ const MainLayout = ({ children }) => {
                   className={`px-4 py-2 rounded-lg font-medium transition ${
                     isActive('/feed')
                       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                      : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      : 'text-[--text-secondary] hover:bg-[--bg-hover]'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -538,7 +557,7 @@ const MainLayout = ({ children }) => {
                 className={`px-4 py-2 rounded-lg font-medium transition ${
                   isActive('/library')
                     ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    : 'text-[--text-secondary] hover:bg-[--bg-hover]'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -554,7 +573,7 @@ const MainLayout = ({ children }) => {
                 className={`px-4 py-2 rounded-lg font-medium transition ${
                   isActive('/tags')
                     ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    : 'text-[--text-secondary] hover:bg-[--bg-hover]'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -570,7 +589,7 @@ const MainLayout = ({ children }) => {
                 className={`px-4 py-2 rounded-lg font-medium transition ${
                   isActive('/prompts')
                     ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    : 'text-[--text-secondary] hover:bg-[--bg-hover]'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -583,12 +602,12 @@ const MainLayout = ({ children }) => {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="text-sm text-gray-600 dark:text-gray-300">
+              <div className="text-sm text-[--text-tertiary]">
                 {stats.liked} matches · {stats.total} characters
               </div>
               <button
                 onClick={toggleDarkMode}
-                className="p-2 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
+                className="p-2 text-[--icon-default] hover:text-[--icon-hover] hover:bg-[--bg-hover] rounded-lg transition-all"
                 title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
               >
                 {isDarkMode ? (
@@ -603,7 +622,7 @@ const MainLayout = ({ children }) => {
               </button>
               <button
                 onClick={handleLogout}
-                className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
+                className="p-2 text-[--icon-default] hover:text-red-500 dark:hover:text-red-400 hover:bg-[--bg-hover] rounded-lg transition-all"
                 title="Logout"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
