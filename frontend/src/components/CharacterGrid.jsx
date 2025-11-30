@@ -1,8 +1,28 @@
-import { useState } from 'react';
+import { useState, memo, useRef, useEffect } from 'react';
 
-const CharacterCard = ({ character, onDelete, onClick }) => {
+const CharacterCard = memo(({ character, onDelete, onClick, thumbnailUrl }) => {
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px' }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleDelete = async (e) => {
     e.stopPropagation();
@@ -22,17 +42,22 @@ const CharacterCard = ({ character, onDelete, onClick }) => {
 
   return (
     <div
+      ref={cardRef}
       onClick={() => onClick(character)}
       onMouseEnter={() => setShowDelete(true)}
       onMouseLeave={() => setShowDelete(false)}
       className="relative group cursor-pointer"
     >
       <div className="aspect-[3/4] rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-shadow bg-gray-200">
-        <img
-          src={character.imageUrl}
-          alt={character.name}
-          className="w-full h-full object-cover"
-        />
+        {isVisible ? (
+          <img
+            src={thumbnailUrl || character.imageUrl}
+            alt={character.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-300 dark:bg-gray-600 animate-pulse" />
+        )}
 
         {/* Overlay with character info */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
@@ -84,9 +109,69 @@ const CharacterCard = ({ character, onDelete, onClick }) => {
       </div>
     </div>
   );
-};
+});
 
-const CharacterGrid = ({ characters, onDelete, onCharacterClick, emptyMessage }) => {
+CharacterCard.displayName = 'CharacterCard';
+
+const CompactCharacterRow = memo(({ character, onDelete, onClick, thumbnailUrl }) => {
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async (e) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete ${character.name}?`)) return;
+
+    setDeleting(true);
+    try {
+      await onDelete(character.id);
+    } catch (error) {
+      alert(`Failed to delete character: ${error.message}`);
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div
+      onClick={() => onClick(character)}
+      className="flex items-center gap-3 p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-500 hover:shadow-md cursor-pointer transition group"
+    >
+      <img
+        src={thumbnailUrl || character.imageUrl}
+        alt={character.name}
+        className="w-10 h-12 rounded object-cover flex-shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{character.name}</div>
+        {character.cardData?.data?.tags?.length > 0 && (
+          <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            {character.cardData.data.tags.slice(0, 3).join(', ')}
+          </div>
+        )}
+      </div>
+      {character.isLiked && (
+        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs rounded-full flex-shrink-0">
+          Liked
+        </span>
+      )}
+      <button
+        onClick={handleDelete}
+        disabled={deleting}
+        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50 flex-shrink-0"
+      >
+        {deleting ? (
+          <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+        ) : (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+});
+
+CompactCharacterRow.displayName = 'CompactCharacterRow';
+
+const CharacterGrid = ({ characters, onDelete, onCharacterClick, emptyMessage, thumbnails = {}, viewMode = 'grid' }) => {
   if (characters.length === 0) {
     return (
       <div className="text-center py-16">
@@ -110,6 +195,22 @@ const CharacterGrid = ({ characters, onDelete, onCharacterClick, emptyMessage })
     );
   }
 
+  if (viewMode === 'compact') {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {characters.map((character) => (
+          <CompactCharacterRow
+            key={character.id}
+            character={character}
+            onDelete={onDelete}
+            onClick={onCharacterClick}
+            thumbnailUrl={thumbnails[character.id]}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {characters.map((character) => (
@@ -118,6 +219,7 @@ const CharacterGrid = ({ characters, onDelete, onCharacterClick, emptyMessage })
           character={character}
           onDelete={onDelete}
           onClick={onCharacterClick}
+          thumbnailUrl={thumbnails[character.id]}
         />
       ))}
     </div>

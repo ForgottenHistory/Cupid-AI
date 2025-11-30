@@ -1,6 +1,6 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
@@ -21,6 +21,10 @@ const MainLayout = ({ children }) => {
   const [characterThumbnails, setCharacterThumbnails] = useState({});
   const [dailyMatchCharacter, setDailyMatchCharacter] = useState(null);
   const [showDailyMatchModal, setShowDailyMatchModal] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchInputRef = useRef(null);
 
   // Sync all characters from IndexedDB to backend on mount
   // This ensures all characters are available for post generation
@@ -320,9 +324,34 @@ const MainLayout = ({ children }) => {
     return text.length > 40 ? text.substring(0, 40) + '...' : text;
   };
 
-  // Get sorted matches by most recent activity
-  const getSortedMatches = () => {
-    return [...matches].sort((a, b) => {
+  // Focus search input when opened
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Get sorted and filtered matches by most recent activity
+  const sortedMatches = useMemo(() => {
+    let filtered = [...matches];
+
+    // Filter by search query
+    if (debouncedSearch.trim()) {
+      const query = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(match =>
+        match.name?.toLowerCase().includes(query)
+      );
+    }
+
+    return filtered.sort((a, b) => {
       const convA = conversations.find(c => c.character_id === a.id);
       const convB = conversations.find(c => c.character_id === b.id);
 
@@ -340,7 +369,7 @@ const MainLayout = ({ children }) => {
       // If neither has conversation, maintain original order
       return 0;
     });
-  };
+  }, [matches, conversations, debouncedSearch]);
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -357,9 +386,45 @@ const MainLayout = ({ children }) => {
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           <div className="p-5">
             <div className="mb-5 px-4 py-2 rounded-xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-blue-500/10 backdrop-blur-md border border-purple-200/30 dark:border-purple-700/30">
-              <h2 className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-500 uppercase tracking-wider">
-                Matches ({stats.liked})
-              </h2>
+              {showSearch ? (
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-pink-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setShowSearch(false);
+                        setSearchQuery('');
+                      }
+                    }}
+                    placeholder="Search matches..."
+                    className="flex-1 bg-transparent text-xs font-medium text-[--text-primary] placeholder-pink-300 dark:placeholder-pink-400/50 outline-none"
+                  />
+                  <button
+                    onClick={() => {
+                      setShowSearch(false);
+                      setSearchQuery('');
+                    }}
+                    className="text-pink-400 hover:text-pink-500 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <h2
+                  onClick={() => setShowSearch(true)}
+                  className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-pink-500 uppercase tracking-wider cursor-pointer hover:from-pink-500 hover:to-pink-600 transition-all"
+                >
+                  Matches ({stats.liked})
+                </h2>
+              )}
             </div>
 
             {matches.length === 0 ? (
@@ -372,9 +437,16 @@ const MainLayout = ({ children }) => {
                 <p className="text-[--text-secondary] font-semibold text-sm mb-1">No matches yet</p>
                 <p className="text-[--text-tertiary] text-xs">Start swiping to find characters you like!</p>
               </div>
+            ) : sortedMatches.length === 0 ? (
+              <div className="text-center py-8 px-4">
+                <svg className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <p className="text-[--text-tertiary] text-sm">No matches found for "{searchQuery}"</p>
+              </div>
             ) : (
               <div className="space-y-2">
-                {getSortedMatches().map((match) => {
+                {sortedMatches.map((match) => {
                   const unreadCount = getUnreadCount(match.id);
                   return (
                     <div
