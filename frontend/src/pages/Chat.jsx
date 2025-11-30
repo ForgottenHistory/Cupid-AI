@@ -35,6 +35,9 @@ const Chat = () => {
   // Image modal state (to hide input when viewing full-screen images)
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
+  // Swipe regeneration state
+  const [isRegenerating, setIsRegenerating] = useState(false);
+
   // Auto-scroll mode for character images
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -133,6 +136,43 @@ const Chat = () => {
       console.log('💭 [UI] Thought cleared');
     }
   }, [currentThought]);
+
+  // Swipe handler - navigate to different variant
+  const handleSwipe = async (messageId, swipeIndex) => {
+    try {
+      const response = await chatService.swipeMessage(messageId, swipeIndex);
+      if (response.success && response.message) {
+        // Update message in local state
+        setMessages(prev => prev.map(msg =>
+          msg.id === messageId ? { ...msg, ...response.message } : msg
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to swipe message:', error);
+      setError('Failed to switch response variant');
+    }
+  };
+
+  // Regenerate handler - generate new swipe variant
+  const handleRegenerateSwipe = async (messageId) => {
+    if (!character) return;
+
+    setIsRegenerating(true);
+    try {
+      const response = await chatService.regenerateMessage(messageId, character);
+      if (response.success && response.message) {
+        // Update message in local state with new content and swipes
+        setMessages(prev => prev.map(msg =>
+          msg.id === messageId ? { ...msg, ...response.message } : msg
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to regenerate message:', error);
+      setError('Failed to generate new response');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   // Extract received images from character messages (last 10 only)
   const receivedImages = messages
@@ -668,6 +708,9 @@ const Chat = () => {
             loadingMore={loadingMore}
             onLoadMore={loadMoreMessages}
             totalMessages={totalMessages}
+            onSwipe={handleSwipe}
+            onRegenerate={handleRegenerateSwipe}
+            isRegenerating={isRegenerating}
           />
 
           {/* Error Display */}
@@ -704,7 +747,7 @@ const Chat = () => {
           <ChatInput
             input={input}
             setInput={setInput}
-            sending={sending || isCompacting}
+            sending={sending || isCompacting || isRegenerating}
             displayingMessages={displayingMessages}
             hasMessages={messages.length > 0}
             characterName={character?.name}

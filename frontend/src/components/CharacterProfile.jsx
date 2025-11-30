@@ -545,22 +545,18 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         }
       }}
     >
-      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col">
-        {/* Header with Image */}
-        <div className="relative h-64 bg-gray-200 dark:bg-gray-700 flex-shrink-0">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full h-[85vh] overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 flex">
+        {/* Left Side: Character Image */}
+        <div className="relative w-72 flex-shrink-0 bg-gray-200 dark:bg-gray-700">
           <img
             src={character.imageUrl}
             alt={character.name}
             className="w-full h-full object-cover"
           />
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {/* Soft edge overlays for smooth transition */}
+          <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-white dark:from-gray-800 to-transparent"></div>
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white/80 dark:from-gray-800/80 to-transparent"></div>
+          <div className="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-white/60 dark:from-gray-800/60 to-transparent"></div>
 
           {character.isLiked && (
             <div className="absolute top-4 left-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
@@ -576,221 +572,229 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
           )}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {/* Title & Tags */}
-          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            {/* Name Section */}
-            {!isEditingName ? (
-              <div className="flex items-start justify-between mb-2">
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{character.name}</h2>
-                {mode === 'library' && !isEditingTags && (
-                  <div className="flex gap-2">
-                    {/* Like/Unlike Button */}
-                    {character.isLiked ? (
-                      onUnlike && (
-                        <button
-                          onClick={async () => {
-                            if (window.confirm(`Are you sure you want to unmatch with ${character.name}?`)) {
-                              console.log('Unmatch button clicked for:', character.name);
-                              try {
-                                await onUnlike();
-                                console.log('Unmatch completed successfully');
-                              } catch (error) {
-                                console.error('Unmatch failed:', error);
-                              }
-                            }
-                          }}
-                          className="px-3 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition flex items-center gap-1"
-                          title="Unmatch"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 20 20">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                          Unmatch
-                        </button>
-                      )
-                    ) : (
-                      onLike && (
-                        <button
-                          onClick={async () => {
-                            console.log('Like button clicked for:', character.name);
-                            try {
-                              await onLike();
-                              console.log('Like completed successfully');
-                            } catch (error) {
-                              console.error('Like failed:', error);
-                            }
-                          }}
-                          className="px-3 py-1 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition flex items-center gap-1"
-                          title="Like"
-                        >
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Like
-                        </button>
-                      )
-                    )}
-                    <button
-                      onClick={handleStartEditingName}
-                      className="px-3 py-1 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
-                    >
-                      Edit Name
-                    </button>
-                    <button
-                      onClick={handleStartEditingTags}
-                      className="px-3 py-1 text-sm text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition"
-                    >
-                      Edit Tags
-                    </button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3 mb-2">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleSaveName();
-                      }
-                    }}
-                    placeholder="Character name..."
-                    className="flex-1 px-4 py-2 text-2xl font-bold border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 outline-none"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={handleCancelEditingName}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveName}
-                    disabled={loading}
-                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 transition text-sm font-medium"
-                  >
-                    {loading ? 'Saving...' : 'Save Name'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* View Mode */}
-            {!isEditingTags && data.tags && data.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {data.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* Edit Mode */}
-            {isEditingTags && (
-              <div className="space-y-3">
-                {/* Current Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {editedTags.map((tag, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-medium flex items-center gap-2"
-                    >
-                      {tag}
+        {/* Right Side: Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header with Name & Tags */}
+          <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                {/* Editable Name */}
+                {isEditingName ? (
+                  <div className="space-y-3 mb-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={editedName}
+                        onChange={(e) => setEditedName(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveName();
+                          }
+                        }}
+                        placeholder="Character name..."
+                        className="flex-1 text-xl font-bold bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 px-3 py-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        autoFocus
+                      />
                       <button
-                        onClick={() => handleRemoveTag(tag)}
-                        className="hover:text-red-600 dark:hover:text-red-400 transition"
-                        title="Remove tag"
+                        onClick={handleSaveName}
+                        disabled={loading}
+                        className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg transition"
+                        aria-label="Save name"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleCancelEditingName}
+                        className="p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                        aria-label="Cancel"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
-                    </span>
-                  ))}
-                </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mb-2 group">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 truncate">{character.name}</h2>
+                    {mode === 'library' && (
+                      <button
+                        onClick={handleStartEditingName}
+                        className="p-1.5 text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition opacity-0 group-hover:opacity-100"
+                        aria-label="Edit name"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
 
-                {/* Add New Tag */}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
-                    }}
-                    placeholder="Add new tag..."
-                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 outline-none text-sm"
-                  />
-                  <button
-                    onClick={handleAddTag}
-                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition text-sm font-medium"
-                  >
-                    Add
-                  </button>
-                </div>
+                {/* Editable Tags */}
+                {isEditingTags ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddTag();
+                          }
+                        }}
+                        placeholder="Add tag and press Enter..."
+                        className="flex-1 text-sm bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 px-3 py-1.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        onClick={handleSaveTags}
+                        disabled={loading}
+                        className="p-1.5 text-green-500 hover:bg-green-500/10 rounded-lg transition"
+                        aria-label="Save tags"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleCancelEditingTags}
+                        className="p-1.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition"
+                        aria-label="Cancel"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {editedTags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium flex items-center gap-1"
+                        >
+                          {tag}
+                          <button
+                            onClick={() => handleRemoveTag(tag)}
+                            className="hover:text-red-600 dark:hover:text-red-400 transition"
+                            title="Remove tag"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 group">
+                    {data.tags && data.tags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {data.tags.map((tag, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400 italic">No tags</span>
+                    )}
+                    {mode === 'library' && (
+                      <button
+                        onClick={handleStartEditingTags}
+                        className="p-1.5 text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition opacity-0 group-hover:opacity-100"
+                        aria-label="Edit tags"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={handleCancelEditingTags}
-                    className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSaveTags}
-                    disabled={loading}
-                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 transition text-sm font-medium"
-                  >
-                    {loading ? 'Saving...' : 'Save Tags'}
-                  </button>
-                </div>
+              {/* Close Button */}
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition flex-shrink-0"
+                aria-label="Close"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Action Buttons Row */}
+            {mode === 'library' && !isEditingName && !isEditingTags && (
+              <div className="flex gap-2 mt-3">
+                {character.isLiked ? (
+                  onUnlike && (
+                    <button
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to unmatch with ${character.name}?`)) {
+                          try {
+                            await onUnlike();
+                          } catch (error) {
+                            console.error('Unmatch failed:', error);
+                          }
+                        }
+                      }}
+                      className="px-3 py-1.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      Unmatch
+                    </button>
+                  )
+                ) : (
+                  onLike && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await onLike();
+                        } catch (error) {
+                          console.error('Like failed:', error);
+                        }
+                      }}
+                      className="px-3 py-1.5 text-sm text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Like
+                    </button>
+                  )
+                )}
               </div>
             )}
           </div>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mx-6 mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
-              {error}
-            </div>
-          )}
-
           {/* Tabs */}
           <div className="border-b border-gray-200 dark:border-gray-700">
-            <div className="flex gap-2 px-6">
+            <div className="flex px-5">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-3 font-medium transition ${
+                  className={`px-4 py-2.5 font-medium text-sm transition ${
                     activeTab === tab.id
                       ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                   }`}
                 >
                   {tab.label}
@@ -799,8 +803,15 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
             </div>
           </div>
 
-          {/* Tab Content */}
-          <div className="p-6">
+          {/* Scrollable Tab Content */}
+          <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            {/* Error Display */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
+                {error}
+              </div>
+            )}
+
             {activeTab === 'profile' && (
               <ProfileTab
                 data={data}
@@ -846,25 +857,25 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
               />
             )}
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        {character.isLiked && (
-          <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/50 flex gap-3 flex-shrink-0">
-            <button
-              onClick={() => {
-                onClose();
-                navigate(`/chat/${character.id}`);
-              }}
-              className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 hover:from-pink-600 hover:to-purple-700 dark:hover:from-pink-700 dark:hover:to-purple-800 text-white font-semibold py-3 rounded-lg transition shadow-md hover:shadow-lg flex items-center justify-center gap-2"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              Start Chat
-            </button>
-          </div>
-        )}
+          {/* Action Buttons */}
+          {character.isLiked && (
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900/50 flex-shrink-0">
+              <button
+                onClick={() => {
+                  onClose();
+                  navigate(`/chat/${character.id}`);
+                }}
+                className="w-full bg-gradient-to-r from-pink-500 to-purple-600 dark:from-pink-600 dark:to-purple-700 hover:from-pink-600 hover:to-purple-700 dark:hover:from-pink-700 dark:hover:to-purple-800 text-white font-semibold py-3 rounded-lg transition shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Start Chat
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

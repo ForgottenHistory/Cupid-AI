@@ -286,6 +286,15 @@ function runMigrations() {
       console.log('✅ reasoning column added to messages table');
     }
 
+    // Migration: Add swipes columns to messages table (for message swipes/alternatives)
+    if (!messagesColumnNames.includes('swipes')) {
+      db.exec(`
+        ALTER TABLE messages ADD COLUMN swipes TEXT;
+        ALTER TABLE messages ADD COLUMN current_swipe INTEGER DEFAULT 0;
+      `);
+      console.log('✅ swipes columns added to messages table');
+    }
+
     // Migration: Add Stable Diffusion settings columns to users table
     if (!userColumnNames.includes('sd_steps')) {
       db.exec(`

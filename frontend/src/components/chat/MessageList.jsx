@@ -25,6 +25,9 @@ const MessageList = ({
   loadingMore = false,
   onLoadMore,
   totalMessages = 0,
+  onSwipe,
+  onRegenerate,
+  isRegenerating,
 }) => {
   const containerRef = useRef(null);
   const scrollPositionRef = useRef({ scrollTop: 0, scrollHeight: 0, messagesLength: 0 });
@@ -129,6 +132,10 @@ const MessageList = ({
           );
         }
 
+        // Find last assistant message index
+        const lastAssistantIndex = messages.map((m, i) => m.role === 'assistant' ? i : -1).filter(i => i !== -1).pop();
+        const isLastAssistantMessage = index === lastAssistantIndex;
+
         // Render regular messages as bubbles
         return (
           <MessageBubble
@@ -146,6 +153,10 @@ const MessageList = ({
             onDelete={onDeleteFrom}
             imageModalOpen={imageModalOpen}
             setImageModalOpen={setImageModalOpen}
+            isLastAssistantMessage={isLastAssistantMessage}
+            onSwipe={onSwipe}
+            onRegenerate={onRegenerate}
+            isRegenerating={isRegenerating}
           />
         );
       })}

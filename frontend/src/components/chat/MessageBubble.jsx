@@ -5,6 +5,107 @@ import ImageModal from '../ImageModal';
 import Emoji from '../Emoji';
 
 /**
+ * Swipe navigation controls for message variants
+ */
+const SwipeControls = ({ message, onSwipe, onRegenerate, isRegenerating }) => {
+  // Parse swipes array
+  const getSwipes = () => {
+    if (!message.swipes) return [message.content];
+    try {
+      const swipes = JSON.parse(message.swipes);
+      return Array.isArray(swipes) ? swipes : [message.content];
+    } catch {
+      return [message.content];
+    }
+  };
+
+  const swipes = getSwipes();
+  const currentIndex = message.current_swipe || 0;
+  const totalSwipes = swipes.length;
+
+  const handleLeft = () => {
+    if (currentIndex > 0) {
+      onSwipe(message.id, currentIndex - 1);
+    } else {
+      // Wrap to end
+      onSwipe(message.id, totalSwipes - 1);
+    }
+  };
+
+  const handleRight = () => {
+    if (currentIndex < totalSwipes - 1) {
+      // Move to next swipe
+      onSwipe(message.id, currentIndex + 1);
+    } else if (onRegenerate) {
+      // At end, generate new swipe
+      onRegenerate(message.id);
+    } else {
+      // Wrap to beginning
+      onSwipe(message.id, 0);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-0.5">
+      {/* Left arrow */}
+      <button
+        onClick={handleLeft}
+        disabled={isRegenerating}
+        className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50/80 dark:hover:bg-purple-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        title="Previous response"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      {/* Counter */}
+      <span className="text-xs text-gray-400 dark:text-gray-500 min-w-[32px] text-center tabular-nums">
+        {currentIndex + 1}/{totalSwipes}
+      </span>
+
+      {/* Right arrow (generates new at end) */}
+      <button
+        onClick={handleRight}
+        disabled={isRegenerating}
+        className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50/80 dark:hover:bg-purple-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        title={currentIndex >= totalSwipes - 1 && onRegenerate ? "Generate new response" : "Next response"}
+      >
+        {isRegenerating ? (
+          <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+};
+
+/**
+ * Get the current reasoning for a message (handles swipe arrays)
+ */
+const getCurrentReasoning = (message) => {
+  if (!message.reasoning) return null;
+
+  try {
+    const parsed = JSON.parse(message.reasoning);
+    if (Array.isArray(parsed)) {
+      const currentIndex = message.current_swipe || 0;
+      return parsed[currentIndex] || null;
+    }
+    // If it's not an array, return as-is (legacy format)
+    return message.reasoning;
+  } catch {
+    // If parsing fails, it's a plain string (legacy format)
+    return message.reasoning;
+  }
+};
+
+/**
  * Individual message bubble component
  */
 const MessageBubble = ({
@@ -21,6 +122,10 @@ const MessageBubble = ({
   onDelete,
   imageModalOpen,
   setImageModalOpen,
+  isLastAssistantMessage,
+  onSwipe,
+  onRegenerate,
+  isRegenerating,
 }) => {
   const [showImageModal, setShowImageModal] = useState(false);
   const [showReasoning, setShowReasoning] = useState(false);
@@ -140,27 +245,39 @@ const MessageBubble = ({
         isNew ? 'animate-slideUp' : ''
       } group`}
     >
-      {/* Action Buttons (left side for assistant, right side for user) */}
+      {/* Action Buttons (left side for assistant) - stacked vertically */}
       {message.role === 'assistant' && (
-        <div className="flex items-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={() => onStartEdit(message)}
-            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50/80 dark:hover:bg-purple-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-purple-200/50 dark:hover:border-purple-600/50"
-            title="Edit message"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => onDelete(index)}
-            className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50/80 dark:hover:bg-red-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-red-200/50 dark:hover:border-red-600/50"
-            title="Delete from here"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+        <div className="flex flex-col items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity w-[92px]">
+          {/* Swipe Controls (only for last assistant message) */}
+          {isLastAssistantMessage && onSwipe && (
+            <SwipeControls
+              message={message}
+              onSwipe={onSwipe}
+              onRegenerate={onRegenerate}
+              isRegenerating={isRegenerating}
+            />
+          )}
+          {/* Edit & Delete buttons */}
+          <div className="flex items-center gap-1 justify-center">
+            <button
+              onClick={() => onStartEdit(message)}
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50/80 dark:hover:bg-purple-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-purple-200/50 dark:hover:border-purple-600/50"
+              title="Edit message"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => onDelete(index)}
+              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50/80 dark:hover:bg-red-900/40 backdrop-blur-sm rounded-lg hover:scale-110 transition-all shadow-sm hover:shadow-md border border-transparent hover:border-red-200/50 dark:hover:border-red-600/50"
+              title="Delete from here"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
@@ -205,7 +322,7 @@ const MessageBubble = ({
         )}
 
         {/* Reasoning Display (only for assistant messages with reasoning) */}
-        {message.role === 'assistant' && message.reasoning && (
+        {message.role === 'assistant' && getCurrentReasoning(message) && (
           <div className="mt-3">
             <button
               onClick={() => setShowReasoning(!showReasoning)}
@@ -225,7 +342,7 @@ const MessageBubble = ({
             {showReasoning && (
               <div className="mt-2 p-3 bg-purple-50/50 dark:bg-purple-900/20 border border-purple-200/50 dark:border-purple-700/30 rounded-lg">
                 <p className="text-xs text-purple-900 dark:text-purple-200 whitespace-pre-wrap break-words font-mono">
-                  {message.reasoning}
+                  {getCurrentReasoning(message)}
                 </p>
               </div>
             )}

@@ -167,7 +167,7 @@ class MessageService {
   }
 
   /**
-   * Edit a message
+   * Edit a message (updates content and current swipe in swipes array)
    */
   editMessage(messageId, userId, content) {
     // Verify ownership
@@ -181,14 +181,209 @@ class MessageService {
       throw new Error('Unauthorized');
     }
 
+    // If message has swipes, update the current swipe in the array
+    let swipes = message.swipes ? JSON.parse(message.swipes) : null;
+    if (swipes && swipes.length > 0) {
+      const currentIndex = message.current_swipe || 0;
+      swipes[currentIndex] = content;
+    }
+
     // Update message
     db.prepare(`
       UPDATE messages
-      SET content = ?
+      SET content = ?, swipes = ?
       WHERE id = ?
-    `).run(content, messageId);
+    `).run(content, swipes ? JSON.stringify(swipes) : null, messageId);
 
     return true;
+  }
+
+  /**
+   * Navigate to a different swipe variant
+   * @param {number} messageId - Message ID
+   * @param {number} userId - User ID for authorization
+   * @param {number} swipeIndex - Index of swipe to navigate to
+   * @returns {object} Updated message
+   */
+  setSwipeIndex(messageId, userId, swipeIndex) {
+    const message = this.getMessageWithUser(messageId);
+
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    if (message.user_id !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    // Parse swipes array
+    const swipes = message.swipes ? JSON.parse(message.swipes) : [message.content];
+
+    if (swipeIndex < 0 || swipeIndex >= swipes.length) {
+      throw new Error('Swipe index out of range');
+    }
+
+    // For image messages, swipes are objects with content, imageUrl, imagePrompt
+    const isImageMessage = message.message_type === 'image';
+    let newContent, newImageUrl, newImagePrompt;
+
+    if (isImageMessage && typeof swipes[swipeIndex] === 'object') {
+      newContent = swipes[swipeIndex].content;
+      newImageUrl = swipes[swipeIndex].imageUrl;
+      newImagePrompt = swipes[swipeIndex].imagePrompt;
+    } else {
+      newContent = swipes[swipeIndex];
+      newImageUrl = message.image_url;
+      newImagePrompt = message.image_prompt;
+    }
+
+    // Update content, currentSwipe index, and image fields for image messages
+    db.prepare(`
+      UPDATE messages
+      SET content = ?, current_swipe = ?, image_url = ?, image_prompt = ?
+      WHERE id = ?
+    `).run(newContent, swipeIndex, newImageUrl, newImagePrompt, messageId);
+
+    return this.getMessage(messageId);
+  }
+
+  /**
+   * Add a new swipe variant to a message
+   * @param {number} messageId - Message ID
+   * @param {string} newContent - New content variant
+   * @param {string|null} newReasoning - Reasoning for this variant (optional)
+   * @returns {object} Updated message with new swipe count
+   */
+  addSwipe(messageId, newContent, newReasoning = null) {
+    const message = this.getMessage(messageId);
+
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    // Parse existing swipes (or create array from current content)
+    let swipes = message.swipes ? JSON.parse(message.swipes) : [message.content];
+
+    // Parse existing reasoning array
+    let reasoningArray = [];
+    if (message.reasoning) {
+      try {
+        const parsed = JSON.parse(message.reasoning);
+        reasoningArray = Array.isArray(parsed) ? parsed : [message.reasoning];
+      } catch {
+        reasoningArray = [message.reasoning];
+      }
+    } else {
+      // Fill with nulls for existing swipes without reasoning
+      reasoningArray = new Array(swipes.length).fill(null);
+    }
+
+    // Append new variant
+    swipes.push(newContent);
+    reasoningArray.push(newReasoning);
+
+    const newIndex = swipes.length - 1;
+
+    // Update message
+    db.prepare(`
+      UPDATE messages
+      SET content = ?, swipes = ?, current_swipe = ?, reasoning = ?
+      WHERE id = ?
+    `).run(newContent, JSON.stringify(swipes), newIndex, JSON.stringify(reasoningArray), messageId);
+
+    return {
+      message: this.getMessage(messageId),
+      swipeCount: swipes.length,
+      currentSwipe: newIndex
+    };
+  }
+
+  /**
+   * Add a new image swipe variant to a message
+   * @param {number} messageId - Message ID
+   * @param {string} newContent - New caption/content
+   * @param {string} newImageUrl - New image URL
+   * @param {string} newImagePrompt - New image prompt
+   * @param {string|null} newReasoning - Reasoning for this variant (optional)
+   * @returns {object} Updated message with new swipe count
+   */
+  addImageSwipe(messageId, newContent, newImageUrl, newImagePrompt, newReasoning = null) {
+    const message = this.getMessage(messageId);
+
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    // For image messages, store swipes as objects
+    let swipes = [];
+    if (message.swipes) {
+      swipes = JSON.parse(message.swipes);
+    } else {
+      // Initialize with current message data as first swipe
+      swipes = [{
+        content: message.content,
+        imageUrl: message.image_url,
+        imagePrompt: message.image_prompt
+      }];
+    }
+
+    // Parse existing reasoning array
+    let reasoningArray = [];
+    if (message.reasoning) {
+      try {
+        const parsed = JSON.parse(message.reasoning);
+        reasoningArray = Array.isArray(parsed) ? parsed : [message.reasoning];
+      } catch {
+        reasoningArray = [message.reasoning];
+      }
+    } else {
+      reasoningArray = new Array(swipes.length).fill(null);
+    }
+
+    // Append new variant as object
+    swipes.push({
+      content: newContent,
+      imageUrl: newImageUrl,
+      imagePrompt: newImagePrompt
+    });
+    reasoningArray.push(newReasoning);
+
+    const newIndex = swipes.length - 1;
+
+    // Update message with new image data
+    db.prepare(`
+      UPDATE messages
+      SET content = ?, swipes = ?, current_swipe = ?, reasoning = ?, image_url = ?, image_prompt = ?
+      WHERE id = ?
+    `).run(newContent, JSON.stringify(swipes), newIndex, JSON.stringify(reasoningArray), newImageUrl, newImagePrompt, messageId);
+
+    return {
+      message: this.getMessage(messageId),
+      swipeCount: swipes.length,
+      currentSwipe: newIndex
+    };
+  }
+
+  /**
+   * Get swipe info for a message
+   * @param {number} messageId - Message ID
+   * @returns {object} { swipes: array, currentSwipe: number, total: number }
+   */
+  getSwipeInfo(messageId) {
+    const message = this.getMessage(messageId);
+
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    const swipes = message.swipes ? JSON.parse(message.swipes) : [message.content];
+    const currentSwipe = message.current_swipe || 0;
+
+    return {
+      swipes,
+      currentSwipe,
+      total: swipes.length
+    };
   }
 
   /**

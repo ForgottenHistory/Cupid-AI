@@ -57,3 +57,5 @@ backend/config/prompts.json
 backend/config/imageTagPrompts.json
 backend/database.db-journal
 CLAUDE.md
+AI-Chat-Template/
+FEATURE_COMPARISON.md

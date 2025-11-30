@@ -9,6 +9,7 @@ import conversationService from '../services/conversationService.js';
 import messageService from '../services/messageService.js';
 import messageProcessor from '../services/messageProcessor.js';
 import imageTagGenerationService from '../services/imageTagGenerationService.js';
+import sdService from '../services/sdService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 import db from '../db/database.js';
 
@@ -310,6 +311,236 @@ router.put('/messages/:messageId', authenticateToken, (req, res) => {
     if (error.message === 'Message not found') status = 404;
     if (error.message === 'Unauthorized') status = 403;
     res.status(status).json({ error: error.message || 'Failed to edit message' });
+  }
+});
+
+/**
+ * POST /api/chat/messages/:messageId/swipe
+ * Navigate to a different swipe variant
+ */
+router.post('/messages/:messageId/swipe', authenticateToken, (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { swipeIndex } = req.body;
+    const userId = req.user.id;
+
+    if (typeof swipeIndex !== 'number') {
+      return res.status(400).json({ error: 'swipeIndex is required and must be a number' });
+    }
+
+    const message = messageService.setSwipeIndex(parseInt(messageId), userId, swipeIndex);
+    res.json({ success: true, message });
+  } catch (error) {
+    console.error('Swipe message error:', error);
+    let status = 500;
+    if (error.message === 'Message not found') status = 404;
+    if (error.message === 'Unauthorized') status = 403;
+    if (error.message === 'Swipe index out of range') status = 400;
+    res.status(status).json({ error: error.message || 'Failed to swipe message' });
+  }
+});
+
+/**
+ * POST /api/chat/messages/:messageId/regenerate
+ * Regenerate a message - creates a new swipe variant
+ */
+router.post('/messages/:messageId/regenerate', authenticateToken, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { characterData } = req.body;
+    const userId = req.user.id;
+
+    if (!characterData) {
+      return res.status(400).json({ error: 'Character data is required' });
+    }
+
+    // Get the message and verify ownership
+    const message = messageService.getMessageWithUser(parseInt(messageId));
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    if (message.user_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Only allow regenerating assistant messages
+    if (message.role !== 'assistant') {
+      return res.status(400).json({ error: 'Can only regenerate assistant messages' });
+    }
+
+    // Get conversation history UP TO this message (not including it)
+    const allMessages = messageService.getMessages(message.conversation_id);
+    const messageIndex = allMessages.findIndex(m => m.id === parseInt(messageId));
+    const historyMessages = allMessages.slice(0, messageIndex);
+
+    // Convert to AI message format
+    const aiMessages = historyMessages.map(m => ({
+      role: m.role,
+      content: m.content
+    }));
+
+    // Get character's current status and user bio
+    const currentStatusInfo = getCurrentStatusFromSchedule(characterData.schedule);
+    const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
+    const userBio = user?.bio || null;
+
+    // Check if this is an image message - regenerate image too
+    if (message.message_type === 'image') {
+      // Get character's image tags, contextual tags, and prompt overrides
+      const backendCharacter = db.prepare(`
+        SELECT card_data, image_tags, contextual_tags, main_prompt_override, negative_prompt_override
+        FROM characters WHERE id = ? AND user_id = ?
+      `).get(characterData.id, userId);
+
+      // Get image tags from backend character or fall back to characterData
+      const imageTags = backendCharacter?.image_tags ||
+                        characterData.imageTags ||
+                        characterData.data?.extensions?.chub?.full_path || '';
+      const contextualTags = backendCharacter?.contextual_tags || '';
+
+      // Get SD settings
+      const sdSettings = db.prepare(`
+        SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
+               sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
+               sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model,
+               sd_main_prompt, sd_negative_prompt, sd_model
+        FROM users WHERE id = ?
+      `).get(userId);
+
+      // Get recent messages for context from conversation history
+      const recentMessages = aiMessages.slice(-50).map(m => ({
+        role: m.role,
+        content: m.content
+      }));
+
+      // Generate context-aware tags using user's Image Tag LLM settings
+      const generatedContextTags = await imageTagGenerationService.generateTags({
+        recentMessages,
+        contextualTags: contextualTags,
+        currentStatus: currentStatusInfo,
+        userId: userId
+      });
+
+      console.log(`📝 Always Needed Tags: ${imageTags}`);
+      console.log(`🏷️ Contextual Tags: ${contextualTags}`);
+      console.log(`🤖 AI-Generated Context Tags: ${generatedContextTags}`);
+
+      // Generate new image
+      const imageResult = await sdService.generateImage({
+        characterTags: imageTags,
+        contextTags: generatedContextTags,
+        userSettings: sdSettings,
+        mainPromptOverride: backendCharacter?.main_prompt_override,
+        negativePromptOverride: backendCharacter?.negative_prompt_override
+      });
+
+      if (!imageResult.success) {
+        return res.status(500).json({ error: 'Image generation failed: ' + imageResult.error });
+      }
+
+      // Save the new image file
+      const imageDir = path.join(__dirname, '..', '..', 'uploads', 'images');
+      if (!fs.existsSync(imageDir)) {
+        fs.mkdirSync(imageDir, { recursive: true });
+      }
+
+      const timestamp = Date.now();
+      const filename = `image_${characterData.id || 'unknown'}_${timestamp}.png`;
+      const filepath = path.join(imageDir, filename);
+      fs.writeFileSync(filepath, imageResult.imageBuffer);
+
+      const newImageUrl = `/uploads/images/${filename}`;
+      const newImagePrompt = imageResult.prompt;
+
+      // Generate a new caption for the image
+      const aiResponse = await aiService.createChatCompletion({
+        messages: aiMessages,
+        characterData: characterData,
+        userId: userId,
+        currentStatus: currentStatusInfo,
+        userBio: userBio,
+        schedule: characterData.schedule,
+        decision: { shouldSendImage: true, imageTags: `${imageTags}, ${generatedContextTags}` }
+      });
+
+      const cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
+
+      // Add as image swipe variant
+      const result = messageService.addImageSwipe(
+        parseInt(messageId),
+        cleanedContent,
+        newImageUrl,
+        newImagePrompt,
+        aiResponse.reasoning
+      );
+
+      res.json({
+        success: true,
+        content: cleanedContent,
+        imageUrl: newImageUrl,
+        imagePrompt: newImagePrompt,
+        swipeCount: result.swipeCount,
+        currentSwipe: result.currentSwipe,
+        message: result.message
+      });
+    } else {
+      // Text message regeneration
+      const aiResponse = await aiService.createChatCompletion({
+        messages: aiMessages,
+        characterData: characterData,
+        userId: userId,
+        currentStatus: currentStatusInfo,
+        userBio: userBio,
+        schedule: characterData.schedule
+      });
+
+      // Clean up em dashes
+      const cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
+
+      // Add as new swipe variant
+      const result = messageService.addSwipe(parseInt(messageId), cleanedContent, aiResponse.reasoning);
+
+      res.json({
+        success: true,
+        content: cleanedContent,
+        swipeCount: result.swipeCount,
+        currentSwipe: result.currentSwipe,
+        message: result.message
+      });
+    }
+  } catch (error) {
+    console.error('Regenerate message error:', error);
+    res.status(500).json({ error: error.message || 'Failed to regenerate message' });
+  }
+});
+
+/**
+ * GET /api/chat/messages/:messageId/swipes
+ * Get swipe info for a message
+ */
+router.get('/messages/:messageId/swipes', authenticateToken, (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user.id;
+
+    // Verify ownership
+    const message = messageService.getMessageWithUser(parseInt(messageId));
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    if (message.user_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const swipeInfo = messageService.getSwipeInfo(parseInt(messageId));
+    res.json(swipeInfo);
+  } catch (error) {
+    console.error('Get swipes error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get swipes' });
   }
 });
 

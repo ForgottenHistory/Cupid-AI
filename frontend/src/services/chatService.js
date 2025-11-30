@@ -104,6 +104,34 @@ class ChatService {
     });
     return response.data;
   }
+
+  /**
+   * Navigate to a different swipe variant of a message
+   */
+  async swipeMessage(messageId, swipeIndex) {
+    const response = await api.post(`/chat/messages/${messageId}/swipe`, {
+      swipeIndex,
+    });
+    return response.data;
+  }
+
+  /**
+   * Regenerate a message (creates a new swipe variant)
+   */
+  async regenerateMessage(messageId, characterData) {
+    const response = await api.post(`/chat/messages/${messageId}/regenerate`, {
+      characterData,
+    });
+    return response.data;
+  }
+
+  /**
+   * Get swipe info for a message
+   */
+  async getSwipeInfo(messageId) {
+    const response = await api.get(`/chat/messages/${messageId}/swipes`);
+    return response.data;
+  }
 }
 
 export default new ChatService();
