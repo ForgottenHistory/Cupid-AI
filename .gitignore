@@ -52,9 +52,10 @@ test_output.wav
 backend/danbooru_tags.txt
 .claude/settings.local.json
 .claude/settings.local.json
-backend/danbooru_tags.txt
 backend/config/prompts.json
 backend/config/imageTagPrompts.json
+backend/config/danbooru_tags.txt
+backend/config/users/
 backend/database.db-journal
 CLAUDE.md
 AI-Chat-Template/

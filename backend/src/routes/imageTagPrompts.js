@@ -1,16 +1,9 @@
 import express from 'express';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { authenticateToken } from '../middleware/auth.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getUserConfigPath } from '../utils/userConfig.js';
 
 const router = express.Router();
-
-// Path to image tag prompts config file
-const IMAGE_TAG_PROMPTS_CONFIG_PATH = path.join(__dirname, '../../config/imageTagPrompts.json');
 
 // Default prompts if file doesn't exist
 const DEFAULT_IMAGE_TAG_PROMPTS = {
@@ -111,25 +104,18 @@ Think of it like the same person taking multiple selfies in the same outfit - th
 upper body, selfie, smiling, white crop top, denim shorts, bedroom, soft lighting, looking at viewer`
 };
 
-// Ensure config directory exists
-const ensureConfigDir = () => {
-  const configDir = path.dirname(IMAGE_TAG_PROMPTS_CONFIG_PATH);
-  if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir, { recursive: true });
-  }
-};
+// Load image tag prompts for a specific user
+const loadImageTagPrompts = (userId) => {
+  const configPath = getUserConfigPath(userId, 'imageTagPrompts');
 
-// Load image tag prompts from file or create with defaults
-const loadImageTagPrompts = () => {
-  ensureConfigDir();
-
-  if (!fs.existsSync(IMAGE_TAG_PROMPTS_CONFIG_PATH)) {
-    fs.writeFileSync(IMAGE_TAG_PROMPTS_CONFIG_PATH, JSON.stringify(DEFAULT_IMAGE_TAG_PROMPTS, null, 2), 'utf-8');
+  // If user config doesn't exist yet, create it with defaults
+  if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_IMAGE_TAG_PROMPTS, null, 2), 'utf-8');
     return DEFAULT_IMAGE_TAG_PROMPTS;
   }
 
   try {
-    const data = fs.readFileSync(IMAGE_TAG_PROMPTS_CONFIG_PATH, 'utf-8');
+    const data = fs.readFileSync(configPath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     console.error('Failed to parse image tag prompts config, using defaults:', error);
@@ -139,11 +125,11 @@ const loadImageTagPrompts = () => {
 
 /**
  * GET /api/image-tag-prompts
- * Get all image tag prompts
+ * Get all image tag prompts for the authenticated user
  */
 router.get('/', authenticateToken, (req, res) => {
   try {
-    const prompts = loadImageTagPrompts();
+    const prompts = loadImageTagPrompts(req.user.id);
     res.json(prompts);
   } catch (error) {
     console.error('Failed to read image tag prompts:', error);
@@ -153,7 +139,7 @@ router.get('/', authenticateToken, (req, res) => {
 
 /**
  * PUT /api/image-tag-prompts
- * Update all image tag prompts
+ * Update all image tag prompts for the authenticated user
  */
 router.put('/', authenticateToken, (req, res) => {
   try {
@@ -163,10 +149,10 @@ router.put('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Prompts must be an object' });
     }
 
-    ensureConfigDir();
-    fs.writeFileSync(IMAGE_TAG_PROMPTS_CONFIG_PATH, JSON.stringify(prompts, null, 2), 'utf-8');
+    const configPath = getUserConfigPath(req.user.id, 'imageTagPrompts');
+    fs.writeFileSync(configPath, JSON.stringify(prompts, null, 2), 'utf-8');
 
-    console.log('✅ Image tag prompts config updated');
+    console.log(`✅ Image tag prompts config updated for user ${req.user.id}`);
     res.json({ success: true, message: 'Image tag prompts updated successfully' });
   } catch (error) {
     console.error('Failed to update image tag prompts:', error);
@@ -176,14 +162,14 @@ router.put('/', authenticateToken, (req, res) => {
 
 /**
  * POST /api/image-tag-prompts/reset
- * Reset image tag prompts to defaults
+ * Reset image tag prompts to defaults for the authenticated user
  */
 router.post('/reset', authenticateToken, (req, res) => {
   try {
-    ensureConfigDir();
-    fs.writeFileSync(IMAGE_TAG_PROMPTS_CONFIG_PATH, JSON.stringify(DEFAULT_IMAGE_TAG_PROMPTS, null, 2), 'utf-8');
+    const configPath = getUserConfigPath(req.user.id, 'imageTagPrompts');
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_IMAGE_TAG_PROMPTS, null, 2), 'utf-8');
 
-    console.log('✅ Image tag prompts reset to defaults');
+    console.log(`✅ Image tag prompts reset to defaults for user ${req.user.id}`);
     res.json({ success: true, message: 'Image tag prompts reset to defaults', prompts: DEFAULT_IMAGE_TAG_PROMPTS });
   } catch (error) {
     console.error('Failed to reset image tag prompts:', error);

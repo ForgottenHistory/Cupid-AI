@@ -24,7 +24,7 @@ class PersonalityService {
   async generatePersonality(characterData, userId = null) {
     try {
       const aiService = await this.getAIService();
-      const prompts = loadPrompts();
+      const prompts = loadPrompts(userId);
       const characterName = characterData.name || 'Character';
       const description = characterData.description || 'N/A';
       const personalityText = characterData.personality || 'N/A';

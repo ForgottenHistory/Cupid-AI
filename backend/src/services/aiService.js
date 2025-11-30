@@ -83,7 +83,7 @@ class AIService {
    */
   async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null }) {
     try {
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName);
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName, userId);
       const userSettings = llmSettingsService.getUserSettings(userId);
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
@@ -153,7 +153,7 @@ class AIService {
 
       // For proactive messages, append instructions
       if (isProactive && proactiveType) {
-        const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage);
+        const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage, userId);
         finalMessages.push({ role: 'system', content: proactiveInstructions });
       }
 
@@ -749,7 +749,7 @@ class AIService {
    * Stream chat completion (for future implementation)
    */
   async createChatCompletionStream({ messages, characterData, model = null, userId = null, currentStatus = null, userBio = null, schedule = null }) {
-    const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, currentStatus, userBio, schedule);
+    const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, null, currentStatus, userBio, schedule, false, false, null, null, null, null, null, userId);
     const userSettings = llmSettingsService.getUserSettings(userId);
     const selectedModel = model || userSettings.model;
     const provider = userSettings.provider || 'openrouter';

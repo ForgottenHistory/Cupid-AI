@@ -24,7 +24,7 @@ class CompactService {
     const conversationText = conversationLines.join('\n');
 
     // Load custom prompt from config
-    const prompts = loadPrompts();
+    const prompts = loadPrompts(userId);
     const template = prompts.compactionPrompt;
 
     // Replace placeholders

@@ -1,16 +1,9 @@
 import express from 'express';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { authenticateToken } from '../middleware/auth.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getUserConfigPath, DEFAULT_CONFIGS } from '../utils/userConfig.js';
 
 const router = express.Router();
-
-// Path to prompts config file
-const PROMPTS_CONFIG_PATH = path.join(__dirname, '../../config/prompts.json');
 
 // Default prompts if file doesn't exist
 const DEFAULT_PROMPTS = {
@@ -361,25 +354,18 @@ Guidelines:
 Output ONLY the two lines in the exact format shown above, nothing else.`
 };
 
-// Ensure config directory exists
-const ensureConfigDir = () => {
-  const configDir = path.dirname(PROMPTS_CONFIG_PATH);
-  if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir, { recursive: true });
-  }
-};
+// Load prompts for a specific user
+const loadPrompts = (userId) => {
+  const configPath = getUserConfigPath(userId, 'prompts');
 
-// Load prompts from file or create with defaults
-const loadPrompts = () => {
-  ensureConfigDir();
-
-  if (!fs.existsSync(PROMPTS_CONFIG_PATH)) {
-    fs.writeFileSync(PROMPTS_CONFIG_PATH, JSON.stringify(DEFAULT_PROMPTS, null, 2), 'utf-8');
+  // If user config doesn't exist yet and default doesn't exist, create default
+  if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_PROMPTS, null, 2), 'utf-8');
     return DEFAULT_PROMPTS;
   }
 
   try {
-    const data = fs.readFileSync(PROMPTS_CONFIG_PATH, 'utf-8');
+    const data = fs.readFileSync(configPath, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
     console.error('Failed to parse prompts config, using defaults:', error);
@@ -389,11 +375,11 @@ const loadPrompts = () => {
 
 /**
  * GET /api/prompts
- * Get all prompts
+ * Get all prompts for the authenticated user
  */
 router.get('/', authenticateToken, (req, res) => {
   try {
-    const prompts = loadPrompts();
+    const prompts = loadPrompts(req.user.id);
     res.json(prompts);
   } catch (error) {
     console.error('Failed to read prompts:', error);
@@ -403,7 +389,7 @@ router.get('/', authenticateToken, (req, res) => {
 
 /**
  * PUT /api/prompts
- * Update all prompts
+ * Update all prompts for the authenticated user
  */
 router.put('/', authenticateToken, (req, res) => {
   try {
@@ -413,10 +399,10 @@ router.put('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Prompts must be an object' });
     }
 
-    ensureConfigDir();
-    fs.writeFileSync(PROMPTS_CONFIG_PATH, JSON.stringify(prompts, null, 2), 'utf-8');
+    const configPath = getUserConfigPath(req.user.id, 'prompts');
+    fs.writeFileSync(configPath, JSON.stringify(prompts, null, 2), 'utf-8');
 
-    console.log('✅ Prompts config updated');
+    console.log(`✅ Prompts config updated for user ${req.user.id}`);
     res.json({ success: true, message: 'Prompts updated successfully' });
   } catch (error) {
     console.error('Failed to update prompts:', error);
@@ -426,14 +412,14 @@ router.put('/', authenticateToken, (req, res) => {
 
 /**
  * POST /api/prompts/reset
- * Reset prompts to defaults
+ * Reset prompts to defaults for the authenticated user
  */
 router.post('/reset', authenticateToken, (req, res) => {
   try {
-    ensureConfigDir();
-    fs.writeFileSync(PROMPTS_CONFIG_PATH, JSON.stringify(DEFAULT_PROMPTS, null, 2), 'utf-8');
+    const configPath = getUserConfigPath(req.user.id, 'prompts');
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_PROMPTS, null, 2), 'utf-8');
 
-    console.log('✅ Prompts reset to defaults');
+    console.log(`✅ Prompts reset to defaults for user ${req.user.id}`);
     res.json({ success: true, message: 'Prompts reset to defaults', prompts: DEFAULT_PROMPTS });
   } catch (error) {
     console.error('Failed to reset prompts:', error);

@@ -711,7 +711,7 @@ router.post('/test-memory-extraction/:conversationId', authenticateToken, async 
     }).join('\n');
 
     // Build memory extraction prompt using custom prompts from config
-    const prompts = loadPrompts();
+    const prompts = loadPrompts(userId);
     const template = prompts.memoryExtractionPrompt;
 
     // Format existing memories

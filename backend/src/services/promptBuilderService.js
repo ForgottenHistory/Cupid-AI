@@ -6,8 +6,8 @@ class PromptBuilderService {
   /**
    * Get a random opener variety and format it as a string
    */
-  getRandomOpenerVariety() {
-    const prompts = loadPrompts();
+  getRandomOpenerVariety(userId) {
+    const prompts = loadPrompts(userId);
     const varieties = prompts.openerVarieties;
 
     if (!varieties || varieties.length === 0) {
@@ -79,7 +79,7 @@ class PromptBuilderService {
   /**
    * Build system prompt from character data
    */
-  buildSystemPrompt(characterData, characterId = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, matchedDate = null, userName = null) {
+  buildSystemPrompt(characterData, characterId = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, matchedDate = null, userName = null, userId = null) {
     const parts = [];
 
     // Add current date and time
@@ -154,7 +154,7 @@ class PromptBuilderService {
     }
 
     // Load prompts from config
-    const prompts = loadPrompts();
+    const prompts = loadPrompts(userId);
 
     // Add departing context
     if (isDeparting) {
@@ -289,9 +289,9 @@ class PromptBuilderService {
   /**
    * Build proactive message instructions (appended AFTER message history)
    */
-  buildProactiveInstructions(proactiveType, gapHours, isFirstMessage = false) {
+  buildProactiveInstructions(proactiveType, gapHours, isFirstMessage = false, userId = null) {
     const parts = [];
-    const prompts = loadPrompts();
+    const prompts = loadPrompts(userId);
 
     // Add current date/time at the start for ALL proactive messages
     const now = new Date();
@@ -329,7 +329,7 @@ class PromptBuilderService {
     parts.push(`\n\n💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);
 
     // Always use fresh prompt with randomly selected opener variety
-    const openerVariety = this.getRandomOpenerVariety();
+    const openerVariety = this.getRandomOpenerVariety(userId);
     const freshPrompt = prompts.proactiveFreshPrompt.replace('{openerVariety}', openerVariety || 'Start with something interesting and engaging');
     parts.push(`\n\n${freshPrompt}`);
     parts.push(`\n\n${prompts.proactiveClosingPrompt}`);

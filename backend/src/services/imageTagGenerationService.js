@@ -1,31 +1,20 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import aiService from './aiService.js';
 import llmSettingsService from './llmSettingsService.js';
 import { loadImageTagPrompts } from '../routes/imageTagPrompts.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { loadTagLibrary } from '../routes/tagLibrary.js';
 
 class ImageTagGenerationService {
   constructor() {
-    this.tagLibrary = null;
-    this.loadTagLibrary();
+    // Tag library is now loaded per-user, no global cache
   }
 
   /**
-   * Load Danbooru tag library from file
+   * Load Danbooru tag library for a specific user
+   * @param {number} userId - User ID
+   * @returns {string} Tag library content
    */
-  loadTagLibrary() {
-    try {
-      const tagLibraryPath = path.join(__dirname, '../../danbooru_tags.txt');
-      this.tagLibrary = fs.readFileSync(tagLibraryPath, 'utf-8');
-      console.log('✅ Loaded Danbooru tag library');
-    } catch (error) {
-      console.error('❌ Failed to load Danbooru tag library:', error.message);
-      this.tagLibrary = '';
-    }
+  getTagLibrary(userId) {
+    return loadTagLibrary(userId);
   }
 
   /**
@@ -71,7 +60,7 @@ class ImageTagGenerationService {
         .join('\n');
 
       // Build prompt for LLM with previous image tags and time gap info
-      const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGapSinceLastImage);
+      const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGapSinceLastImage, userId);
 
       // Call LLM to generate tags using user's configured settings
       const response = await aiService.createBasicCompletion(prompt, {
@@ -94,7 +83,7 @@ class ImageTagGenerationService {
       console.log('🤖 LLM generated tags:', generatedTags);
 
       // Log validation results but don't filter tags (keeps everything)
-      this.logTagValidation(generatedTags, contextualTags);
+      this.logTagValidation(generatedTags, contextualTags, userId);
 
       return generatedTags;
     } catch (error) {
@@ -107,9 +96,10 @@ class ImageTagGenerationService {
   /**
    * Build prompt for LLM tag generation
    */
-  buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGap = false) {
-    // Load prompts from config
-    const prompts = loadImageTagPrompts();
+  buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGap = false, userId = null) {
+    // Load prompts and tag library for this user
+    const prompts = loadImageTagPrompts(userId);
+    const tagLibrary = this.getTagLibrary(userId);
 
     // Format current status info
     let statusInfo = 'Unknown';
@@ -125,7 +115,7 @@ class ImageTagGenerationService {
 
 Here is the COMPLETE library of valid Danbooru tags you can choose from:
 
-${this.tagLibrary}
+${tagLibrary}
 
 ---
 
@@ -208,8 +198,10 @@ Your selected tags:`;
    * Log tag validation results (for monitoring) without filtering
    * @param {string} generatedTags - Comma-separated tags from LLM
    * @param {string} contextualTags - Character-specific contextual tags (exempt from validation)
+   * @param {number} userId - User ID for loading tag library
    */
-  logTagValidation(generatedTags, contextualTags = '') {
+  logTagValidation(generatedTags, contextualTags = '', userId = null) {
+    const tagLibrary = this.getTagLibrary(userId);
     // Common colors that can be prefixed to clothing items
     const validColors = [
       'white', 'black', 'red', 'blue', 'green', 'yellow', 'orange', 'purple',
@@ -245,7 +237,7 @@ Your selected tags:`;
 
     // Create set of valid tags (case-insensitive)
     const validTagsSet = new Set(
-      this.tagLibrary
+      tagLibrary
         .split(/[\n,]/)
         .map(tag => tag.trim().toLowerCase())
         .filter(tag => tag.length > 0 && !tag.startsWith('#'))

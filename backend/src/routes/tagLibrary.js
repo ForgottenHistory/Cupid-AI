@@ -1,24 +1,31 @@
 import express from 'express';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { authenticateToken } from '../middleware/auth.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getUserConfigPath } from '../utils/userConfig.js';
 
 const router = express.Router();
 
-// Path to danbooru_tags.txt
-const TAG_LIBRARY_PATH = path.join(__dirname, '../../danbooru_tags.txt');
+/**
+ * Load tag library for a specific user
+ */
+const loadTagLibrary = (userId) => {
+  const configPath = getUserConfigPath(userId, 'tagLibrary');
+
+  try {
+    return fs.readFileSync(configPath, 'utf-8');
+  } catch (error) {
+    console.error('Failed to read tag library:', error);
+    return '';
+  }
+};
 
 /**
  * GET /api/tag-library
- * Get the current tag library content
+ * Get the current tag library content for the authenticated user
  */
 router.get('/', authenticateToken, (req, res) => {
   try {
-    const content = fs.readFileSync(TAG_LIBRARY_PATH, 'utf-8');
+    const content = loadTagLibrary(req.user.id);
     res.json({ content });
   } catch (error) {
     console.error('Failed to read tag library:', error);
@@ -28,7 +35,7 @@ router.get('/', authenticateToken, (req, res) => {
 
 /**
  * PUT /api/tag-library
- * Update the tag library content
+ * Update the tag library content for the authenticated user
  */
 router.put('/', authenticateToken, (req, res) => {
   try {
@@ -38,21 +45,18 @@ router.put('/', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Content must be a string' });
     }
 
-    // Write to file
-    fs.writeFileSync(TAG_LIBRARY_PATH, content, 'utf-8');
+    const configPath = getUserConfigPath(req.user.id, 'tagLibrary');
+    fs.writeFileSync(configPath, content, 'utf-8');
 
-    // Reload tag library in imageTagGenerationService
-    // Import dynamically to avoid circular dependency issues
-    import('../services/imageTagGenerationService.js').then(module => {
-      module.default.loadTagLibrary();
-      console.log('✅ Tag library updated and reloaded');
-    });
-
+    console.log(`✅ Tag library updated for user ${req.user.id}`);
     res.json({ success: true, message: 'Tag library updated successfully' });
   } catch (error) {
     console.error('Failed to update tag library:', error);
     res.status(500).json({ error: 'Failed to update tag library' });
   }
 });
+
+// Export for use in imageTagGenerationService
+export { loadTagLibrary };
 
 export default router;

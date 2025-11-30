@@ -14,7 +14,7 @@ export async function cleanupDescription(req, res) {
       return res.status(400).json({ error: 'Description is required' });
     }
 
-    const prompt = buildCleanupDescriptionPrompt(description);
+    const prompt = buildCleanupDescriptionPrompt(description, req.user.id);
 
     const response = await aiService.createBasicCompletion(prompt, {
       messageType: 'cleanup-description',
@@ -41,7 +41,7 @@ export async function generateDatingProfile(req, res) {
       return res.status(400).json({ error: 'Description is required' });
     }
 
-    const prompt = buildDatingProfilePrompt(description, name);
+    const prompt = buildDatingProfilePrompt(description, name, req.user.id);
 
     const response = await aiService.createBasicCompletion(prompt, {
       messageType: 'dating-profile',
@@ -81,7 +81,7 @@ export async function generateSchedule(req, res) {
       return res.status(400).json({ error: 'Invalid day. Must be one of: MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY' });
     }
 
-    const prompt = buildSchedulePrompt(description, name, day ? day.toUpperCase() : null, extraInstructions);
+    const prompt = buildSchedulePrompt(description, name, day ? day.toUpperCase() : null, extraInstructions, req.user.id);
 
     const response = await aiService.createBasicCompletion(prompt, {
       messageType: day ? `schedule-${day.toLowerCase()}` : 'schedule',

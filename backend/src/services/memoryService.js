@@ -157,7 +157,8 @@ class MemoryService {
     const memoryPrompt = this._buildMemoryExtractionPrompt(
       characterName,
       conversationHistory,
-      existingMemories
+      existingMemories,
+      userId
     );
 
     console.log(`🧠 Extracting NEW memories for ${characterName} from ${messages.length} messages...`);
@@ -247,9 +248,9 @@ class MemoryService {
    * @returns {string} Memory extraction prompt
    * @private
    */
-  _buildMemoryExtractionPrompt(characterName, conversationHistory, existingMemories) {
+  _buildMemoryExtractionPrompt(characterName, conversationHistory, existingMemories, userId) {
     // Load custom prompts from config
-    const prompts = loadPrompts();
+    const prompts = loadPrompts(userId);
     const template = prompts.memoryExtractionPrompt;
 
     // Format existing memories section with importance scores

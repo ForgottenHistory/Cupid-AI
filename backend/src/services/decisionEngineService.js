@@ -71,7 +71,7 @@ class DecisionEngineService {
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
       // Build system prompt (same as chat) - include characterId for memories
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, false, false, null, null, null, null, 'User');
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, false, false, null, null, null, null, 'User', userId);
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {
@@ -83,7 +83,7 @@ class DecisionEngineService {
 
       // Load decision prompt from config
       const { loadPrompts } = await import('../routes/prompts.js');
-      const prompts = loadPrompts();
+      const prompts = loadPrompts(userId);
 
       // Build decision prompt with dynamic replacements
       let decisionPromptTemplate = prompts.decisionPrompt;
@@ -219,7 +219,7 @@ ${decisionPromptTemplate}`;
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
       // Build system prompt (same as chat) - include characterId for memories
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, false, false, null, null, null, null, 'User');
+      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, false, false, null, null, null, null, 'User', userId);
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {
@@ -231,10 +231,10 @@ ${decisionPromptTemplate}`;
 
       // Load prompts from config
       const { loadPrompts } = await import('../routes/prompts.js');
-      const prompts = loadPrompts();
+      const prompts = loadPrompts(userId);
 
       // Get random opener variety and inject it into the fresh prompt
-      const openerVariety = promptBuilderService.getRandomOpenerVariety();
+      const openerVariety = promptBuilderService.getRandomOpenerVariety(userId);
       const freshPrompt = prompts.proactiveFreshPrompt.replace('{openerVariety}', openerVariety || 'Start with something interesting and engaging');
 
       const decisionPrompt = `${systemPrompt}
