@@ -196,10 +196,6 @@ class TimeGapService {
 
     console.log(`🔍 Checking ${messages.length} messages for consecutive TIME GAPs`);
 
-    // Debug: show message types in order
-    const typeSequence = messages.map(m => m.message_type === 'time_gap' ? 'GAP' : m.message_type?.substring(0,3) || 'txt').join(' -> ');
-    console.log(`📋 Message sequence: ${typeSequence}`);
-
     const toDelete = [];
     let updatedId = null;
 
@@ -214,8 +210,6 @@ class TimeGapService {
           consecutiveGaps.push(messages[j]);
           j++;
         }
-
-        console.log(`⏰ Found ${consecutiveGaps.length} consecutive TIME GAP(s) starting at index ${i}`);
 
         if (consecutiveGaps.length > 1) {
           // Sum up all gap durations
