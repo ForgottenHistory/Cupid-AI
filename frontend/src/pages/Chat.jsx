@@ -29,8 +29,16 @@ const Chat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageDescription, setImageDescription] = useState('');
 
-  // Character image visibility state (default visible)
-  const [showCharacterImage, setShowCharacterImage] = useState(true);
+  // Character image visibility state (persistent, default visible)
+  const [showCharacterImage, setShowCharacterImage] = useState(() => {
+    const saved = localStorage.getItem('chatShowCharacterImage');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  // Persist character image visibility
+  useEffect(() => {
+    localStorage.setItem('chatShowCharacterImage', JSON.stringify(showCharacterImage));
+  }, [showCharacterImage]);
 
   // Image modal state (to hide input when viewing full-screen images)
   const [imageModalOpen, setImageModalOpen] = useState(false);

@@ -12,7 +12,18 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
   const [showMenu, setShowMenu] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
-  const [collapsed, setCollapsed] = useState(true);
+
+  // Banner collapsed state (persistent, default collapsed)
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem('chatBannerCollapsed');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  // Persist banner collapsed state
+  useEffect(() => {
+    localStorage.setItem('chatBannerCollapsed', JSON.stringify(collapsed));
+  }, [collapsed]);
+
   const [showMemories, setShowMemories] = useState(false);
   const [memories, setMemories] = useState([]);
   const [loadingMemories, setLoadingMemories] = useState(false);
