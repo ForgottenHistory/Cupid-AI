@@ -77,8 +77,9 @@ class CompactService {
 
       if (conversation && messages.length > 0) {
         // Extract memories BEFORE deleting the block
+        // Skip degradation here - it's applied once at the start of compaction session
         try {
-          await memoryService.extractMemories(conversation.character_id, messages, userId);
+          await memoryService.extractMemories(conversation.character_id, messages, userId, { skipDegradation: true });
         } catch (memoryError) {
           console.error('⚠️  Memory extraction failed, continuing with deletion:', memoryError);
         }
@@ -162,9 +163,10 @@ class CompactService {
       }
 
       // Extract memories BEFORE deleting the block
+      // Skip degradation here - it's applied once at the start of compaction session
       if (conversation) {
         try {
-          await memoryService.extractMemories(conversation.character_id, messages, userId);
+          await memoryService.extractMemories(conversation.character_id, messages, userId, { skipDegradation: true });
         } catch (memoryError) {
           console.error('⚠️  Memory extraction failed, continuing with compacting:', memoryError);
         }
@@ -248,6 +250,19 @@ class CompactService {
       // Emit compacting_start event to lock the chat UI
       if (io && characterId) {
         io.to(`user:${userId}`).emit('compacting_start', { characterId });
+      }
+
+      // Apply memory degradation ONCE at the start of the compaction session
+      // (not per-block, to avoid degrading multiple times in one session)
+      const user = db.prepare('SELECT memory_degradation_points FROM users WHERE id = ?').get(userId);
+      const degradationPoints = user?.memory_degradation_points ?? 0;
+      if (degradationPoints > 0 && characterId) {
+        const existingMemories = memoryService.getCharacterMemories(characterId);
+        if (existingMemories.length > 0) {
+          const degradedMemories = memoryService._applyMemoryDegradation(existingMemories, degradationPoints);
+          memoryService.saveCharacterMemories(characterId, degradedMemories, userId);
+          console.log(`📉 Applied memory degradation once for this compaction session`);
+        }
       }
 
       let compactedAny = false;

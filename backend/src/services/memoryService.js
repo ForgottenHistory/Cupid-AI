@@ -74,6 +74,14 @@ class MemoryService {
       .sort((a, b) => b.importance - a.importance)
       .slice(0, maxMemories);
 
+    // SAFEGUARD: Never save fewer memories than we currently have
+    const currentMemories = this.getCharacterMemories(characterId);
+    if (sortedMemories.length < currentMemories.length) {
+      console.error(`🚨 SAFEGUARD [saveCharacterMemories]: Refusing to save ${sortedMemories.length} memories when we have ${currentMemories.length}!`);
+      console.error(`   Input memories.length=${memories.length}, characterId=${characterId}`);
+      return; // Don't save - keep existing memories
+    }
+
     const memoryData = JSON.stringify(sortedMemories);
     db.prepare('UPDATE characters SET memory_data = ? WHERE id = ?').run(memoryData, characterId);
 
@@ -109,9 +117,12 @@ class MemoryService {
    * @param {string} characterId - Character ID
    * @param {Array} messages - Messages in the block to extract from
    * @param {number} userId - User ID (for LLM settings)
+   * @param {Object} options - Optional settings
+   * @param {boolean} options.skipDegradation - Skip degradation (use when called multiple times in a session)
    * @returns {Promise<Array<{importance: number, text: string}>>} Updated array of memories (max 50)
    */
-  async extractMemories(characterId, messages, userId) {
+  async extractMemories(characterId, messages, userId, options = {}) {
+    const { skipDegradation = false } = options;
     // Check if memory system is enabled for this user
     const user = db.prepare('SELECT max_memories, memory_degradation_points FROM users WHERE id = ?').get(userId);
     const maxMemories = user?.max_memories ?? 50;
@@ -139,9 +150,11 @@ class MemoryService {
 
     const characterName = characterData.data?.name || characterData.name || character.name || 'Character';
 
-    // Get existing memories and apply degradation if enabled
+    // Get existing memories and apply degradation if enabled (and not skipped)
     let existingMemories = this.getCharacterMemories(characterId);
-    if (degradationPoints > 0) {
+    console.log(`🧠 [extractMemories] Loaded ${existingMemories.length} existing memories for character ${characterId}`);
+
+    if (degradationPoints > 0 && !skipDegradation) {
       existingMemories = this._applyMemoryDegradation(existingMemories, degradationPoints);
     }
 
@@ -200,6 +213,15 @@ class MemoryService {
       const mergedMemories = this._mergeMemories(existingMemories, newMemories, maxMemories);
 
       console.log(`💾 Total memories after merge: ${mergedMemories.length}/${maxMemories}`);
+
+      // SAFEGUARD: Never save fewer memories than we had before
+      // This prevents bugs from wiping out memories
+      const currentMemoryCount = this.getCharacterMemories(characterId).length;
+      if (mergedMemories.length < currentMemoryCount) {
+        console.error(`🚨 SAFEGUARD: Refusing to save ${mergedMemories.length} memories when we have ${currentMemoryCount}. This would lose memories!`);
+        console.error(`   existingMemories.length=${existingMemories.length}, newMemories.length=${newMemories.length}`);
+        return this.getCharacterMemories(characterId); // Return current memories unchanged
+      }
 
       // Save to database (saveCharacterMemories will sort and cap based on user settings)
       this.saveCharacterMemories(characterId, mergedMemories, userId);
