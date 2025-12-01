@@ -178,6 +178,19 @@ export const useChatWebSocket = ({
       setError('Character is currently offline');
     };
 
+    const handleNoResponse = (data) => {
+      // Clear typing state globally for ANY character (not just current one)
+      socketService.clearTyping(data.characterId);
+
+      // Only update UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+      console.log('🤷 Character chose not to respond');
+
+      setShowTypingIndicator(false);
+      setSending(false);
+      // No error message - this is intentional behavior
+    };
+
     const handleAIResponseError = (data) => {
       // Clear typing state globally for ANY character (not just current one)
       socketService.clearTyping(data.characterId);
@@ -293,6 +306,7 @@ export const useChatWebSocket = ({
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
+    socketService.on('no_response', handleNoResponse);
     socketService.on('ai_response_error', handleAIResponseError);
     socketService.on('character_unmatched', handleCharacterUnmatched);
     socketService.on('mood_change', handleMoodChange);
@@ -306,6 +320,7 @@ export const useChatWebSocket = ({
       socketService.off('new_message', handleNewMessage);
       socketService.off('character_typing', handleCharacterTyping);
       socketService.off('character_offline', handleCharacterOffline);
+      socketService.off('no_response', handleNoResponse);
       socketService.off('ai_response_error', handleAIResponseError);
       socketService.off('character_unmatched', handleCharacterUnmatched);
       socketService.off('mood_change', handleMoodChange);

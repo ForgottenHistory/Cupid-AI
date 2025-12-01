@@ -143,6 +143,7 @@ class MessageProcessor {
             console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (engaged)`);
           } else {
             console.log(`⏱️  Character chose not to engage (30% chance)`);
+            io.to(`user:${userId}`).emit('no_response', { characterId });
             return; // Don't respond
           }
         } else {
