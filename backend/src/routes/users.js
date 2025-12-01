@@ -908,7 +908,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
   try {
     const settings = db.prepare(`
       SELECT proactive_message_hours, daily_proactive_limit,
-             proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
+             proactive_online_chance, proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, auto_unmatch_after_proactive, daily_swipe_limit, daily_auto_match_enabled,
@@ -924,6 +924,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
     res.json({
       proactiveMessageHours: settings.proactive_message_hours,
       dailyProactiveLimit: settings.daily_proactive_limit,
+      proactiveOnlineChance: settings.proactive_online_chance,
       proactiveAwayChance: settings.proactive_away_chance,
       proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style,
@@ -955,7 +956,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { proactiveMessageHours, dailyProactiveLimit, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, autoUnmatchAfterProactive, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches, thoughtFrequency, memoryDegradationPoints } = req.body;
+    const { proactiveMessageHours, dailyProactiveLimit, proactiveOnlineChance, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, autoUnmatchAfterProactive, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches, thoughtFrequency, memoryDegradationPoints } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -970,6 +971,9 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     }
     if (proactiveBusyChance !== undefined && (proactiveBusyChance < 0 || proactiveBusyChance > 100)) {
       return res.status(400).json({ error: 'Proactive busy chance must be between 0 and 100' });
+    }
+    if (proactiveOnlineChance !== undefined && (proactiveOnlineChance < 0 || proactiveOnlineChance > 100)) {
+      return res.status(400).json({ error: 'Proactive online chance must be between 0 and 100' });
     }
     if (pacingStyle !== undefined && !['slow', 'balanced', 'forward'].includes(pacingStyle)) {
       return res.status(400).json({ error: 'Pacing style must be slow, balanced, or forward' });
@@ -1025,6 +1029,10 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     if (dailyProactiveLimit !== undefined) {
       updates.push('daily_proactive_limit = ?');
       values.push(dailyProactiveLimit);
+    }
+    if (proactiveOnlineChance !== undefined) {
+      updates.push('proactive_online_chance = ?');
+      values.push(proactiveOnlineChance);
     }
     if (proactiveAwayChance !== undefined) {
       updates.push('proactive_away_chance = ?');
@@ -1112,7 +1120,7 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     // Get updated settings
     const settings = db.prepare(`
       SELECT proactive_message_hours, daily_proactive_limit,
-             proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
+             proactive_online_chance, proactive_away_chance, proactive_busy_chance, pacing_style, proactive_check_interval,
              max_consecutive_proactive, proactive_cooldown_multiplier,
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, auto_unmatch_after_proactive, daily_swipe_limit, daily_auto_match_enabled,
@@ -1124,6 +1132,7 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
     res.json({
       proactiveMessageHours: settings.proactive_message_hours,
       dailyProactiveLimit: settings.daily_proactive_limit,
+      proactiveOnlineChance: settings.proactive_online_chance,
       proactiveAwayChance: settings.proactive_away_chance,
       proactiveBusyChance: settings.proactive_busy_chance,
       pacingStyle: settings.pacing_style,

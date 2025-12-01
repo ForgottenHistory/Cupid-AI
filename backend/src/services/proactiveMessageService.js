@@ -34,7 +34,7 @@ class ProactiveMessageService {
     const candidates = [];
 
     // Get all users with their last global proactive timestamp and behavior settings
-    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_away_chance, proactive_busy_chance, proactive_messages_today, last_proactive_date, proactive_check_interval, last_proactive_check_at, left_on_read_messages_today, last_left_on_read_date, daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown, max_consecutive_proactive, proactive_cooldown_multiplier FROM users').all();
+    const users = db.prepare('SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit, proactive_online_chance, proactive_away_chance, proactive_busy_chance, proactive_messages_today, last_proactive_date, proactive_check_interval, last_proactive_check_at, left_on_read_messages_today, last_left_on_read_date, daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max, left_on_read_character_cooldown, max_consecutive_proactive, proactive_cooldown_multiplier FROM users').all();
 
     for (const user of users) {
       // Check if enough time has passed since last check for this user
@@ -244,9 +244,13 @@ class ProactiveMessageService {
 
         const statusInfo = getCurrentStatusFromSchedule(schedule);
 
-        // Online: Always allow (100% chance)
+        // Online: Check user's online probability setting (default 100%)
         if (statusInfo.status === 'online') {
-          // Continue to next check
+          const onlineChance = user.proactive_online_chance ?? 100; // Default 100%
+          const roll = Math.random() * 100;
+          if (roll > onlineChance) {
+            continue; // Don't send - failed probability check
+          }
         }
         // Away: Check user's away probability setting
         else if (statusInfo.status === 'away') {

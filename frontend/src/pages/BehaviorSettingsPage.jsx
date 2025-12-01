@@ -8,6 +8,7 @@ const BehaviorSettingsPage = () => {
   const [settings, setSettings] = useState({
     proactiveMessageHours: 4,
     dailyProactiveLimit: 5,
+    proactiveOnlineChance: 100,
     proactiveAwayChance: 50,
     proactiveBusyChance: 10,
     proactiveCheckInterval: 5,
@@ -84,6 +85,7 @@ const BehaviorSettingsPage = () => {
     setSettings({
       proactiveMessageHours: 4,
       dailyProactiveLimit: 5,
+      proactiveOnlineChance: 100,
       proactiveAwayChance: 50,
       proactiveBusyChance: 10,
       proactiveCheckInterval: 5,
@@ -145,6 +147,12 @@ const BehaviorSettingsPage = () => {
                 {success}
               </div>
             )}
+
+            {/* Proactive Messaging Section Header */}
+            <div className="pb-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Proactive Messaging</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">After a period of silence (set by Proactive Message Timing), characters may message you first. The system checks periodically (set by Check Interval), and each check rolls against the chance percentage for the character's current status. If the roll succeeds, a second probability check based on time gap and personality determines if the message is actually sent.</p>
+            </div>
 
             {/* Proactive Message Timing */}
             <div className="space-y-2">
@@ -210,6 +218,28 @@ const BehaviorSettingsPage = () => {
                 <span>5 hours</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">How often the system checks if characters should send proactive messages</p>
+            </div>
+
+            {/* Proactive Online Chance */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Proactive When Online</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveOnlineChance}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={settings.proactiveOnlineChance}
+                onChange={(e) => updateSetting('proactiveOnlineChance', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>Never</span>
+                <span>Always</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Chance characters send proactive messages when status is ONLINE</p>
             </div>
 
             {/* Proactive Away Chance */}

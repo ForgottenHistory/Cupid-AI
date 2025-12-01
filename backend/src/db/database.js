@@ -513,6 +513,12 @@ function runMigrations() {
       console.log('✅ Proactive away/busy chance columns added to users table');
     }
 
+    // Migration: Add proactive_online_chance column to users table
+    if (!userColumnNames.includes('proactive_online_chance')) {
+      db.exec(`ALTER TABLE users ADD COLUMN proactive_online_chance INTEGER DEFAULT 100;`);
+      console.log('✅ proactive_online_chance column added to users table');
+    }
+
     // Migration: Add proactive check interval columns to users table
     if (!userColumnNames.includes('proactive_check_interval')) {
       db.exec(`
