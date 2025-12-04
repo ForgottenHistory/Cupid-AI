@@ -26,7 +26,8 @@ const BehaviorSettingsPage = () => {
     maxMemories: 50,
     maxMatches: 0,
     thoughtFrequency: 10,
-    memoryDegradationPoints: 0
+    memoryDegradationPoints: 0,
+    includeFullSchedule: false
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -101,7 +102,8 @@ const BehaviorSettingsPage = () => {
       compactionEnabled: true,
       maxMemories: 50,
       maxMatches: 0,
-      thoughtFrequency: 10
+      thoughtFrequency: 10,
+      includeFullSchedule: false
     });
     setSuccess('');
     setError('');
@@ -471,6 +473,29 @@ const BehaviorSettingsPage = () => {
                 <span>Every 25</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">How often characters share their internal thoughts with you. Thoughts reveal what they're really thinking about the conversation. (0 = disabled)</p>
+            </div>
+
+            {/* Prompt Options Section Header */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">Prompt Options</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Additional context to include in the AI prompt</p>
+            </div>
+
+            {/* Include Full Schedule */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Include Full Schedule in Prompt</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.includeFullSchedule}
+                    onChange={(e) => updateSetting('includeFullSchedule', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When enabled, the character's complete weekly schedule will be included in the chat prompt. This uses more tokens but gives the AI better context about the character's availability.</p>
             </div>
 
             {/* Conversation Compacting Section Header */}

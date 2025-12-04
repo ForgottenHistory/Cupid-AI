@@ -913,7 +913,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, auto_unmatch_after_proactive, daily_swipe_limit, daily_auto_match_enabled,
              compaction_enabled, max_memories, max_matches, thought_frequency,
-             memory_degradation_points
+             memory_degradation_points, include_full_schedule
       FROM users WHERE id = ?
     `).get(req.user.id);
 
@@ -942,7 +942,8 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
       maxMemories: settings.max_memories,
       maxMatches: settings.max_matches,
       thoughtFrequency: settings.thought_frequency,
-      memoryDegradationPoints: settings.memory_degradation_points
+      memoryDegradationPoints: settings.memory_degradation_points,
+      includeFullSchedule: Boolean(settings.include_full_schedule)
     });
   } catch (error) {
     console.error('Get behavior settings error:', error);
@@ -956,7 +957,7 @@ router.get('/behavior-settings', authenticateToken, (req, res) => {
  */
 router.put('/behavior-settings', authenticateToken, (req, res) => {
   try {
-    const { proactiveMessageHours, dailyProactiveLimit, proactiveOnlineChance, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, autoUnmatchAfterProactive, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches, thoughtFrequency, memoryDegradationPoints } = req.body;
+    const { proactiveMessageHours, dailyProactiveLimit, proactiveOnlineChance, proactiveAwayChance, proactiveBusyChance, pacingStyle, proactiveCheckInterval, maxConsecutiveProactive, proactiveCooldownMultiplier, compactThresholdPercent, compactTargetPercent, keepUncompactedMessages, autoUnmatchInactiveDays, autoUnmatchAfterProactive, dailySwipeLimit, dailyAutoMatchEnabled, compactionEnabled, maxMemories, maxMatches, thoughtFrequency, memoryDegradationPoints, includeFullSchedule } = req.body;
     const userId = req.user.id;
 
     // Validate parameters
@@ -1106,6 +1107,10 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       updates.push('memory_degradation_points = ?');
       values.push(memoryDegradationPoints);
     }
+    if (includeFullSchedule !== undefined) {
+      updates.push('include_full_schedule = ?');
+      values.push(includeFullSchedule ? 1 : 0);
+    }
 
     updates.push('updated_at = CURRENT_TIMESTAMP');
     values.push(userId);
@@ -1125,7 +1130,7 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
              compact_threshold_percent, compact_target_percent, keep_uncompacted_messages,
              auto_unmatch_inactive_days, auto_unmatch_after_proactive, daily_swipe_limit, daily_auto_match_enabled,
              compaction_enabled, max_memories, max_matches, thought_frequency,
-             memory_degradation_points
+             memory_degradation_points, include_full_schedule
       FROM users WHERE id = ?
     `).get(userId);
 
@@ -1150,7 +1155,8 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
       maxMemories: settings.max_memories,
       maxMatches: settings.max_matches,
       thoughtFrequency: settings.thought_frequency,
-      memoryDegradationPoints: settings.memory_degradation_points
+      memoryDegradationPoints: settings.memory_degradation_points,
+      includeFullSchedule: Boolean(settings.include_full_schedule)
     });
   } catch (error) {
     console.error('Update behavior settings error:', error);

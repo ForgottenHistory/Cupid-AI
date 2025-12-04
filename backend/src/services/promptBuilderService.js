@@ -292,6 +292,31 @@ class PromptBuilderService {
   }
 
   /**
+   * Build full weekly schedule (when includeFullSchedule setting is enabled)
+   */
+  buildFullSchedule(schedule) {
+    if (!schedule) return null;
+
+    const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const parts = ['📅 FULL WEEKLY SCHEDULE:'];
+
+    for (const day of dayNames) {
+      const daySchedule = schedule[day];
+      if (!daySchedule || daySchedule.length === 0) continue;
+
+      const capitalizedDay = day.charAt(0).toUpperCase() + day.slice(1);
+      parts.push(`\n${capitalizedDay}:`);
+
+      for (const block of daySchedule) {
+        const activity = block.activity ? ` - ${block.activity}` : '';
+        parts.push(`  ${block.start}-${block.end}: ${block.status}${activity}`);
+      }
+    }
+
+    return parts.length > 1 ? parts.join('\n') : null;
+  }
+
+  /**
    * Build proactive message instructions (appended AFTER message history)
    */
   buildProactiveInstructions(proactiveType, gapHours, isFirstMessage = false, userId = null) {

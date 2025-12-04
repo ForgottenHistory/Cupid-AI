@@ -980,6 +980,13 @@ function runMigrations() {
       console.log('✅ Email column is now optional in users table');
     }
 
+    // Migration: Add include_full_schedule setting to users table
+    const userColumnsForSchedule = db.pragma('table_info(users)').map(col => col.name);
+    if (!userColumnsForSchedule.includes('include_full_schedule')) {
+      db.exec(`ALTER TABLE users ADD COLUMN include_full_schedule INTEGER DEFAULT 0;`);
+      console.log('✅ include_full_schedule column added to users table');
+    }
+
     // Fix users with invalid created_at (epoch 0 or NULL)
     const usersWithBadCreatedAt = db.prepare(`
       SELECT id FROM users

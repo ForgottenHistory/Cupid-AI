@@ -85,6 +85,10 @@ class AIService {
     try {
       const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName, userId);
       const userSettings = llmSettingsService.getUserSettings(userId);
+
+      // Get includeFullSchedule setting from database
+      const behaviorSettings = db.prepare('SELECT include_full_schedule FROM users WHERE id = ?').get(userId);
+      const includeFullSchedule = behaviorSettings?.include_full_schedule === 1;
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
       const provider = userSettings.provider || 'openrouter';
@@ -171,6 +175,14 @@ class AIService {
         const scheduleActivities = promptBuilderService.buildScheduleActivities(schedule);
         if (scheduleActivities) {
           contextParts.push(scheduleActivities);
+        }
+
+        // Include full schedule if enabled
+        if (includeFullSchedule) {
+          const fullSchedule = promptBuilderService.buildFullSchedule(schedule);
+          if (fullSchedule) {
+            contextParts.push(fullSchedule);
+          }
         }
       }
 
