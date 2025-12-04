@@ -268,6 +268,20 @@ function runMigrations() {
       console.log('✅ last_mood_change column added to character_states table');
     }
 
+    // Migration: Add last_mood_message_count column to character_states table (for 25-message cooldown)
+    const characterStatesColumnsRefresh = db.prepare("PRAGMA table_info(character_states)").all().map(col => col.name);
+    if (!characterStatesColumnsRefresh.includes('last_mood_message_count')) {
+      db.exec(`ALTER TABLE character_states ADD COLUMN last_mood_message_count INTEGER DEFAULT 0;`);
+      console.log('✅ last_mood_message_count column added to character_states table');
+    }
+
+    // Migration: Add pending_character_mood_update flag to character_states table
+    const characterStatesColumnsRefresh2 = db.prepare("PRAGMA table_info(character_states)").all().map(col => col.name);
+    if (!characterStatesColumnsRefresh2.includes('pending_character_mood_update')) {
+      db.exec(`ALTER TABLE character_states ADD COLUMN pending_character_mood_update INTEGER DEFAULT 0;`);
+      console.log('✅ pending_character_mood_update column added to character_states table');
+    }
+
     // Migration: Add personality_data column to characters table
     if (!charactersColumnNames.includes('personality_data')) {
       db.exec(`ALTER TABLE characters ADD COLUMN personality_data TEXT;`);

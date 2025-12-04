@@ -690,11 +690,15 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     const hasVoice = backendCharacter?.voice_id ? true : false;
     const hasImage = backendCharacter?.image_tags ? true : false;
 
-    // Get last mood change timestamp
+    // Get last mood message count and total message count
     const engagementState = db.prepare(`
-      SELECT last_mood_change FROM character_states WHERE user_id = ? AND character_id = ?
+      SELECT last_mood_message_count FROM character_states WHERE user_id = ? AND character_id = ?
     `).get(userId, characterId);
-    const lastMoodChange = engagementState?.last_mood_change || null;
+    const lastMoodMessageCount = engagementState?.last_mood_message_count || 0;
+
+    const totalMessageCount = db.prepare(`
+      SELECT COUNT(*) as count FROM messages WHERE conversation_id = ? AND role IN ('user', 'assistant')
+    `).get(conversation.id).count;
 
     // Call Decision LLM first
     const userMessage = aiMessages[aiMessages.length - 1]?.content || '';
@@ -707,7 +711,8 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       isEngaged: true, // Assume engaged for regenerate
       hasVoice: hasVoice,
       hasImage: hasImage,
-      lastMoodChange: lastMoodChange
+      lastMoodMessageCount: lastMoodMessageCount,
+      assistantMessageCount: totalMessageCount
     });
 
     console.log('🎯 Decision made (regenerate):', decision);
@@ -833,14 +838,14 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     // Clean up em dashes (replace with periods and capitalize next letter)
     const cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
 
-    // Update last_mood_change timestamp if mood was set
+    // Update last_mood_message_count if mood was set
     if (decision.mood && decision.mood !== 'none') {
       db.prepare(`
         UPDATE character_states
-        SET last_mood_change = CURRENT_TIMESTAMP
+        SET last_mood_message_count = ?
         WHERE user_id = ? AND character_id = ?
-      `).run(userId, characterId);
-      console.log(`✅ Updated last_mood_change timestamp for character ${characterId} (regenerate)`);
+      `).run(totalMessageCount, userId, characterId);
+      console.log(`✅ Updated last_mood_message_count to ${totalMessageCount} for character ${characterId} (regenerate)`);
     }
 
     // Split content by newlines to create separate messages
@@ -1035,12 +1040,16 @@ router.post('/conversations/:characterId/debug-mood', authenticateToken, (req, r
 
     console.log(`🎨 [DEBUG] Background effect inserted: ${charName} → ${mood}`);
 
-    // Update last_mood_change timestamp in character_states
+    // Get total message count and update last_mood_message_count
+    const totalMsgCount = db.prepare(`
+      SELECT COUNT(*) as count FROM messages WHERE conversation_id = ? AND role IN ('user', 'assistant')
+    `).get(conversation.id).count;
+
     db.prepare(`
       UPDATE character_states
-      SET last_mood_change = CURRENT_TIMESTAMP
+      SET last_mood_message_count = ?
       WHERE user_id = ? AND character_id = ?
-    `).run(userId, characterId);
+    `).run(totalMsgCount, userId, characterId);
 
     // Emit mood change to frontend
     const io = req.app.get('io');

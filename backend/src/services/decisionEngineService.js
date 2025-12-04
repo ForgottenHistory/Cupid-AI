@@ -22,21 +22,16 @@ class DecisionEngineService {
    * Decision Engine: Analyze conversation and decide on actions
    * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, thought: string|null, imageContext: string|null }
    */
-  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false }) {
+  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodMessageCount = 0, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false }) {
     try {
       const aiService = await this.getAIService();
-      // Check mood cooldown (30 minutes)
-      const moodCooldownMs = 30 * 60 * 1000; // 30 minutes
-      const canChangeMood = !lastMoodChange || (Date.now() - new Date(lastMoodChange).getTime() >= moodCooldownMs);
+      // Check mood cooldown (25 messages)
+      const moodCooldownMessages = 25;
+      const messagesSinceLastMood = assistantMessageCount - lastMoodMessageCount;
+      const canChangeMood = messagesSinceLastMood >= moodCooldownMessages;
 
       // Log cooldown status for debugging
-      if (lastMoodChange) {
-        const timeSinceLastMood = Date.now() - new Date(lastMoodChange).getTime();
-        const minutesSince = (timeSinceLastMood / 60000).toFixed(1);
-        console.log(`🎨 Last mood change: ${minutesSince} min ago (cooldown: ${canChangeMood ? 'expired' : 'active'})`);
-      } else {
-        console.log(`🎨 No previous mood change detected`);
-      }
+      console.log(`🎨 Background mood: ${messagesSinceLastMood} messages since last change (cooldown: ${canChangeMood ? 'can change' : `${moodCooldownMessages - messagesSinceLastMood} more needed`})`)
 
       const decisionSettings = llmSettingsService.getDecisionSettings(userId);
 
@@ -205,10 +200,10 @@ ${decisionPromptTemplate}`;
 
       // Enforce mood cooldown (override LLM decision if on cooldown)
       if (!canChangeMood && decision.mood !== 'none') {
-        console.log(`🚫 Mood change BLOCKED by cooldown (LLM wanted: ${decision.mood}, last change: ${lastMoodChange})`);
+        console.log(`🚫 Mood change BLOCKED by cooldown (LLM wanted: ${decision.mood}, ${moodCooldownMessages - messagesSinceLastMood} more messages needed)`);
         decision.mood = 'none';
       } else if (decision.mood !== 'none') {
-        console.log(`✅ Mood change ALLOWED: ${decision.mood} (cooldown expired)`);
+        console.log(`✅ Mood change ALLOWED: ${decision.mood} (25+ messages since last change)`);
       }
 
       return decision;

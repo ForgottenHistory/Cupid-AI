@@ -35,7 +35,7 @@ export const useChatWebSocket = ({
   const [currentThought, setCurrentThought] = useState(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [characterMood, setCharacterMood] = useState(null);
-  const { setMoodEffect, clearMoodEffect} = useMood();
+  const { setMoodEffect, clearMoodEffect, closeMoodModal } = useMood();
 
   // Use ref to track current characterId to prevent stale closures
   const currentCharacterIdRef = useRef(characterId);
@@ -240,6 +240,11 @@ export const useChatWebSocket = ({
       // Set mood visual effects for this character with 30 minute auto-clear
       setMoodEffect(data.characterId, data.mood, data.characterName, 30 * 60 * 1000);
 
+      // Auto-close the modal after 3 seconds (background effect persists)
+      setTimeout(() => {
+        closeMoodModal(data.characterId);
+      }, 3000);
+
       // Add system message to chat if systemMessage is provided
       if (data.systemMessage) {
         const systemMsg = {
@@ -348,7 +353,7 @@ export const useChatWebSocket = ({
       socketService.off('messages_combined', handleMessagesCombined);
       socketService.off('character_mood_update', handleCharacterMoodUpdate);
     };
-  }, [user, characterId, setMoodEffect, onCharacterMoodUpdate]);
+  }, [user, characterId, setMoodEffect, closeMoodModal, onCharacterMoodUpdate]);
 
   return {
     showTypingIndicator,

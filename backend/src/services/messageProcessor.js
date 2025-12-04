@@ -168,9 +168,9 @@ class MessageProcessor {
         }
       }
 
-      // Call Decision LLM (pass current engagement state, voice, image availability, last mood change, and message count)
+      // Call Decision LLM (pass current engagement state, voice, image availability, last mood message count)
       const currentlyEngaged = engagementState?.engagement_state === 'engaged';
-      const lastMoodChange = engagementState?.last_mood_change || null;
+      const lastMoodMessageCount = engagementState?.last_mood_message_count || 0;
 
       // Get total message count (user + assistant) for thought frequency
       const totalMessageCount = db.prepare(`
@@ -185,10 +185,11 @@ class MessageProcessor {
       const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
       const userBio = user?.bio || null;
 
-      // Check if character mood should be updated (TIME GAP or every 25 messages)
-      const shouldUpdateCharacterMood = timeGapInserted || (totalMessageCount > 0 && totalMessageCount % 25 === 0);
+      // Check if character mood should be updated (TIME GAP, every 25 messages, or pending from background mood change)
+      const hasPendingMoodUpdate = engagementState?.pending_character_mood_update === 1;
+      const shouldUpdateCharacterMood = timeGapInserted || (totalMessageCount > 0 && totalMessageCount % 25 === 0) || hasPendingMoodUpdate;
       if (shouldUpdateCharacterMood) {
-        const moodTrigger = timeGapInserted ? 'TIME GAP' : `25-message interval (${totalMessageCount})`;
+        const moodTrigger = hasPendingMoodUpdate ? 'pending from background mood change' : (timeGapInserted ? 'TIME GAP' : `25-message interval (${totalMessageCount})`);
         console.log(`🎭 Character mood update will be requested: ${moodTrigger}`);
       }
 
@@ -201,7 +202,7 @@ class MessageProcessor {
         isEngaged: currentlyEngaged,
         hasVoice: hasVoice,
         hasImage: hasImage,
-        lastMoodChange: lastMoodChange,
+        lastMoodMessageCount: lastMoodMessageCount,
         assistantMessageCount: totalMessageCount,
         currentStatus: currentStatusInfo,
         schedule: schedule,
@@ -250,14 +251,14 @@ class MessageProcessor {
 
         console.log(`🎨 Background effect inserted: ${characterName} → ${decision.mood}`);
 
-        // Update last_mood_change timestamp in character_states
+        // Update last_mood_message_count and set pending character mood update flag
         if (engagementState) {
           db.prepare(`
             UPDATE character_states
-            SET last_mood_change = CURRENT_TIMESTAMP
+            SET last_mood_message_count = ?, pending_character_mood_update = 1
             WHERE user_id = ? AND character_id = ?
-          `).run(userId, characterId);
-          console.log(`✅ Updated last_mood_change timestamp for character ${characterId}`);
+          `).run(totalMessageCount, userId, characterId);
+          console.log(`✅ Updated last_mood_message_count to ${totalMessageCount} and set pending character mood update for character ${characterId}`);
         }
 
         // Emit mood change to frontend
@@ -271,12 +272,17 @@ class MessageProcessor {
       }
 
       // === CHARACTER MOOD UPDATE ===
-      // Handle character mood from decision (triggered by TIME GAP or every 25 messages)
+      // Handle character mood from decision (triggered by TIME GAP, every 25 messages, or pending from background mood)
       if (decision.characterMood) {
         // Store mood in conversations table
         db.prepare(`
           UPDATE conversations SET character_mood = ? WHERE id = ?
         `).run(decision.characterMood, conversationId);
+
+        // Clear the pending flag
+        db.prepare(`
+          UPDATE character_states SET pending_character_mood_update = 0 WHERE user_id = ? AND character_id = ?
+        `).run(userId, characterId);
 
         console.log(`🎭 Character mood updated: "${decision.characterMood}"`);
 
