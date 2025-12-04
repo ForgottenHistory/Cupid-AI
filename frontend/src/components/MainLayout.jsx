@@ -5,7 +5,7 @@ import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
 import { useDarkMode } from '../hooks/useDarkMode';
-import { syncAllCharacters, syncCharacterImages, clearAllPosts } from '../utils/syncCharacterImages';
+import { syncAllCharacters, syncCharacterImages, clearAllPosts, runCharacterMigrations } from '../utils/syncCharacterImages';
 import DailyMatchModal from './DailyMatchModal';
 import api from '../services/api';
 
@@ -26,12 +26,16 @@ const MainLayout = ({ children }) => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchInputRef = useRef(null);
 
-  // Sync all characters from IndexedDB to backend on mount
+  // Run migrations and sync all characters from IndexedDB to backend on mount
   // This ensures all characters are available for post generation
   useEffect(() => {
     if (user?.id) {
-      syncAllCharacters(user.id).catch(error => {
-        console.error('Failed to sync characters:', error);
+      // Run one-time migrations first (e.g., fix renamed character names)
+      runCharacterMigrations(user.id).then(() => {
+        // Then sync to backend
+        syncAllCharacters(user.id).catch(error => {
+          console.error('Failed to sync characters:', error);
+        });
       });
       // Also sync images to generate thumbnails
       syncCharacterImages(user.id).then(() => {

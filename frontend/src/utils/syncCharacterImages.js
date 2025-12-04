@@ -1,6 +1,54 @@
 import characterService from '../services/characterService';
 import api from '../services/api';
 
+const MIGRATION_KEY = 'cupid_migrations_completed';
+
+/**
+ * Run one-time migrations on character data
+ * Tracks completed migrations in localStorage to avoid re-running
+ */
+export async function runCharacterMigrations(userId) {
+  const completedMigrations = JSON.parse(localStorage.getItem(MIGRATION_KEY) || '[]');
+
+  // Migration 1: Sync character.name to cardData.data.name for renamed characters
+  if (!completedMigrations.includes('sync_renamed_characters_v1')) {
+    try {
+      console.log('🔄 Running migration: sync_renamed_characters_v1...');
+      const characters = await characterService.getAllCharacters(userId);
+      let fixed = 0;
+
+      for (const char of characters) {
+        const topLevelName = char.name;
+        const cardDataName = char.cardData?.data?.name;
+
+        // If names differ, update cardData.data.name to match the top-level name
+        if (topLevelName && cardDataName && topLevelName !== cardDataName) {
+          console.log(`  📝 Fixing "${cardDataName}" → "${topLevelName}"`);
+
+          const updatedCardData = {
+            ...char.cardData,
+            data: {
+              ...char.cardData.data,
+              name: topLevelName
+            }
+          };
+
+          await characterService.updateCharacterData(char.id, {
+            cardData: updatedCardData
+          });
+          fixed++;
+        }
+      }
+
+      completedMigrations.push('sync_renamed_characters_v1');
+      localStorage.setItem(MIGRATION_KEY, JSON.stringify(completedMigrations));
+      console.log(`✅ Migration complete: fixed ${fixed} character(s)`);
+    } catch (error) {
+      console.error('❌ Migration failed:', error);
+    }
+  }
+}
+
 /**
  * Sync all characters from IndexedDB to backend
  * This ensures all characters are available for post generation
@@ -128,4 +176,5 @@ if (typeof window !== 'undefined') {
   window.syncCharacterImages = syncCharacterImages;
   window.clearAllPosts = clearAllPosts;
   window.triggerProactive = triggerProactive;
+  window.runCharacterMigrations = runCharacterMigrations;
 }

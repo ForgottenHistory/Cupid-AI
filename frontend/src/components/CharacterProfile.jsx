@@ -55,10 +55,40 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     setError('');
 
     try {
-      // Update character name in IndexedDB
+      const trimmedName = editedName.trim();
+
+      // Update both top-level name AND cardData.data.name
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          name: trimmedName
+        }
+      };
+
       await characterService.updateCharacterData(character.id, {
-        name: editedName.trim()
+        name: trimmedName,
+        cardData: updatedCardData
       });
+
+      // Sync to backend if character is matched
+      try {
+        const api = (await import('../services/api')).default;
+        await api.get(`/characters/${character.id}`);
+        // Character exists in backend, sync the updated name
+        const updatedCharacter = await characterService.getCharacter(character.id);
+        await api.post('/sync/characters', {
+          characters: [{
+            id: updatedCharacter.id,
+            cardData: updatedCharacter.cardData
+          }]
+        });
+        console.log('✅ Character name synced to backend');
+      } catch (err) {
+        if (err.response?.status !== 404) {
+          console.warn('⚠️ Failed to sync name to backend:', err);
+        }
+      }
 
       // Notify parent of update
       if (onUpdate) {
