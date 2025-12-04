@@ -416,6 +416,13 @@ class MessageProcessor {
         });
       }
 
+      // If decision says not to respond, notify frontend and exit
+      if (!decision.shouldRespond) {
+        console.log(`🤐 Decision LLM chose not to respond`);
+        io.to(`user:${userId}`).emit('no_response', { characterId });
+        return;
+      }
+
       // Save AI response with reaction
       if (aiResponse) {
         // Clean up em dashes (replace with periods and capitalize next letter)

@@ -139,12 +139,16 @@ class DecisionEngineService {
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_IMAGE##[^\n]*\n?/g, '');
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_THOUGHT##[^\n]*\n?/g, '');
 
+      // Get character-specific post instructions (same as Content LLM)
+      const postInstructions = promptBuilderService.getPostInstructions(characterId);
+      const postInstructionsSection = postInstructions ? `\n\nCharacter-specific instructions:\n${postInstructions}` : '';
+
       const decisionPrompt = `${systemPrompt}
 
 ${personalityContext}
 ${isEngaged ? '\nCurrent state: Character is actively engaged in conversation (responding quickly)' : '\nCurrent state: Character is disengaged (slower responses based on availability)'}
 ${hasVoice ? '\nVoice available: This character has a voice sample and can send voice messages' : '\nVoice available: No (text only)'}
-${hasImage ? '\nImage generation: This character has image tags configured and can send generated images' : '\nImage generation: No'}
+${hasImage ? '\nImage generation: This character has image tags configured and can send generated images' : '\nImage generation: No'}${postInstructionsSection}
 
 Conversation history:
 ${conversationHistory}
@@ -213,7 +217,7 @@ ${decisionPromptTemplate}`;
   async makeProactiveDecision({ messages, characterData, characterId = null, gapHours, userId, currentStatus = null, schedule = null, userBio = null }) {
     try {
       const aiService = await this.getAIService();
-      const decisionSettings = llmSettingsService.getDecisionSettings(userId);
+      const metadataSettings = llmSettingsService.getMetadataSettings(userId);
 
       // Extract character name
       const characterName = characterData.data?.name || characterData.name || 'Character';
@@ -249,22 +253,22 @@ ${freshPrompt}
 ${prompts.proactiveDecisionPrompt}`;
 
       console.log('🎯 Proactive Decision Engine Request:', {
-        model: decisionSettings.model,
+        model: metadataSettings.model,
         gapHours: gapHours.toFixed(1)
       });
 
       const response = await aiService.createBasicCompletion(decisionPrompt, {
         userId: userId,
-        provider: decisionSettings.provider,
-        model: decisionSettings.model,
-        temperature: decisionSettings.temperature,
-        max_tokens: decisionSettings.max_tokens,
-        top_p: decisionSettings.top_p,
-        frequency_penalty: decisionSettings.frequency_penalty,
-        presence_penalty: decisionSettings.presence_penalty,
-        top_k: decisionSettings.top_k,
-        repetition_penalty: decisionSettings.repetition_penalty,
-        min_p: decisionSettings.min_p,
+        provider: metadataSettings.provider,
+        model: metadataSettings.model,
+        temperature: metadataSettings.temperature,
+        max_tokens: metadataSettings.max_tokens,
+        top_p: metadataSettings.top_p,
+        frequency_penalty: metadataSettings.frequency_penalty,
+        presence_penalty: metadataSettings.presence_penalty,
+        top_k: metadataSettings.top_k,
+        repetition_penalty: metadataSettings.repetition_penalty,
+        min_p: metadataSettings.min_p,
         messageType: 'decision-proactive',
         characterName: characterName
       });
@@ -399,7 +403,7 @@ ${prompts.proactiveDecisionPrompt}`;
   async makeLeftOnReadDecision({ messages, characterData, personality, minutesSinceRead, userId }) {
     try {
       const aiService = await this.getAIService();
-      const decisionSettings = llmSettingsService.getDecisionSettings(userId);
+      const metadataSettings = llmSettingsService.getMetadataSettings(userId);
 
       // Build context
       const lastMessages = messages.slice(-5);
@@ -449,22 +453,24 @@ Reason: [brief explanation in one sentence]
 Output ONLY the three lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Left-On-Read Decision Engine Request:', {
-        model: decisionSettings.model,
+        model: metadataSettings.model,
         minutesSinceRead,
         extraversion,
         neuroticism
       });
 
       const response = await aiService.createBasicCompletion(decisionPrompt, {
-        model: decisionSettings.model,
-        temperature: decisionSettings.temperature,
-        max_tokens: decisionSettings.max_tokens,
-        top_p: decisionSettings.top_p,
-        frequency_penalty: decisionSettings.frequency_penalty,
-        presence_penalty: decisionSettings.presence_penalty,
-        top_k: decisionSettings.top_k,
-        repetition_penalty: decisionSettings.repetition_penalty,
-        min_p: decisionSettings.min_p,
+        userId: userId,
+        provider: metadataSettings.provider,
+        model: metadataSettings.model,
+        temperature: metadataSettings.temperature,
+        max_tokens: metadataSettings.max_tokens,
+        top_p: metadataSettings.top_p,
+        frequency_penalty: metadataSettings.frequency_penalty,
+        presence_penalty: metadataSettings.presence_penalty,
+        top_k: metadataSettings.top_k,
+        repetition_penalty: metadataSettings.repetition_penalty,
+        min_p: metadataSettings.min_p,
         messageType: 'decision-left-on-read',
         characterName: characterName
       });
