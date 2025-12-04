@@ -11,10 +11,43 @@ import timeGapService from './timeGapService.js';
 import { getCurrentStatusFromSchedule, sleep } from '../utils/chatHelpers.js';
 
 class MessageProcessor {
+  constructor() {
+    // Track pending requests: Map<`${userId}:${characterId}`, { startedAt, conversationId }>
+    this.pendingRequests = new Map();
+  }
+
+  /**
+   * Check if there's a pending request for a user-character pair
+   */
+  isPending(userId, characterId) {
+    return this.pendingRequests.has(`${userId}:${characterId}`);
+  }
+
+  /**
+   * Get pending request info for a user-character pair
+   */
+  getPendingInfo(userId, characterId) {
+    return this.pendingRequests.get(`${userId}:${characterId}`) || null;
+  }
+
   /**
    * Process AI response asynchronously with engagement system and delays
    */
   async processMessage(io, userId, characterId, conversationId, characterData) {
+    const requestKey = `${userId}:${characterId}`;
+
+    // Track this request as pending
+    this.pendingRequests.set(requestKey, {
+      startedAt: Date.now(),
+      conversationId
+    });
+    console.log(`📝 Request pending: ${requestKey}`);
+
+    // Helper to clear pending state
+    const clearPending = () => {
+      this.pendingRequests.delete(requestKey);
+      console.log(`✅ Request completed: ${requestKey}`);
+    };
     let insertedTimeGapId = null; // Track TIME GAP insertion for rollback on error
 
     try {
@@ -649,6 +682,9 @@ class MessageProcessor {
         characterId,
         error: error.message || 'Failed to generate response'
       });
+    } finally {
+      // Always clear pending state when done (success, error, or early return)
+      clearPending();
     }
   }
 }

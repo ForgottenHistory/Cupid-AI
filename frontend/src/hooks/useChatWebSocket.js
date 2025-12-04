@@ -36,36 +36,44 @@ export const useChatWebSocket = ({
   const [isCompacting, setIsCompacting] = useState(false);
   const [characterMood, setCharacterMood] = useState(null);
   const { setMoodEffect, clearMoodEffect, closeMoodModal } = useMood();
-  const typingTimeoutRef = useRef(null);
 
   // Use ref to track current characterId to prevent stale closures
   const currentCharacterIdRef = useRef(characterId);
 
-  // Helper to clear typing indicator and its timeout
+  // Helper to clear typing indicator
   const clearTypingIndicator = () => {
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
     setShowTypingIndicator(false);
   };
 
-  // Check if character is currently typing when characterId changes
+  // Check pending request status from server when characterId changes
   useEffect(() => {
     // Update ref with current characterId
     currentCharacterIdRef.current = characterId;
 
     console.log('🔄 Character changed to:', characterId);
-    const isTyping = characterId && socketService.isTyping(characterId);
-    setShowTypingIndicator(isTyping);
-    console.log(`🔄 Set typing indicator to: ${isTyping} for character ${characterId}`);
-
-    if (isTyping) {
-      console.log('⌨️  Restoring typing indicator for character:', characterId);
-    }
 
     // Clear thought when switching characters
     setCurrentThought(null);
+
+    // Query server for actual pending status (authoritative source)
+    if (characterId) {
+      chatService.checkPending(characterId)
+        .then(({ pending }) => {
+          console.log(`🔄 Server pending status for ${characterId}: ${pending}`);
+          setShowTypingIndicator(pending);
+          if (pending) {
+            socketService.setTyping(characterId, true);
+          } else {
+            socketService.clearTyping(characterId);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to check pending status:', err);
+          // Fall back to client-side state on error
+          const isTyping = socketService.isTyping(characterId);
+          setShowTypingIndicator(isTyping);
+        });
+    }
   }, [characterId]);
 
   // Listen for test events from debug functions
@@ -172,21 +180,9 @@ export const useChatWebSocket = ({
       if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('⌨️  Character is typing...');
 
-      // Clear any existing typing timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-
       // Store typing state globally
       socketService.setTyping(data.characterId, true);
       setShowTypingIndicator(true);
-
-      // Auto-clear typing indicator after 60 seconds as a safety fallback
-      typingTimeoutRef.current = setTimeout(() => {
-        console.log('⏰ Typing indicator timeout - auto-clearing');
-        socketService.clearTyping(data.characterId);
-        clearTypingIndicator();
-      }, 60000);
     };
 
     const handleCharacterOffline = (data) => {
@@ -362,11 +358,6 @@ export const useChatWebSocket = ({
 
     // Cleanup
     return () => {
-      // Clear typing timeout on cleanup
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = null;
-      }
       socketService.off('new_message', handleNewMessage);
       socketService.off('character_typing', handleCharacterTyping);
       socketService.off('character_offline', handleCharacterOffline);

@@ -1004,6 +1004,68 @@ router.post('/upload-user-image', authenticateToken, uploadUserImage.single('ima
 });
 
 /**
+ * GET /api/chat/conversations/:characterId/pending
+ * Check if there's a pending AI response for this character
+ */
+router.get('/conversations/:characterId/pending', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+
+    const isPending = messageProcessor.isPending(userId, characterId);
+    const pendingInfo = messageProcessor.getPendingInfo(userId, characterId);
+
+    res.json({
+      pending: isPending,
+      startedAt: pendingInfo?.startedAt || null
+    });
+  } catch (error) {
+    console.error('Check pending error:', error);
+    res.status(500).json({ error: error.message || 'Failed to check pending status' });
+  }
+});
+
+/**
+ * PUT /api/chat/conversations/:characterId/mood
+ * Update character mood for the conversation
+ */
+router.put('/conversations/:characterId/mood', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { mood } = req.body;
+    const userId = req.user.id;
+
+    if (!mood || typeof mood !== 'string') {
+      return res.status(400).json({ error: 'Mood is required and must be a string' });
+    }
+
+    // Get conversation
+    const conversation = conversationService.getConversation(userId, characterId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Update mood in database
+    db.prepare(`UPDATE conversations SET character_mood = ? WHERE id = ?`).run(mood.trim(), conversation.id);
+
+    console.log(`🎭 Character mood manually updated: ${mood}`);
+
+    // Emit mood update to frontend
+    const io = req.app.get('io');
+    io.to(`user:${userId}`).emit('character_mood_update', {
+      characterId,
+      conversationId: conversation.id,
+      mood: mood.trim()
+    });
+
+    res.json({ success: true, mood: mood.trim() });
+  } catch (error) {
+    console.error('Update mood error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update mood' });
+  }
+});
+
+/**
  * POST /api/chat/conversations/:characterId/debug-mood
  * Debug endpoint to trigger mood change
  */

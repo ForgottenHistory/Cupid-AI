@@ -564,6 +564,7 @@ const Chat = () => {
             onBack={() => navigate('/')}
             onUnmatch={handleUnmatch}
             conversationId={conversation?.id}
+            onMoodUpdate={setCharacterMood}
           />
         </div>
       )}

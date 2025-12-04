@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import MemoriesModal from './MemoriesModal';
 import PostInstructionsModal from './PostInstructionsModal';
+import CharacterMoodModal from './CharacterMoodModal';
 import api from '../../services/api';
 import chatService from '../../services/chatService';
 
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, characterMood, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId }) => {
+const ChatHeader = ({ character, characterStatus, characterMood, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
@@ -28,6 +29,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
   const [memories, setMemories] = useState([]);
   const [loadingMemories, setLoadingMemories] = useState(false);
   const [showPostInstructions, setShowPostInstructions] = useState(false);
+  const [showMoodModal, setShowMoodModal] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   // Calculate approximate token count (1 token ≈ 4 characters) for loaded messages
@@ -213,6 +215,20 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
     } finally {
       setExporting(false);
       setShowMenu(false);
+    }
+  };
+
+  // Update character mood
+  const handleSaveMood = async (newMood) => {
+    try {
+      await api.put(`/chat/conversations/${character.id}/mood`, { mood: newMood });
+      // Callback to update parent state if provided
+      if (onMoodUpdate) {
+        onMoodUpdate(newMood);
+      }
+    } catch (error) {
+      console.error('Failed to update mood:', error);
+      throw error;
     }
   };
 
@@ -438,9 +454,13 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
               </div>
               {/* Character Mood Display */}
               {showMood && (
-                <div className="text-xs font-medium drop-shadow-lg bg-purple-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 italic text-white/90">
+                <button
+                  onClick={() => setShowMoodModal(true)}
+                  className="text-xs font-semibold drop-shadow-lg bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 italic text-white/70 hover:bg-black/30 hover:border-white/30 transition-all cursor-pointer"
+                  title="Click to edit mood"
+                >
                   {characterMood}
-                </div>
+                </button>
               )}
             </div>
           </div>
@@ -543,9 +563,13 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
                   </div>
                   {/* Character Mood Display */}
                   {showMood && (
-                    <div className="text-sm font-medium drop-shadow-lg bg-purple-500/30 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20 italic text-white/90">
+                    <button
+                      onClick={() => setShowMoodModal(true)}
+                      className="text-xs font-semibold drop-shadow-lg bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 italic text-white/70 hover:bg-black/30 hover:border-white/30 transition-all cursor-pointer"
+                      title="Click to edit mood"
+                    >
                       {characterMood}
-                    </div>
+                    </button>
                   )}
                 </div>
               </div>
@@ -577,6 +601,16 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
         onSave={(instructions) => {
           console.log('✅ Post instructions saved:', instructions);
         }}
+      />
+
+      {/* Character Mood Modal */}
+      <CharacterMoodModal
+        isOpen={showMoodModal}
+        onClose={() => setShowMoodModal(false)}
+        characterId={character.id}
+        characterName={character.name}
+        currentMood={characterMood}
+        onSave={handleSaveMood}
       />
     </div>
   );

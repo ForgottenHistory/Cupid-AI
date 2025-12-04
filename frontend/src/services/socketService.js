@@ -89,26 +89,21 @@ class SocketService {
     this.socket.emit(event, data);
   }
 
-  // Typing state management
+  // Typing state management - client-side cache, server is authoritative
   setTyping(characterId, isTyping) {
     if (isTyping) {
       this.typingStates.set(characterId, true);
-      console.log(`🔄 Global typing state SET for ${characterId}. Active typing:`, Array.from(this.typingStates.keys()));
     } else {
       this.typingStates.delete(characterId);
-      console.log(`🔄 Global typing state CLEARED for ${characterId}. Active typing:`, Array.from(this.typingStates.keys()));
     }
   }
 
   isTyping(characterId) {
-    const typing = this.typingStates.has(characterId);
-    console.log(`🔍 Checking typing state for ${characterId}: ${typing}. Active typing:`, Array.from(this.typingStates.keys()));
-    return typing;
+    return this.typingStates.has(characterId);
   }
 
   clearTyping(characterId) {
     this.typingStates.delete(characterId);
-    console.log(`🔄 Global typing state CLEARED for ${characterId}. Active typing:`, Array.from(this.typingStates.keys()));
   }
 }
 

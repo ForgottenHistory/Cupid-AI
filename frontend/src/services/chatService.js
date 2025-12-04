@@ -152,6 +152,14 @@ class ChatService {
 
     return response.data;
   }
+
+  /**
+   * Check if there's a pending AI response for a character
+   */
+  async checkPending(characterId) {
+    const response = await api.get(`/chat/conversations/${characterId}/pending`);
+    return response.data;
+  }
 }
 
 export default new ChatService();
