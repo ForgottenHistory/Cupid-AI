@@ -979,6 +979,28 @@ function runMigrations() {
 
       console.log('✅ Email column is now optional in users table');
     }
+
+    // Fix users with invalid created_at (epoch 0 or NULL)
+    const usersWithBadCreatedAt = db.prepare(`
+      SELECT id FROM users
+      WHERE created_at IS NULL
+         OR created_at = ''
+         OR created_at = '1970-01-01 00:00:00'
+         OR created_at < '2020-01-01'
+    `).all();
+
+    if (usersWithBadCreatedAt.length > 0) {
+      console.log(`🔧 Fixing ${usersWithBadCreatedAt.length} user(s) with invalid created_at...`);
+      db.prepare(`
+        UPDATE users
+        SET created_at = CURRENT_TIMESTAMP
+        WHERE created_at IS NULL
+           OR created_at = ''
+           OR created_at = '1970-01-01 00:00:00'
+           OR created_at < '2020-01-01'
+      `).run();
+      console.log('✅ Fixed users with invalid created_at');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

@@ -1158,4 +1158,53 @@ router.put('/behavior-settings', authenticateToken, (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/users/account
+ * Delete user account and all associated data
+ */
+router.delete('/account', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Delete in order to respect foreign key constraints
+    // 1. Delete messages from user's conversations
+    const conversations = db.prepare('SELECT id FROM conversations WHERE user_id = ?').all(userId);
+    const conversationIds = conversations.map(c => c.id);
+
+    if (conversationIds.length > 0) {
+      const placeholders = conversationIds.map(() => '?').join(',');
+      db.prepare(`DELETE FROM messages WHERE conversation_id IN (${placeholders})`).run(...conversationIds);
+    }
+
+    // 2. Delete conversations
+    db.prepare('DELETE FROM conversations WHERE user_id = ?').run(userId);
+
+    // 3. Delete character states
+    db.prepare('DELETE FROM character_states WHERE user_id = ?').run(userId);
+
+    // 4. Delete characters (synced from frontend)
+    db.prepare('DELETE FROM characters WHERE user_id = ?').run(userId);
+
+    // 5. Delete posts by user's characters (if any)
+    db.prepare('DELETE FROM posts WHERE user_id = ?').run(userId);
+
+    // 6. Delete user config files (e.g., custom prompts)
+    const userConfigDir = path.join(__dirname, '..', '..', 'config', 'users', String(userId));
+    if (fs.existsSync(userConfigDir)) {
+      fs.rmSync(userConfigDir, { recursive: true, force: true });
+      console.log(`🗑️ Deleted user config directory: ${userConfigDir}`);
+    }
+
+    // 7. Finally delete the user
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+
+    console.log(`🗑️ Deleted user account: ${userId}`);
+
+    res.json({ success: true, message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
 export default router;

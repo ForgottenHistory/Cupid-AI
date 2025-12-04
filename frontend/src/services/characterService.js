@@ -314,6 +314,13 @@ class CharacterService {
       throw error;
     }
   }
+
+  /**
+   * Clear all local data (for account deletion)
+   */
+  async clearAllData() {
+    return characterStorage.clearAllData();
+  }
 }
 
 export default new CharacterService();

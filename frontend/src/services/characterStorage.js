@@ -192,6 +192,17 @@ class CharacterStorage {
 
     return new Blob([uInt8Array], { type: contentType });
   }
+
+  /**
+   * Clear all data from the database (for account deletion)
+   */
+  async clearAllData() {
+    const db = await this.initDB();
+    const tx = db.transaction('characters', 'readwrite');
+    const store = tx.objectStore('characters');
+    store.clear();
+    return tx.complete;
+  }
 }
 
 export default new CharacterStorage();
