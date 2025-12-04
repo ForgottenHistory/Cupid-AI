@@ -225,7 +225,7 @@ class PromptBuilderService {
   /**
    * Build current status message (separate from main prompt for better positioning)
    */
-  buildCurrentStatus(currentStatus) {
+  buildCurrentStatus(currentStatus, characterMood = null) {
     if (!currentStatus) return null;
 
     const parts = [];
@@ -249,6 +249,11 @@ class PromptBuilderService {
       parts.push(` - You're doing this right now, but can still text casually.`);
     } else if (currentStatus.status === 'online') {
       parts.push(` - You're free and available to chat.`);
+    }
+
+    // Add character mood if available
+    if (characterMood) {
+      parts.push(`\nCurrent Mood: ${characterMood} - Let this influence your tone and responses.`);
     }
 
     return parts.join('');

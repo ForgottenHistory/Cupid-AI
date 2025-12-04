@@ -36,6 +36,7 @@ If you like the layout but not the specific aspects, I've created a template app
 - **Time-Aware Conversations**: Automatic time gap markers and context-appropriate responses
 - **Memory System**: AI extracts and stores up to 100 important facts of you per character
 - **Conversation Compacting**: Automatic AI summarization to manage context window efficiently
+- **Character Mood System**: Dynamic emotional state (e.g., "feeling flirty and playful")
 - **Mood Effects**: Dynamic chat backgrounds based on conversation tone and message reactions
 
 ### Image Generation
@@ -179,6 +180,7 @@ Navigate to `http://localhost:5173`
 Separate LLM analyzes conversations every message to decide:
 - **Reactions**: Emoji reactions (rare, only for significant messages)
 - **Moods**: Special backgrounds (hearts/stars/laugh/sparkles/fire/roses)
+- **Character Mood**: Free-form emotional state
 - **Unmatch**: Extremely rare, for serious violations
 - **Voice Messages**: Emotional moments, personality-based (disabled)
 - **Image Sending**: Context-aware, can tease or refuse requests

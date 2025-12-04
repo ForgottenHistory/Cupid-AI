@@ -56,8 +56,9 @@ class MessageProcessor {
         insertedTimeGapId = lastTimeGap?.id;
       }
 
-      // Get conversation to access matched date
+      // Get conversation to access matched date and current mood
       const conversation = conversationService.getConversationById(conversationId);
+
       const matchedDate = conversation?.created_at;
 
       // Get conversation history (includes any TIME GAP markers we just inserted)
@@ -184,6 +185,13 @@ class MessageProcessor {
       const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
       const userBio = user?.bio || null;
 
+      // Check if character mood should be updated (TIME GAP or every 25 messages)
+      const shouldUpdateCharacterMood = timeGapInserted || (totalMessageCount > 0 && totalMessageCount % 25 === 0);
+      if (shouldUpdateCharacterMood) {
+        const moodTrigger = timeGapInserted ? 'TIME GAP' : `25-message interval (${totalMessageCount})`;
+        console.log(`🎭 Character mood update will be requested: ${moodTrigger}`);
+      }
+
       const decision = await aiService.makeDecision({
         messages: aiMessages,
         characterData: characterData,
@@ -197,7 +205,8 @@ class MessageProcessor {
         assistantMessageCount: totalMessageCount,
         currentStatus: currentStatusInfo,
         schedule: schedule,
-        userBio: userBio
+        userBio: userBio,
+        shouldGenerateCharacterMood: shouldUpdateCharacterMood
       });
 
       console.log('🎯 Decision made:', decision);
@@ -258,6 +267,25 @@ class MessageProcessor {
           characterName: characterData.name || 'Character',
           systemMessage: systemMessage,
           messageId: savedMoodMessage.id
+        });
+      }
+
+      // === CHARACTER MOOD UPDATE ===
+      // Handle character mood from decision (triggered by TIME GAP or every 25 messages)
+      if (decision.characterMood) {
+        // Store mood in conversations table
+        db.prepare(`
+          UPDATE conversations SET character_mood = ? WHERE id = ?
+        `).run(decision.characterMood, conversationId);
+
+        console.log(`🎭 Character mood updated: "${decision.characterMood}"`);
+
+        // Emit mood update to frontend
+        io.to(`user:${userId}`).emit('character_mood_update', {
+          characterId,
+          conversationId,
+          mood: decision.characterMood,
+          characterName: characterData.name || 'Character'
         });
       }
 
@@ -402,6 +430,9 @@ class MessageProcessor {
       // NOW generate AI response (if shouldRespond is true) - it will know what image was generated
       let aiResponse = null;
       if (decision.shouldRespond) {
+        // Use new mood from decision if available, otherwise use existing from conversation
+        const currentMood = decision.characterMood || conversation?.character_mood || null;
+
         aiResponse = await aiService.createChatCompletion({
           messages: aiMessages,
           characterData: characterData,
@@ -412,7 +443,8 @@ class MessageProcessor {
           schedule: schedule,
           isDeparting: isDeparting,
           decision: decision,  // Pass decision with image tags
-          matchedDate: matchedDate
+          matchedDate: matchedDate,
+          characterMood: currentMood
         });
       }
 

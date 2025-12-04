@@ -723,6 +723,12 @@ function runMigrations() {
       console.log('✅ auto_unmatch_inactive_days column added to users table');
     }
 
+    // Migration: Add character_mood column to conversations table for dynamic mood tracking
+    if (!convColumnNames.includes('character_mood')) {
+      db.exec(`ALTER TABLE conversations ADD COLUMN character_mood TEXT;`);
+      console.log('✅ character_mood column added to conversations table');
+    }
+
     // Migration: Add profile_thumbnail column to users table
     if (!userColumnNamesRefresh.includes('profile_thumbnail')) {
       db.exec(`ALTER TABLE users ADD COLUMN profile_thumbnail TEXT;`);

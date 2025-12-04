@@ -13,6 +13,7 @@ class ConversationService {
         c.character_id,
         c.character_name,
         c.unread_count,
+        c.character_mood,
         c.created_at,
         c.updated_at,
         (SELECT content FROM messages WHERE conversation_id = c.id AND role != 'system' ORDER BY created_at DESC LIMIT 1) as last_message,

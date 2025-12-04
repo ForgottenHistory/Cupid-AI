@@ -22,7 +22,7 @@ class DecisionEngineService {
    * Decision Engine: Analyze conversation and decide on actions
    * Returns: { reaction: string|null, shouldRespond: boolean, shouldUnmatch: boolean, shouldSendVoice: boolean, shouldSendImage: boolean, mood: string, thought: string|null, imageContext: string|null }
    */
-  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null }) {
+  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodChange = null, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false }) {
     try {
       const aiService = await this.getAIService();
       // Check mood cooldown (30 minutes)
@@ -128,6 +128,18 @@ class DecisionEngineService {
         decisionPromptTemplate = decisionPromptTemplate.replace(/\{moodGuidelines\}[^\{]*/g, '');
       }
 
+      // Handle character mood conditional FIRST (before thought, since thought guidelines regex could eat it)
+      decisionPromptTemplate = decisionPromptTemplate.replace(
+        '{shouldGenerateCharacterMood}',
+        shouldGenerateCharacterMood ? '' : '##REMOVE_CHARACTER_MOOD##'
+      );
+
+      if (!shouldGenerateCharacterMood) {
+        decisionPromptTemplate = decisionPromptTemplate.replace(/\{characterMoodGuidelines\}[^\{]*/g, '');
+      } else {
+        decisionPromptTemplate = decisionPromptTemplate.replace('{characterMoodGuidelines}', '\n');
+      }
+
       if (!shouldGenerateThought) {
         decisionPromptTemplate = decisionPromptTemplate.replace(/\{thoughtGuidelines\}[^\{]*/g, '');
       } else {
@@ -138,6 +150,7 @@ class DecisionEngineService {
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_VOICE##[^\n]*\n?/g, '');
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_IMAGE##[^\n]*\n?/g, '');
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_THOUGHT##[^\n]*\n?/g, '');
+      decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_CHARACTER_MOOD##[^\n]*\n?/g, '');
 
       // Get character-specific post instructions (same as Content LLM)
       const postInstructions = promptBuilderService.getPostInstructions(characterId);
@@ -297,6 +310,7 @@ ${prompts.proactiveDecisionPrompt}`;
         shouldSendVoice: false,
         shouldSendImage: false,
         mood: 'none',
+        characterMood: null,
         thought: null,
         reason: 'No reason provided'
       };
@@ -325,6 +339,12 @@ ${prompts.proactiveDecisionPrompt}`;
           const validMoods = ['none', 'hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
           if (validMoods.includes(value)) {
             decision.mood = value;
+          }
+        } else if (line.startsWith('Character Mood:')) {
+          const value = line.substring('Character Mood:'.length).trim();
+          if (value) {
+            // Remove quotes if present
+            decision.characterMood = value.replace(/^["']|["']$/g, '');
           }
         } else if (line.startsWith('Thought:')) {
           const value = line.substring('Thought:'.length).trim();
@@ -380,6 +400,7 @@ ${prompts.proactiveDecisionPrompt}`;
       shouldSendVoice: false,
       shouldSendImage: false,
       mood: 'none',
+      characterMood: null,
       thought: null,
       reason: 'Default decision (fallback)'
     };

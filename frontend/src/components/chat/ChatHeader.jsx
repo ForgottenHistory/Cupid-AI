@@ -8,7 +8,7 @@ import chatService from '../../services/chatService';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId }) => {
+const ChatHeader = ({ character, characterStatus, characterMood, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
@@ -36,6 +36,19 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
     const totalChars = messages.reduce((sum, msg) => sum + msg.content.length, 0);
     return Math.ceil(totalChars / 4);
   };
+
+  // Check if mood should be shown (only if last message is within 30 minutes)
+  const isMoodFresh = () => {
+    if (!messages || messages.length === 0) return false;
+    // Find the last non-system message
+    const lastMessage = [...messages].reverse().find(m => m.role === 'user' || m.role === 'assistant');
+    if (!lastMessage?.created_at) return false;
+    const lastMessageTime = new Date(lastMessage.created_at).getTime();
+    const thirtyMinutesAgo = Date.now() - (30 * 60 * 1000);
+    return lastMessageTime > thirtyMinutesAgo;
+  };
+
+  const showMood = characterMood && isMoodFresh();
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -423,6 +436,12 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
                   document.body
                 )}
               </div>
+              {/* Character Mood Display */}
+              {showMood && (
+                <div className="text-xs font-medium drop-shadow-lg bg-purple-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 italic text-white/90">
+                  {characterMood}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -522,6 +541,12 @@ const ChatHeader = ({ character, characterStatus, messages, totalMessages, hasMo
                       document.body
                     )}
                   </div>
+                  {/* Character Mood Display */}
+                  {showMood && (
+                    <div className="text-sm font-medium drop-shadow-lg bg-purple-500/30 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20 italic text-white/90">
+                      {characterMood}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

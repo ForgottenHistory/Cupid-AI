@@ -28,11 +28,13 @@ export const useChatWebSocket = ({
   setDisplayingMessages,
   addDisplayTimeout,
   inputRef,
+  onCharacterMoodUpdate,
 }) => {
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [unmatchData, setUnmatchData] = useState(null);
   const [currentThought, setCurrentThought] = useState(null);
   const [isCompacting, setIsCompacting] = useState(false);
+  const [characterMood, setCharacterMood] = useState(null);
   const { setMoodEffect, clearMoodEffect} = useMood();
 
   // Use ref to track current characterId to prevent stale closures
@@ -303,6 +305,21 @@ export const useChatWebSocket = ({
       });
     };
 
+    const handleCharacterMoodUpdate = (data) => {
+      // Only update UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+
+      console.log('🎭 Character mood update received:', data.mood);
+
+      // Update local state
+      setCharacterMood(data.mood);
+
+      // Call callback if provided
+      if (onCharacterMoodUpdate) {
+        onCharacterMoodUpdate(data.mood);
+      }
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
@@ -314,6 +331,7 @@ export const useChatWebSocket = ({
     socketService.on('compacting_start', handleCompactingStart);
     socketService.on('compacting_end', handleCompactingEnd);
     socketService.on('messages_combined', handleMessagesCombined);
+    socketService.on('character_mood_update', handleCharacterMoodUpdate);
 
     // Cleanup
     return () => {
@@ -328,8 +346,9 @@ export const useChatWebSocket = ({
       socketService.off('compacting_start', handleCompactingStart);
       socketService.off('compacting_end', handleCompactingEnd);
       socketService.off('messages_combined', handleMessagesCombined);
+      socketService.off('character_mood_update', handleCharacterMoodUpdate);
     };
-  }, [user, characterId, setMoodEffect]);
+  }, [user, characterId, setMoodEffect, onCharacterMoodUpdate]);
 
   return {
     showTypingIndicator,
@@ -338,5 +357,7 @@ export const useChatWebSocket = ({
     setUnmatchData,
     currentThought,
     isCompacting,
+    characterMood,
+    setCharacterMood,
   };
 };

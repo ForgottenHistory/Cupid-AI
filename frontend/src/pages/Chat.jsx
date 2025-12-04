@@ -123,7 +123,7 @@ const Chat = () => {
   });
 
   // WebSocket real-time messaging
-  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData, currentThought, isCompacting } = useChatWebSocket({
+  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData, currentThought, isCompacting, characterMood, setCharacterMood } = useChatWebSocket({
     characterId,
     user,
     isMountedRef,
@@ -135,6 +135,15 @@ const Chat = () => {
     addDisplayTimeout,
     inputRef,
   });
+
+  // Initialize character mood from conversation data
+  useEffect(() => {
+    if (conversation?.character_mood) {
+      setCharacterMood(conversation.character_mood);
+    } else {
+      setCharacterMood(null);
+    }
+  }, [conversation?.character_mood, setCharacterMood]);
 
   // Debug: Log when thought changes
   useEffect(() => {
@@ -548,6 +557,7 @@ const Chat = () => {
           <ChatHeader
             character={character}
             characterStatus={characterStatus}
+            characterMood={characterMood}
             messages={messages}
             totalMessages={totalMessages}
             hasMoreMessages={hasMoreMessages}
