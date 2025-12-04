@@ -30,6 +30,38 @@ class AIService {
   }
 
   /**
+   * Strip unwanted formatting from AI response content and validate it's not empty
+   * @param {string} content - The response content to process
+   * @param {string} rawContent - Original raw content for error context
+   * @returns {string} Processed content
+   * @throws {Error} If content is empty or invalid after processing
+   */
+  stripAndValidateContent(content, rawContent) {
+    // Strip any <think></think> tags (reasoning/thinking output from some models)
+    content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+    content = content.replace(/<\/?think>/gi, '').trim();
+
+    // Strip RP actions wrapped in asterisks (e.g. *leans back*, *sighs*)
+    // The system prompt forbids roleplay formatting, so remove it
+    content = content.replace(/\*[^*]+\*/g, '').trim();
+
+    // Check if content is empty after stripping
+    if (!content && rawContent) {
+      console.warn('⚠️ Response is empty after stripping formatting');
+      throw new Error('Response was empty after stripping formatting.');
+    }
+
+    // Check if content is just a character name followed by colon with nothing after
+    // e.g. "Character Name:" or "Character Name (Game): " (empty response)
+    if (/^[^:]+:\s*$/.test(content)) {
+      console.warn('⚠️ Response is just character name with colon, no actual content:', content);
+      throw new Error('Response was empty - model returned only character name prefix without content.');
+    }
+
+    return content;
+  }
+
+  /**
    * Estimate token count for a messages array
    * Uses rough estimation: 1 token ≈ 4 characters (75% accuracy)
    * @param {Array} messages - Array of message objects with content
@@ -338,10 +370,8 @@ class AIService {
         throw new Error('Response contains incomplete <think> tag - response was truncated. Please retry or increase max_tokens.');
       }
 
-      // Strip any <think></think> tags (reasoning/thinking output from models that use tags)
-      // First remove complete pairs, then remove any stray opening or closing tags
-      content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-      content = content.replace(/<\/?think>/gi, '').trim();
+      // Strip formatting and validate content
+      content = this.stripAndValidateContent(content, rawContent);
 
       // Log reasoning for debugging if present
       if (reasoning) {
@@ -550,24 +580,8 @@ class AIService {
           console.warn(JSON.stringify(message, null, 2));
         }
 
-        // Strip any <think></think> tags (reasoning/thinking output from some models)
-        // First remove complete pairs, then remove any stray opening or closing tags
-        content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-        content = content.replace(/<\/?think>/gi, '').trim();
-
-        // Check if content is empty after stripping think tags
-        if (!content && rawContent) {
-          console.warn('⚠️ Response contains only <think> tags with no actual content');
-          console.warn('Raw content length:', rawContent.length);
-          throw new Error('Response was truncated or incomplete. The model may have used all tokens for thinking without outputting the result. Try increasing max_tokens.');
-        }
-
-        // Check if content is just a character name followed by colon with nothing after
-        // e.g. "Character Name:" or "Character Name: " (empty response)
-        if (/^[^:]+:\s*$/.test(content)) {
-          console.warn('⚠️ Response is just character name with colon, no actual content:', content);
-          throw new Error('Response was empty - model returned only character name prefix without content.');
-        }
+        // Strip formatting and validate content
+        content = this.stripAndValidateContent(content, rawContent);
 
         // Log raw response for debugging reasoning mode
         if (options.reasoning_effort) {
