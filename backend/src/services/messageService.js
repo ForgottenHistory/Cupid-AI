@@ -534,13 +534,12 @@ class MessageService {
       throw new Error('Unauthorized');
     }
 
-    // Delete this message and all messages created after it in the same conversation
+    // Delete this message and all messages with higher IDs in the same conversation
+    // Using ID instead of created_at because split messages have identical timestamps
     db.prepare(`
       DELETE FROM messages
       WHERE conversation_id = ?
-        AND created_at >= (
-          SELECT created_at FROM messages WHERE id = ?
-        )
+        AND id >= ?
     `).run(message.conversation_id, messageId);
 
     return message.conversation_id;
