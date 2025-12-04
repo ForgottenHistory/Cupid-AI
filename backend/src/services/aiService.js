@@ -562,6 +562,13 @@ class AIService {
           throw new Error('Response was truncated or incomplete. The model may have used all tokens for thinking without outputting the result. Try increasing max_tokens.');
         }
 
+        // Check if content is just a character name followed by colon with nothing after
+        // e.g. "Character Name:" or "Character Name: " (empty response)
+        if (/^[^:]+:\s*$/.test(content)) {
+          console.warn('⚠️ Response is just character name with colon, no actual content:', content);
+          throw new Error('Response was empty - model returned only character name prefix without content.');
+        }
+
         // Log raw response for debugging reasoning mode
         if (options.reasoning_effort) {
           console.log('🧠 RAW MESSAGE:', JSON.stringify(message, null, 2));
