@@ -36,9 +36,19 @@ export const useChatWebSocket = ({
   const [isCompacting, setIsCompacting] = useState(false);
   const [characterMood, setCharacterMood] = useState(null);
   const { setMoodEffect, clearMoodEffect, closeMoodModal } = useMood();
+  const typingTimeoutRef = useRef(null);
 
   // Use ref to track current characterId to prevent stale closures
   const currentCharacterIdRef = useRef(characterId);
+
+  // Helper to clear typing indicator and its timeout
+  const clearTypingIndicator = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+    setShowTypingIndicator(false);
+  };
 
   // Check if character is currently typing when characterId changes
   useEffect(() => {
@@ -105,7 +115,7 @@ export const useChatWebSocket = ({
       }
 
       // If we're here, this is the current character
-      setShowTypingIndicator(false);
+      clearTypingIndicator();
       const lastMessage = data.message;
 
       // Check for 30-minute time gap and clear mood effects if needed
@@ -162,9 +172,21 @@ export const useChatWebSocket = ({
       if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('⌨️  Character is typing...');
 
+      // Clear any existing typing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
       // Store typing state globally
       socketService.setTyping(data.characterId, true);
       setShowTypingIndicator(true);
+
+      // Auto-clear typing indicator after 60 seconds as a safety fallback
+      typingTimeoutRef.current = setTimeout(() => {
+        console.log('⏰ Typing indicator timeout - auto-clearing');
+        socketService.clearTyping(data.characterId);
+        clearTypingIndicator();
+      }, 60000);
     };
 
     const handleCharacterOffline = (data) => {
@@ -175,7 +197,7 @@ export const useChatWebSocket = ({
       if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('💤 Character is offline');
 
-      setShowTypingIndicator(false);
+      clearTypingIndicator();
       setSending(false);
       setError('Character is currently offline');
     };
@@ -188,7 +210,7 @@ export const useChatWebSocket = ({
       if (data.characterId !== currentCharacterIdRef.current) return;
       console.log('🤷 Character chose not to respond');
 
-      setShowTypingIndicator(false);
+      clearTypingIndicator();
       setSending(false);
       // No error message - this is intentional behavior
     };
@@ -201,7 +223,7 @@ export const useChatWebSocket = ({
       if (data.characterId !== currentCharacterIdRef.current) return;
       console.error('❌ AI response error:', data.error);
 
-      setShowTypingIndicator(false);
+      clearTypingIndicator();
       setSending(false);
       setError(data.error || 'Failed to generate response');
     };
@@ -340,6 +362,11 @@ export const useChatWebSocket = ({
 
     // Cleanup
     return () => {
+      // Clear typing timeout on cleanup
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = null;
+      }
       socketService.off('new_message', handleNewMessage);
       socketService.off('character_typing', handleCharacterTyping);
       socketService.off('character_offline', handleCharacterOffline);
