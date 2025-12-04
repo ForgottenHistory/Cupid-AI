@@ -1,4 +1,5 @@
 import axios from 'axios';
+import db from '../db/database.js';
 import llmSettingsService from './llmSettingsService.js';
 import tokenService from './tokenService.js';
 import promptBuilderService from './promptBuilderService.js';
@@ -136,9 +137,19 @@ class AIService {
 
       // Build final messages array with older history first
       const finalMessages = [
-        { role: 'system', content: systemPrompt },
-        ...olderMessages
+        { role: 'system', content: systemPrompt }
       ];
+
+      // Include full schedule right after system prompt if enabled
+      if (includeFullSchedule && schedule) {
+        const fullSchedule = promptBuilderService.buildFullSchedule(schedule);
+        if (fullSchedule) {
+          finalMessages.push({ role: 'system', content: fullSchedule });
+        }
+      }
+
+      // Add older conversation history
+      finalMessages.push(...olderMessages);
 
       // Append current date/time reminder
       const now = new Date();
@@ -175,14 +186,6 @@ class AIService {
         const scheduleActivities = promptBuilderService.buildScheduleActivities(schedule);
         if (scheduleActivities) {
           contextParts.push(scheduleActivities);
-        }
-
-        // Include full schedule if enabled
-        if (includeFullSchedule) {
-          const fullSchedule = promptBuilderService.buildFullSchedule(schedule);
-          if (fullSchedule) {
-            contextParts.push(fullSchedule);
-          }
         }
       }
 

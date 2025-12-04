@@ -295,13 +295,13 @@ class PromptBuilderService {
    * Build full weekly schedule (when includeFullSchedule setting is enabled)
    */
   buildFullSchedule(schedule) {
-    if (!schedule) return null;
+    if (!schedule?.schedule) return null;
 
     const dayNames = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const parts = ['📅 FULL WEEKLY SCHEDULE:'];
 
     for (const day of dayNames) {
-      const daySchedule = schedule[day];
+      const daySchedule = schedule.schedule[day];
       if (!daySchedule || daySchedule.length === 0) continue;
 
       const capitalizedDay = day.charAt(0).toUpperCase() + day.slice(1);
