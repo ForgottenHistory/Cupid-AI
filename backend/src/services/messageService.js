@@ -138,10 +138,15 @@ class MessageService {
           // User image: Convert to [Image: description] format
           content = `[Image: ${msg.content}]`;
         } else {
-          // AI image: Don't show image tags to Content LLM (it will try to mimic the format)
-          // Just show a simple placeholder + the actual text content
+          // AI image: Include image tags so the model knows what image was sent
+          // Format: [IMAGE: tags] followed by the caption (if any)
           const textContent = content || '';
-          content = textContent || '[sent an image]';
+          const imageTags = msg.image_tags || '';
+          if (imageTags) {
+            content = textContent ? `[IMAGE: ${imageTags}]\n${textContent}` : `[IMAGE: ${imageTags}]`;
+          } else {
+            content = textContent || '[sent an image]';
+          }
         }
       }
 
