@@ -114,7 +114,7 @@ class AIService {
   /**
    * Send a chat completion request to AI provider (OpenRouter or Featherless)
    */
-  async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null, characterMood = null }) {
+  async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null, characterMood = null, characterState = null }) {
     try {
       const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName, userId);
       const userSettings = llmSettingsService.getUserSettings(userId);
@@ -208,7 +208,7 @@ class AIService {
       const contextParts = [];
 
       if (currentStatus) {
-        const currentStatusMessage = promptBuilderService.buildCurrentStatus(currentStatus, characterMood);
+        const currentStatusMessage = promptBuilderService.buildCurrentStatus(currentStatus, characterMood, characterState, userId);
         if (currentStatusMessage) {
           contextParts.push(currentStatusMessage);
         }

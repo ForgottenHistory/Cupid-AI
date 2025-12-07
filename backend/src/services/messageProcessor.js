@@ -329,6 +329,35 @@ class MessageProcessor {
         });
       }
 
+      // === CHARACTER STATE UPDATE ===
+      // Handle character state from decision (same triggers as mood - TIME GAP, every 25 messages, etc.)
+      // ONLY update state when we actually asked the decision engine for it (shouldUpdateCharacterMood)
+      if (shouldUpdateCharacterMood) {
+        const currentState = conversation?.character_state || null;
+        const newState = decision.characterState || null;
+
+        if (newState !== currentState) {
+          // Store state in conversations table (null clears it)
+          db.prepare(`
+            UPDATE conversations SET character_state = ? WHERE id = ?
+          `).run(newState, conversationId);
+
+          if (newState) {
+            console.log(`🎭 Character state set: "${newState}"`);
+          } else if (currentState) {
+            console.log(`🎭 Character state cleared (was: "${currentState}")`);
+          }
+
+          // Emit state update to frontend
+          io.to(`user:${userId}`).emit('character_state_update', {
+            characterId,
+            conversationId,
+            state: newState,
+            characterName: characterData.name || 'Character'
+          });
+        }
+      }
+
       // Check if character wants to unmatch
       if (decision.shouldUnmatch) {
         console.log(`💔 Character ${characterId} has decided to unmatch user ${userId}`);
@@ -470,8 +499,12 @@ class MessageProcessor {
       // NOW generate AI response (if shouldRespond is true) - it will know what image was generated
       let aiResponse = null;
       if (decision.shouldRespond) {
-        // Use new mood from decision if available, otherwise use existing from conversation
+        // Use new mood/state from decision if available, otherwise use existing from conversation
         const currentMood = decision.characterMood || conversation?.character_mood || null;
+        // Only use decision.characterState if it was actually set (not null/undefined), otherwise keep existing
+        const currentCharacterState = decision.characterState || conversation?.character_state || null;
+
+        console.log(`🎭 Chat prompt context: mood="${currentMood}", state="${currentCharacterState}", conversation.character_mood="${conversation?.character_mood}", conversation.character_state="${conversation?.character_state}"`);
 
         aiResponse = await aiService.createChatCompletion({
           messages: aiMessages,
@@ -484,7 +517,8 @@ class MessageProcessor {
           isDeparting: isDeparting,
           decision: decision,  // Pass decision with image tags
           matchedDate: matchedDate,
-          characterMood: currentMood
+          characterMood: currentMood,
+          characterState: currentCharacterState
         });
       }
 

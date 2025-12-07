@@ -35,6 +35,7 @@ export const useChatWebSocket = ({
   const [currentThought, setCurrentThought] = useState(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [characterMood, setCharacterMood] = useState(null);
+  const [characterState, setCharacterState] = useState(null);
   const { setMoodEffect, clearMoodEffect, closeMoodModal } = useMood();
 
   // Use ref to track current characterId to prevent stale closures
@@ -343,6 +344,16 @@ export const useChatWebSocket = ({
       }
     };
 
+    const handleCharacterStateUpdate = (data) => {
+      // Only update UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+
+      console.log('🎭 Character state update received:', data.state);
+
+      // Update local state (null means state was cleared)
+      setCharacterState(data.state);
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
@@ -355,6 +366,7 @@ export const useChatWebSocket = ({
     socketService.on('compacting_end', handleCompactingEnd);
     socketService.on('messages_combined', handleMessagesCombined);
     socketService.on('character_mood_update', handleCharacterMoodUpdate);
+    socketService.on('character_state_update', handleCharacterStateUpdate);
 
     // Cleanup
     return () => {
@@ -370,6 +382,7 @@ export const useChatWebSocket = ({
       socketService.off('compacting_end', handleCompactingEnd);
       socketService.off('messages_combined', handleMessagesCombined);
       socketService.off('character_mood_update', handleCharacterMoodUpdate);
+      socketService.off('character_state_update', handleCharacterStateUpdate);
     };
   }, [user, characterId, setMoodEffect, closeMoodModal, onCharacterMoodUpdate]);
 
@@ -382,5 +395,7 @@ export const useChatWebSocket = ({
     isCompacting,
     characterMood,
     setCharacterMood,
+    characterState,
+    setCharacterState,
   };
 };

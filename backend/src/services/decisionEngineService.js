@@ -1,7 +1,55 @@
 import llmSettingsService from './llmSettingsService.js';
 import promptBuilderService from './promptBuilderService.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class DecisionEngineService {
+  /**
+   * Load character states from user config file
+   * @param {number} userId - User ID
+   * @returns {Array} Array of { id, name, description }
+   */
+  loadCharacterStates(userId) {
+    try {
+      // Try user-specific config first
+      let statesPath = path.join(__dirname, '../../config/users', String(userId), 'characterStates.txt');
+      if (!fs.existsSync(statesPath)) {
+        // Fall back to default config
+        statesPath = path.join(__dirname, '../../config/characterStates.txt');
+      }
+
+      if (!fs.existsSync(statesPath)) {
+        return [];
+      }
+
+      const content = fs.readFileSync(statesPath, 'utf-8');
+      const states = [];
+
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        // Skip comments and empty lines
+        if (!trimmed || trimmed.startsWith('#')) continue;
+
+        const parts = trimmed.split('|').map(p => p.trim());
+        if (parts.length >= 3) {
+          states.push({
+            id: parts[0],
+            name: parts[1],
+            description: parts[2]
+          });
+        }
+      }
+
+      return states;
+    } catch (error) {
+      console.error('Error loading character states:', error);
+      return [];
+    }
+  }
   constructor() {
     // aiService will be lazy-loaded to avoid circular dependency
     this.aiService = null;
@@ -62,11 +110,15 @@ class DecisionEngineService {
         }
       }
 
-      // Extract character name
+      // Extract character name and description (minimal context for decision-making)
       const characterName = characterData.data?.name || characterData.name || 'Character';
+      const characterDescription = characterData.data?.description || characterData.description || '';
 
-      // Build system prompt (same as chat) - include characterId for memories
-      const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, false, false, null, null, null, null, 'User', userId);
+      // Build minimal character context (NOT the full system prompt - decision engine doesn't need all that)
+      const characterContext = `You are analyzing a conversation as ${characterName}.
+Character: ${characterName}
+${characterDescription ? `Description: ${characterDescription}` : ''}
+${currentStatus ? `Current Status: ${currentStatus.status}${currentStatus.activity ? ` (${currentStatus.activity})` : ''}` : ''}`;
 
       // Format conversation history (same format as chat prompt, includes TIME GAPs)
       const conversationHistory = messages.map(m => {
@@ -141,27 +193,46 @@ class DecisionEngineService {
         decisionPromptTemplate = decisionPromptTemplate.replace('{thoughtGuidelines}', '\n');
       }
 
+      // Handle character state conditional (same trigger as characterMood - every 25 messages or TIME GAP)
+      const shouldGenerateCharacterState = shouldGenerateCharacterMood;
+      decisionPromptTemplate = decisionPromptTemplate.replace(
+        '{shouldGenerateCharacterState}',
+        shouldGenerateCharacterState ? '' : '##REMOVE_CHARACTER_STATE##'
+      );
+
+      if (!shouldGenerateCharacterState) {
+        decisionPromptTemplate = decisionPromptTemplate.replace(/\{characterStateGuidelines\}[^\{]*/g, '');
+        decisionPromptTemplate = decisionPromptTemplate.replace('{availableStates}', '');
+      } else {
+        decisionPromptTemplate = decisionPromptTemplate.replace('{characterStateGuidelines}', '\n');
+        // Load and format available states
+        const characterStates = this.loadCharacterStates(userId);
+        const statesFormatted = characterStates.map(s => `    - "${s.id}" = ${s.name}: ${s.description}`).join('\n');
+        decisionPromptTemplate = decisionPromptTemplate.replace('{availableStates}', statesFormatted || '    (no states configured)');
+      }
+
       // Remove marker lines
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_VOICE##[^\n]*\n?/g, '');
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_IMAGE##[^\n]*\n?/g, '');
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_THOUGHT##[^\n]*\n?/g, '');
       decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_CHARACTER_MOOD##[^\n]*\n?/g, '');
+      decisionPromptTemplate = decisionPromptTemplate.replace(/##REMOVE_CHARACTER_STATE##[^\n]*\n?/g, '');
 
       // Get character-specific post instructions (same as Content LLM)
       const postInstructions = promptBuilderService.getPostInstructions(characterId);
       const postInstructionsSection = postInstructions ? `\n\nCharacter-specific instructions:\n${postInstructions}` : '';
 
-      const decisionPrompt = `${systemPrompt}
-
+      const decisionPrompt = `${characterContext}
 ${personalityContext}
-${isEngaged ? '\nCurrent state: Character is actively engaged in conversation (responding quickly)' : '\nCurrent state: Character is disengaged (slower responses based on availability)'}
-${hasVoice ? '\nVoice available: This character has a voice sample and can send voice messages' : '\nVoice available: No (text only)'}
-${hasImage ? '\nImage generation: This character has image tags configured and can send generated images' : '\nImage generation: No'}${postInstructionsSection}
+${isEngaged ? '\nEngagement: Actively engaged in conversation' : '\nEngagement: Disengaged (slower responses)'}
+${hasVoice ? '\nVoice: Available' : ''}
+${hasImage ? '\nImage generation: Available' : ''}
 
 Conversation history:
 ${conversationHistory}
 
 User just sent: "${userMessage}"
+${postInstructionsSection}
 
 ${decisionPromptTemplate}`;
 
@@ -306,6 +377,7 @@ ${prompts.proactiveDecisionPrompt}`;
         shouldSendImage: false,
         mood: 'none',
         characterMood: null,
+        characterState: null,
         thought: null,
         reason: 'No reason provided'
       };
@@ -340,6 +412,12 @@ ${prompts.proactiveDecisionPrompt}`;
           if (value) {
             // Remove quotes if present
             decision.characterMood = value.replace(/^["']|["']$/g, '');
+          }
+        } else if (line.startsWith('Character State:')) {
+          const value = line.substring('Character State:'.length).trim().toLowerCase();
+          // If it's "none" or empty, keep null. Otherwise use the state id
+          if (value && value !== 'none') {
+            decision.characterState = value.replace(/^["']|["']$/g, '');
           }
         } else if (line.startsWith('Thought:')) {
           const value = line.substring('Thought:'.length).trim();
@@ -396,6 +474,7 @@ ${prompts.proactiveDecisionPrompt}`;
       shouldSendImage: false,
       mood: 'none',
       characterMood: null,
+      characterState: null,
       thought: null,
       reason: 'Default decision (fallback)'
     };

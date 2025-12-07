@@ -6,10 +6,41 @@ import CharacterMoodModal from './CharacterMoodModal';
 import api from '../../services/api';
 import chatService from '../../services/chatService';
 
+// State ID to display name mapping
+const STATE_DISPLAY_NAMES = {
+  drunk: 'Drunk',
+  high: 'High',
+  showering: 'In the Shower',
+  bath: 'Taking a Bath',
+  sleeping: 'Asleep',
+  masturbating: 'Masturbating',
+  having_sex: 'Having Sex',
+  post_sex: 'Post-Sex Afterglow',
+  crying: 'Crying/Upset',
+  angry: 'Angry/Pissed',
+  exercising: 'Working Out',
+  eating: 'Eating',
+  driving: 'Driving',
+  at_work: 'At Work',
+  in_meeting: 'In a Meeting',
+  watching_movie: 'Watching Something',
+  gaming: 'Gaming',
+  with_friends: 'With Friends',
+  on_date: 'On a Date',
+  cooking: 'Cooking',
+  sick: 'Feeling Sick',
+  hungover: 'Hungover',
+  horny: 'Horny/Aroused',
+  bored: 'Extremely Bored',
+  anxious: 'Anxious/Nervous',
+  excited: 'Super Excited',
+  sleepy: 'Half-Asleep',
+};
+
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, characterMood, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate }) => {
+const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
@@ -51,6 +82,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
   };
 
   const showMood = characterMood && isMoodFresh();
+  const showState = characterState && characterState !== 'none' && isMoodFresh();
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
@@ -462,6 +494,15 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
                   {characterMood}
                 </button>
               )}
+              {/* Character State Display */}
+              {showState && (
+                <span
+                  className="text-xs font-semibold drop-shadow-lg bg-orange-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-orange-300/40 text-orange-100"
+                  title="Special state affecting behavior"
+                >
+                  {STATE_DISPLAY_NAMES[characterState] || characterState}
+                </span>
+              )}
             </div>
           </div>
         ) : (
@@ -570,6 +611,15 @@ const ChatHeader = ({ character, characterStatus, characterMood, messages, total
                     >
                       {characterMood}
                     </button>
+                  )}
+                  {/* Character State Display */}
+                  {showState && (
+                    <span
+                      className="text-xs font-semibold drop-shadow-lg bg-orange-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-orange-300/40 text-orange-100"
+                      title="Special state affecting behavior"
+                    >
+                      {STATE_DISPLAY_NAMES[characterState] || characterState}
+                    </span>
                   )}
                 </div>
               </div>

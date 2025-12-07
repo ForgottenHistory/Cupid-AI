@@ -1,6 +1,12 @@
 import { loadPrompts } from '../routes/prompts.js';
 import memoryService from './memoryService.js';
 import db from '../db/database.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class PromptBuilderService {
   /**
@@ -225,7 +231,7 @@ class PromptBuilderService {
   /**
    * Build current status message (separate from main prompt for better positioning)
    */
-  buildCurrentStatus(currentStatus, characterMood = null) {
+  buildCurrentStatus(currentStatus, characterMood = null, characterState = null, userId = null) {
     if (!currentStatus) return null;
 
     const parts = [];
@@ -256,7 +262,54 @@ class PromptBuilderService {
       parts.push(`\nCurrent Mood: ${characterMood} - Let this influence your tone and responses.`);
     }
 
+    // Add character state if available - this is a SPECIAL state that overrides normal behavior
+    if (characterState && userId) {
+      const stateDescription = this.getCharacterStateDescription(characterState, userId);
+      if (stateDescription) {
+        parts.push(`\n\n⚠️ SPECIAL STATE: ${stateDescription.name}\n${stateDescription.description}\nYou MUST write your messages as if you are currently in this state. This takes priority over your normal behavior.`);
+      }
+    }
+
     return parts.join('');
+  }
+
+  /**
+   * Get the description for a character state from the config file
+   */
+  getCharacterStateDescription(stateId, userId) {
+    try {
+      // Try user-specific config first
+      let statesPath = path.join(__dirname, '../../config/users', String(userId), 'characterStates.txt');
+      if (!fs.existsSync(statesPath)) {
+        // Fall back to default config
+        statesPath = path.join(__dirname, '../../config/characterStates.txt');
+      }
+
+      if (!fs.existsSync(statesPath)) {
+        return null;
+      }
+
+      const content = fs.readFileSync(statesPath, 'utf-8');
+
+      for (const line of content.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+
+        const parts = trimmed.split('|').map(p => p.trim());
+        if (parts.length >= 3 && parts[0] === stateId) {
+          return {
+            id: parts[0],
+            name: parts[1],
+            description: parts[2]
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error getting character state description:', error);
+      return null;
+    }
   }
 
   /**

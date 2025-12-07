@@ -743,6 +743,12 @@ function runMigrations() {
       console.log('✅ character_mood column added to conversations table');
     }
 
+    // Migration: Add character_state column to conversations table for special state tracking
+    if (!convColumnNames.includes('character_state')) {
+      db.exec(`ALTER TABLE conversations ADD COLUMN character_state TEXT;`);
+      console.log('✅ character_state column added to conversations table');
+    }
+
     // Migration: Add profile_thumbnail column to users table
     if (!userColumnNamesRefresh.includes('profile_thumbnail')) {
       db.exec(`ALTER TABLE users ADD COLUMN profile_thumbnail TEXT;`);

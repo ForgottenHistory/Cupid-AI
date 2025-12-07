@@ -822,6 +822,10 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     }
 
     // NOW generate AI response - it will know what image was generated
+    // Get mood and state from conversation for context
+    const currentMood = conversation?.character_mood || null;
+    const currentState = conversation?.character_state || null;
+
     const aiResponse = await aiService.createChatCompletion({
       messages: aiMessages,
       characterData: characterData,
@@ -832,7 +836,9 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       schedule: characterData.schedule,
       decision: decision,  // Pass decision with image tags
       isProactive: isProactive,  // Preserve proactive flag
-      proactiveType: proactiveType  // Use 'fresh' type for proactive regeneration
+      proactiveType: proactiveType,  // Use 'fresh' type for proactive regeneration
+      characterMood: currentMood,
+      characterState: currentState
     });
 
     // Clean up em dashes (replace with periods and capitalize next letter)
