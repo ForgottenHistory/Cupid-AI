@@ -143,9 +143,9 @@ const Library = () => {
 
     // Apply sorting
     if (sortOrder === 'newest') {
-      result = [...result].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      result = [...result].sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
     } else if (sortOrder === 'oldest') {
-      result = [...result].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+      result = [...result].sort((a, b) => (a.uploadedAt || 0) - (b.uploadedAt || 0));
     } else if (sortOrder === 'random') {
       result = [...result].sort(() => Math.random() - 0.5);
     }
