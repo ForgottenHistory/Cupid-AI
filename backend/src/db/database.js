@@ -993,6 +993,16 @@ function runMigrations() {
       console.log('✅ include_full_schedule column added to users table');
     }
 
+    // Migration: Add SD width, height, and randomize orientation settings
+    if (!userColumnsForSchedule.includes('sd_width')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN sd_width INTEGER DEFAULT 896;
+        ALTER TABLE users ADD COLUMN sd_height INTEGER DEFAULT 1152;
+        ALTER TABLE users ADD COLUMN sd_randomize_orientation INTEGER DEFAULT 0;
+      `);
+      console.log('✅ sd_width, sd_height, sd_randomize_orientation columns added to users table');
+    }
+
     // Fix users with invalid created_at (epoch 0 or NULL)
     const usersWithBadCreatedAt = db.prepare(`
       SELECT id FROM users

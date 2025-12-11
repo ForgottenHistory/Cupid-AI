@@ -20,7 +20,10 @@ const SDSettingsPage = () => {
     sd_hr_cfg: 5.0,
     sd_denoising_strength: 0.7,
     sd_enable_adetailer: true,
-    sd_adetailer_model: 'face_yolov8n.pt'
+    sd_adetailer_model: 'face_yolov8n.pt',
+    sd_width: 896,
+    sd_height: 1152,
+    sd_randomize_orientation: false
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,7 +53,10 @@ const SDSettingsPage = () => {
         sd_hr_cfg: response.data.sd_hr_cfg,
         sd_denoising_strength: response.data.sd_denoising_strength,
         sd_enable_adetailer: response.data.sd_enable_adetailer,
-        sd_adetailer_model: response.data.sd_adetailer_model
+        sd_adetailer_model: response.data.sd_adetailer_model,
+        sd_width: response.data.sd_width,
+        sd_height: response.data.sd_height,
+        sd_randomize_orientation: response.data.sd_randomize_orientation
       });
     } catch (err) {
       console.error('Failed to load SD settings:', err);
@@ -82,7 +88,10 @@ const SDSettingsPage = () => {
         sd_hr_cfg: settings.sd_hr_cfg,
         sd_denoising_strength: settings.sd_denoising_strength,
         sd_enable_adetailer: settings.sd_enable_adetailer,
-        sd_adetailer_model: settings.sd_adetailer_model
+        sd_adetailer_model: settings.sd_adetailer_model,
+        sd_width: settings.sd_width,
+        sd_height: settings.sd_height,
+        sd_randomize_orientation: settings.sd_randomize_orientation
       });
 
       setSuccess('Settings saved successfully!');
@@ -117,7 +126,10 @@ const SDSettingsPage = () => {
       sd_hr_cfg: 5.0,
       sd_denoising_strength: 0.7,
       sd_enable_adetailer: true,
-      sd_adetailer_model: 'face_yolov8n.pt'
+      sd_adetailer_model: 'face_yolov8n.pt',
+      sd_width: 896,
+      sd_height: 1152,
+      sd_randomize_orientation: false
     });
     setError('');
     setSuccess('');
@@ -266,6 +278,56 @@ const SDSettingsPage = () => {
                       placeholder="e.g., Karras, Exponential"
                     />
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      Width
+                    </label>
+                    <input
+                      type="number"
+                      value={settings.sd_width}
+                      onChange={(e) => setSettings({ ...settings, sd_width: parseInt(e.target.value) })}
+                      min="256"
+                      max="2048"
+                      step="64"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                      Height
+                    </label>
+                    <input
+                      type="number"
+                      value={settings.sd_height}
+                      onChange={(e) => setSettings({ ...settings, sd_height: parseInt(e.target.value) })}
+                      min="256"
+                      max="2048"
+                      step="64"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Randomize Orientation
+                    </label>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Randomly swap width/height for each image (50% vertical, 50% horizontal)</p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.sd_randomize_orientation}
+                      onChange={(e) => setSettings({ ...settings, sd_randomize_orientation: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                  </label>
                 </div>
               </div>
 

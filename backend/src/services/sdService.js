@@ -67,8 +67,22 @@ class SDService {
         sd_adetailer_model: 'face_yolov8n.pt',
         sd_main_prompt: 'masterpiece, best quality, amazing quality, 1girl, solo',
         sd_negative_prompt: 'lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry, speech bubble, multiple views,',
-        sd_model: ''
+        sd_model: '',
+        sd_width: 896,
+        sd_height: 1152,
+        sd_randomize_orientation: 0
       };
+
+      // Determine width and height (handle randomize orientation)
+      let width = settings.sd_width || 896;
+      let height = settings.sd_height || 1152;
+
+      if (Boolean(settings.sd_randomize_orientation)) {
+        // Randomly swap width and height (50% vertical, 50% horizontal)
+        if (Math.random() < 0.5) {
+          [width, height] = [height, width];
+        }
+      }
 
       // Build full prompt using character override, user's main prompt, or default
       const mainPrompt = mainPromptOverride || settings.sd_main_prompt || 'masterpiece, best quality, amazing quality, 1girl, solo';
@@ -91,8 +105,8 @@ class SDService {
       const payload = {
         prompt: fullPrompt,
         negative_prompt: fullNegative,
-        width: 832,
-        height: 1216,
+        width: width,
+        height: height,
         steps: settings.sd_steps,
         cfg_scale: settings.sd_cfg_scale,
         sampler_name: settings.sd_sampler,
@@ -267,8 +281,8 @@ class SDService {
         payload.hr_cfg = settings.sd_hr_cfg;
         payload.hr_additional_modules = ['Use same choices'];
         payload.denoising_strength = settings.sd_denoising_strength;
-        payload.hr_resize_x = 832 * settings.sd_hr_scale;
-        payload.hr_resize_y = 1216 * settings.sd_hr_scale;
+        payload.hr_resize_x = width * settings.sd_hr_scale;
+        payload.hr_resize_y = height * settings.sd_hr_scale;
       }
 
       // Make request to SD server with retry logic

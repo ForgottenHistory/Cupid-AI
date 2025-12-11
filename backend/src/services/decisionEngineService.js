@@ -73,8 +73,8 @@ class DecisionEngineService {
   async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodMessageCount = 0, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false }) {
     try {
       const aiService = await this.getAIService();
-      // Check mood cooldown (25 messages)
-      const moodCooldownMessages = 25;
+      // Check mood cooldown (10 messages)
+      const moodCooldownMessages = 10;
       const messagesSinceLastMood = assistantMessageCount - lastMoodMessageCount;
       const canChangeMood = messagesSinceLastMood >= moodCooldownMessages;
 
@@ -193,7 +193,7 @@ ${currentStatus ? `Current Status: ${currentStatus.status}${currentStatus.activi
         decisionPromptTemplate = decisionPromptTemplate.replace('{thoughtGuidelines}', '\n');
       }
 
-      // Handle character state conditional (same trigger as characterMood - every 25 messages or TIME GAP)
+      // Handle character state conditional (same trigger as characterMood - every 10 messages or TIME GAP)
       const shouldGenerateCharacterState = shouldGenerateCharacterMood;
       decisionPromptTemplate = decisionPromptTemplate.replace(
         '{shouldGenerateCharacterState}',
@@ -274,7 +274,7 @@ ${decisionPromptTemplate}`;
         console.log(`🚫 Mood change BLOCKED by cooldown (LLM wanted: ${decision.mood}, ${moodCooldownMessages - messagesSinceLastMood} more messages needed)`);
         decision.mood = 'none';
       } else if (decision.mood !== 'none') {
-        console.log(`✅ Mood change ALLOWED: ${decision.mood} (25+ messages since last change)`);
+        console.log(`✅ Mood change ALLOWED: ${decision.mood} (10+ messages since last change)`);
       }
 
       return decision;

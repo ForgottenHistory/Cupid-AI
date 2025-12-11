@@ -218,12 +218,12 @@ class MessageProcessor {
       const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
       const userBio = user?.bio || null;
 
-      // Check if character mood should be updated (TIME GAP, every 25 messages, pending from background mood change, or no mood set)
+      // Check if character mood should be updated (TIME GAP, every 10 messages, pending from background mood change, or no mood set)
       const hasPendingMoodUpdate = engagementState?.pending_character_mood_update === 1;
       const hasNoMood = !conversation?.character_mood;
-      const shouldUpdateCharacterMood = timeGapInserted || (totalMessageCount > 0 && totalMessageCount % 25 === 0) || hasPendingMoodUpdate || hasNoMood;
+      const shouldUpdateCharacterMood = timeGapInserted || (totalMessageCount > 0 && totalMessageCount % 10 === 0) || hasPendingMoodUpdate || hasNoMood;
       if (shouldUpdateCharacterMood) {
-        const moodTrigger = hasNoMood ? 'no mood set' : (hasPendingMoodUpdate ? 'pending from background mood change' : (timeGapInserted ? 'TIME GAP' : `25-message interval (${totalMessageCount})`));
+        const moodTrigger = hasNoMood ? 'no mood set' : (hasPendingMoodUpdate ? 'pending from background mood change' : (timeGapInserted ? 'TIME GAP' : `10-message interval (${totalMessageCount})`));
         console.log(`🎭 Character mood update will be requested: ${moodTrigger}`);
       }
 
@@ -330,7 +330,7 @@ class MessageProcessor {
       }
 
       // === CHARACTER STATE UPDATE ===
-      // Handle character state from decision (same triggers as mood - TIME GAP, every 25 messages, etc.)
+      // Handle character state from decision (same triggers as mood - TIME GAP, every 10 messages, etc.)
       // ONLY update state when we actually asked the decision engine for it (shouldUpdateCharacterMood)
       if (shouldUpdateCharacterMood) {
         const currentState = conversation?.character_state || null;
