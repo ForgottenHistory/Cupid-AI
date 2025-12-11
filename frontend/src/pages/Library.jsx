@@ -21,6 +21,8 @@ const Library = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [thumbnails, setThumbnails] = useState({});
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'compact'
+  const [sortOrder, setSortOrder] = useState('newest'); // 'newest', 'oldest', 'random'
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const ITEMS_PER_PAGE = viewMode === 'compact' ? 50 : 24;
 
   useEffect(() => {
@@ -122,7 +124,7 @@ const Library = () => {
   };
 
   const filteredCharacters = useMemo(() => {
-    return characters.filter((char) => {
+    let result = characters.filter((char) => {
       // Apply filter
       if (filter === 'liked' && !char.isLiked) return false;
       if (filter === 'unviewed' && char.isLiked) return false;
@@ -138,7 +140,18 @@ const Library = () => {
 
       return true;
     });
-  }, [characters, filter, debouncedSearch]);
+
+    // Apply sorting
+    if (sortOrder === 'newest') {
+      result = [...result].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    } else if (sortOrder === 'oldest') {
+      result = [...result].sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+    } else if (sortOrder === 'random') {
+      result = [...result].sort(() => Math.random() - 0.5);
+    }
+
+    return result;
+  }, [characters, filter, debouncedSearch, sortOrder]);
 
   // Reset to page 1 when filter or search changes
   useEffect(() => {
@@ -257,6 +270,58 @@ const Library = () => {
                 </button>
               )}
             </div>
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+              </svg>
+              <span className="text-sm">
+                {sortOrder === 'newest' ? 'Newest' : sortOrder === 'oldest' ? 'Oldest' : 'Random'}
+              </span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {sortDropdownOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setSortDropdownOpen(false)}
+                />
+                <div className="absolute right-0 mt-1 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20 overflow-hidden">
+                  <button
+                    onClick={() => { setSortOrder('newest'); setSortDropdownOpen(false); }}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition ${
+                      sortOrder === 'newest' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Newest
+                  </button>
+                  <button
+                    onClick={() => { setSortOrder('oldest'); setSortDropdownOpen(false); }}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition ${
+                      sortOrder === 'oldest' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Oldest
+                  </button>
+                  <button
+                    onClick={() => { setSortOrder('random'); setSortDropdownOpen(false); }}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition ${
+                      sortOrder === 'random' ? 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    Random
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* View Toggle */}
