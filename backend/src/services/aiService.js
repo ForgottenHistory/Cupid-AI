@@ -18,14 +18,19 @@ class AIService {
   constructor() {
     this.openrouterApiKey = process.env.OPENROUTER_API_KEY;
     this.featherlessApiKey = process.env.FEATHERLESS_API_KEY;
+    this.nanogptApiKey = process.env.NANOGPT_API_KEY;
     this.openrouterBaseUrl = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
     this.featherlessBaseUrl = 'https://api.featherless.ai/v1';
+    this.nanogptBaseUrl = 'https://nano-gpt.com/api/v1';
 
     if (!this.openrouterApiKey) {
       console.warn('⚠️  OPENROUTER_API_KEY not found in environment variables');
     }
     if (!this.featherlessApiKey) {
       console.warn('⚠️  FEATHERLESS_API_KEY not found in environment variables');
+    }
+    if (!this.nanogptApiKey) {
+      console.warn('⚠️  NANOGPT_API_KEY not found in environment variables');
     }
   }
 
@@ -88,7 +93,7 @@ class AIService {
 
   /**
    * Get provider configuration (API key and base URL) for a given provider
-   * @param {string} provider - 'openrouter' or 'featherless'
+   * @param {string} provider - 'openrouter', 'featherless', or 'nanogpt'
    * @returns {object} { apiKey, baseUrl, name }
    */
   getProviderConfig(provider) {
@@ -100,6 +105,12 @@ class AIService {
           apiKey: this.featherlessApiKey,
           baseUrl: this.featherlessBaseUrl,
           name: 'Featherless'
+        };
+      case 'nanogpt':
+        return {
+          apiKey: this.nanogptApiKey,
+          baseUrl: this.nanogptBaseUrl,
+          name: 'NanoGPT'
         };
       case 'openrouter':
       default:
@@ -275,22 +286,20 @@ class AIService {
       const messageType = isProactive ? `proactive-${proactiveType}${isFirstMessage ? '-first' : ''}` : 'chat';
       const logId = this.savePromptLog(finalMessages, messageType, characterName, logUserName);
 
-      // Build request body (provider-agnostic base parameters)
+      // Build request body with provider-specific penalty parameters
+      // OpenRouter: Use frequency_penalty/presence_penalty (OpenAI-style, widely supported)
+      // Featherless: Use repetition_penalty/top_k/min_p (vLLM-native, avoids conflicts)
+      // NanoGPT: Supports all parameters (provider-agnostic routing)
       const requestBody = {
         model: selectedModel,
         messages: finalMessages,
         temperature: userSettings.temperature,
         max_tokens: effectiveMaxTokens,
         top_p: userSettings.top_p,
-        frequency_penalty: userSettings.frequency_penalty,
-        presence_penalty: userSettings.presence_penalty,
       };
 
-      // Add extended sampling parameters for both providers
-      // OpenRouter supports these for many models (will be ignored if unsupported)
-      // Featherless always supports these parameters
-      if (provider === 'featherless' || provider === 'openrouter') {
-        // Only include if set to non-default values to avoid unnecessary params
+      if (provider === 'featherless') {
+        // Featherless (vLLM): Use vLLM-native parameters
         const repPenalty = userSettings.repetition_penalty ?? 1.0;
         const topK = userSettings.top_k ?? -1;
         const minP = userSettings.min_p ?? 0.0;
@@ -304,6 +313,28 @@ class AIService {
         if (minP !== 0.0) {
           requestBody.min_p = minP;
         }
+      } else if (provider === 'nanogpt') {
+        // NanoGPT: Supports all extended sampling parameters
+        requestBody.frequency_penalty = userSettings.frequency_penalty ?? 0.0;
+        requestBody.presence_penalty = userSettings.presence_penalty ?? 0.0;
+
+        const repPenalty = userSettings.repetition_penalty ?? 1.0;
+        const topK = userSettings.top_k ?? -1;
+        const minP = userSettings.min_p ?? 0.0;
+
+        if (repPenalty !== 1.0) {
+          requestBody.repetition_penalty = repPenalty;
+        }
+        if (topK !== -1) {
+          requestBody.top_k = topK;
+        }
+        if (minP !== 0.0) {
+          requestBody.min_p = minP;
+        }
+      } else {
+        // OpenRouter: Use OpenAI-style parameters (widely supported across providers)
+        requestBody.frequency_penalty = userSettings.frequency_penalty ?? 0.0;
+        requestBody.presence_penalty = userSettings.presence_penalty ?? 0.0;
       }
 
       // Execute request with retry logic
@@ -534,10 +565,11 @@ class AIService {
       presence_penalty: options.presence_penalty ?? 0.0,
     };
 
-    // Add extended sampling parameters for both providers
+    // Add extended sampling parameters for supported providers
     // OpenRouter supports these for many models (will be ignored if unsupported)
     // Featherless always supports these parameters
-    if (provider === 'featherless' || provider === 'openrouter') {
+    // NanoGPT supports all parameters (provider-agnostic routing)
+    if (provider === 'featherless' || provider === 'openrouter' || provider === 'nanogpt') {
       // Only include if set to non-default values to avoid unnecessary params
       const repPenalty = options.repetition_penalty ?? 1.0;
       const topK = options.top_k ?? -1;

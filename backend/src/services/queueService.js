@@ -7,19 +7,22 @@ class QueueService {
     // Track active requests per provider
     this.activeRequests = {
       openrouter: 0,
-      featherless: 0
+      featherless: 0,
+      nanogpt: 0
     };
 
     // Queue for pending requests per provider
     this.queues = {
       openrouter: [],
-      featherless: []
+      featherless: [],
+      nanogpt: []
     };
 
     // Concurrency limits per provider
     this.limits = {
       openrouter: 100, // OpenRouter has very high limits
-      featherless: 1   // Featherless has strict limits (1 request at a time)
+      featherless: 1,  // Featherless has strict limits (1 request at a time)
+      nanogpt: 50      // NanoGPT - reasonable default, adjust based on rate limits
     };
   }
 
@@ -103,6 +106,11 @@ class QueueService {
         active: this.activeRequests.featherless,
         queued: this.queues.featherless.length,
         limit: this.limits.featherless
+      },
+      nanogpt: {
+        active: this.activeRequests.nanogpt,
+        queued: this.queues.nanogpt.length,
+        limit: this.limits.nanogpt
       }
     };
   }

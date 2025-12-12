@@ -66,39 +66,14 @@ const ImageTab = ({ character, onUpdate }) => {
       console.log(`💾 Saving main prompt override for character ${character.id}:`, mainPromptOverride.trim());
       console.log(`💾 Saving negative prompt override for character ${character.id}:`, negativePromptOverride.trim());
 
-      // Save to IndexedDB first (this is the source of truth)
-      const updates = {
-        cardData: {
-          ...character.cardData,
-          data: {
-            ...character.cardData.data,
-            imageTags: imageTags.trim() || '',
-            contextualTags: contextualTags.trim() || '',
-            mainPromptOverride: mainPromptOverride.trim() || '',
-            negativePromptOverride: negativePromptOverride.trim() || ''
-          }
-        }
-      };
-
-      await characterService.updateCharacterData(character.id, updates);
-      console.log('✅ Tags saved to IndexedDB');
-
-      // Then try to save to backend (if character is synced)
-      try {
-        const response = await api.put(`/characters/${character.id}/image-tags`, {
-          image_tags: imageTags.trim() || null,
-          contextual_tags: contextualTags.trim() || null,
-          main_prompt_override: mainPromptOverride.trim() || null,
-          negative_prompt_override: negativePromptOverride.trim() || null
-        });
-        console.log('✅ Tags and prompts saved to backend:', response.data);
-      } catch (err) {
-        if (err.response?.status === 404) {
-          console.log('⚠️ Character not synced to backend yet, saved to IndexedDB only');
-        } else {
-          throw err;
-        }
-      }
+      // Save to backend
+      const response = await api.put(`/characters/${character.id}/image-tags`, {
+        image_tags: imageTags.trim() || null,
+        contextual_tags: contextualTags.trim() || null,
+        main_prompt_override: mainPromptOverride.trim() || null,
+        negative_prompt_override: negativePromptOverride.trim() || null
+      });
+      console.log('✅ Tags and prompts saved to backend:', response.data);
 
       setSuccess('Tags saved successfully!');
       setTimeout(() => setSuccess(null), 3000);
@@ -155,7 +130,7 @@ const ImageTab = ({ character, onUpdate }) => {
       const base64Image = response.data.image; // Already includes data:image/png;base64, prefix
       console.log('✅ Portrait generated successfully');
 
-      // Update character in IndexedDB
+      // Update character in backend
       const updates = {
         imageUrl: base64Image,
         cardData: {
@@ -168,23 +143,10 @@ const ImageTab = ({ character, onUpdate }) => {
       };
 
       await characterService.updateCharacterData(character.id, updates);
-      console.log('✅ Character portrait updated in IndexedDB');
+      console.log('✅ Character portrait updated in backend');
 
       // Set preview
       setImagePreview(base64Image);
-
-      // Sync to backend if character exists
-      try {
-        await api.get(`/characters/${character.id}`);
-        await api.post('/sync/characters', {
-          characters: [await characterService.getCharacter(character.id)]
-        });
-        console.log('✅ Character portrait synced to backend');
-      } catch (err) {
-        if (err.response?.status !== 404) {
-          console.warn('⚠️ Failed to sync portrait to backend:', err);
-        }
-      }
 
       // Show success
       setSuccess('Portrait generated successfully!');
@@ -227,7 +189,7 @@ const ImageTab = ({ character, onUpdate }) => {
         const base64Image = event.target.result;
 
         try {
-          // Update character in IndexedDB (update BOTH imageUrl and cardData.data.image)
+          // Update character in backend (update BOTH imageUrl and cardData.data.image)
           const updates = {
             imageUrl: base64Image, // Top-level property for display
             cardData: {
@@ -240,24 +202,10 @@ const ImageTab = ({ character, onUpdate }) => {
           };
 
           await characterService.updateCharacterData(character.id, updates);
-          console.log('✅ Character image updated in IndexedDB (both imageUrl and cardData.data.image)');
+          console.log('✅ Character image updated in backend');
 
           // Set preview after successful save
           setImagePreview(base64Image);
-
-          // Trigger re-sync to backend (if character is already synced)
-          try {
-            await api.get(`/characters/${character.id}`);
-            // Character exists in backend, sync the new image
-            await api.post('/sync/characters', {
-              characters: [await characterService.getCharacter(character.id)]
-            });
-            console.log('✅ Character image synced to backend');
-          } catch (err) {
-            if (err.response?.status !== 404) {
-              console.warn('⚠️ Failed to sync image to backend:', err);
-            }
-          }
 
           // Show success message
           setSuccess('Character image updated successfully!');
@@ -269,7 +217,7 @@ const ImageTab = ({ character, onUpdate }) => {
           }
         } catch (err) {
           console.error('❌ Failed to save image:', err);
-          setError('Failed to save image to IndexedDB');
+          setError('Failed to save image');
         } finally {
           setChangingImage(false);
         }

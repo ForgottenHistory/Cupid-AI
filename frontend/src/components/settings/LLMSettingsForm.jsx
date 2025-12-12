@@ -34,7 +34,7 @@ const LLMSettingsForm = ({
           <p className="text-sm text-blue-900 dark:text-blue-300">
             {type === 'content' ? (
               <>
-                <strong>Content LLM:</strong> Used to generate character responses and dialogue. This is the main AI that writes what your characters say.
+                <strong>Chat LLM:</strong> Used to generate character responses and dialogue. This is the main AI that writes what your characters say.
               </>
             ) : type === 'decision' ? (
               <>
@@ -76,6 +76,7 @@ const LLMSettingsForm = ({
           >
             <option value="openrouter">OpenRouter</option>
             <option value="featherless">Featherless</option>
+            <option value="nanogpt">NanoGPT</option>
           </select>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Choose which AI provider to use for this LLM. Each provider has different models and pricing.

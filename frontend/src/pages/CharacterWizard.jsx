@@ -118,7 +118,7 @@ const CharacterWizard = () => {
       if (options.datingProfile || options.schedule || options.personality) {
         console.log('Auto-generating additional features:', options);
 
-        // Update cardData in IndexedDB with generated features
+        // Update cardData in backend with generated features
         const generatedData = {};
 
         if (options.datingProfile) {

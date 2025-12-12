@@ -53,11 +53,13 @@ export function recordSwipe(req, res) {
 export async function likeCharacter(req, res) {
   try {
     const { characterId } = req.params;
-    const { characterData } = req.body;
     const userId = req.user.id;
 
-    if (!characterData) {
-      return res.status(400).json({ error: 'Character data is required' });
+    // Check if character exists
+    const existingChar = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+
+    if (!existingChar) {
+      return res.status(404).json({ error: 'Character not found. Please import the character first.' });
     }
 
     // Check max matches limit (only count characters with active conversations)
@@ -76,31 +78,21 @@ export async function likeCharacter(req, res) {
       }
     }
 
-    // Check character's current status
+    // Get character's current status from stored schedule
     let currentStatus = 'online';
-    if (characterData.schedule) {
-      const statusInfo = calculateCurrentStatus(characterData.schedule);
+    const cardData = JSON.parse(existingChar.card_data || '{}');
+    const schedule = existingChar.schedule_data ? JSON.parse(existingChar.schedule_data) : cardData.data?.schedule;
+    if (schedule) {
+      const statusInfo = calculateCurrentStatus(schedule);
       currentStatus = statusInfo.status;
     }
 
-    // Extract image tags and image URL if available
-    const imageTags = characterData.imageTags || null;
-    const imageUrl = characterData.image || null; // Base64 image from card data
-
-    // Create or update character in backend
+    // Mark character as liked
     db.prepare(`
-      INSERT OR REPLACE INTO characters (id, user_id, name, card_data, image_url, schedule_data, personality_data, image_tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      characterId,
-      userId,
-      characterData.name || 'Character',
-      JSON.stringify(characterData),
-      imageUrl,
-      characterData.schedule ? JSON.stringify(characterData.schedule) : null,
-      characterData.personalityTraits ? JSON.stringify(characterData.personalityTraits) : null,
-      imageTags
-    );
+      UPDATE characters
+      SET is_liked = 1, liked_at = ?
+      WHERE id = ? AND user_id = ?
+    `).run(Date.now(), characterId, userId);
 
     res.json({
       success: true,
@@ -118,15 +110,9 @@ export async function likeCharacter(req, res) {
  */
 export async function performDailyAutoMatch(req, res) {
   try {
-    const { libraryCharacters } = req.body; // Array of character objects from IndexedDB
     const userId = req.user.id;
 
     console.log(`📅 Daily auto-match check for user ${userId}`);
-
-    if (!libraryCharacters || libraryCharacters.length === 0) {
-      console.log('  ⏭️ No characters in library');
-      return res.json({ autoMatched: false, reason: 'No characters in library' });
-    }
 
     // Check if user has already auto-matched today
     const user = db.prepare('SELECT last_auto_match_date, max_matches FROM users WHERE id = ?').get(userId);
@@ -154,59 +140,51 @@ export async function performDailyAutoMatch(req, res) {
       }
     }
 
-    console.log(`  📚 Unmatched characters received: ${libraryCharacters.length}`);
+    // Get unmatched characters from backend database
+    const unmatchedCharacters = db.prepare(`
+      SELECT id, name, card_data, image_url, schedule_data
+      FROM characters
+      WHERE user_id = ? AND is_liked = 0
+    `).all(userId);
 
-    if (libraryCharacters.length === 0) {
+    console.log(`  📚 Unmatched characters in database: ${unmatchedCharacters.length}`);
+
+    if (unmatchedCharacters.length === 0) {
       console.log('  ⏭️ No unmatched characters available');
       return res.json({ autoMatched: false, reason: 'No unmatched characters available' });
     }
 
-    // Pick a random unmatched character (frontend already filtered to only unmatched)
-    const randomIndex = Math.floor(Math.random() * libraryCharacters.length);
-    const selectedCharacter = libraryCharacters[randomIndex];
-    const characterData = selectedCharacter.cardData?.data || selectedCharacter.data;
-
-    if (!characterData) {
-      return res.json({ autoMatched: false, reason: 'Invalid character data' });
-    }
+    // Pick a random unmatched character
+    const randomIndex = Math.floor(Math.random() * unmatchedCharacters.length);
+    const selectedCharacter = unmatchedCharacters[randomIndex];
+    const characterData = JSON.parse(selectedCharacter.card_data || '{}');
 
     // Get character status
     let currentStatus = 'online';
-    if (characterData.schedule) {
-      const statusInfo = calculateCurrentStatus(characterData.schedule);
+    const scheduleData = selectedCharacter.schedule_data ? JSON.parse(selectedCharacter.schedule_data) : characterData.data?.schedule;
+    if (scheduleData) {
+      const statusInfo = calculateCurrentStatus(scheduleData);
       currentStatus = statusInfo.status;
     }
 
-    // Extract image tags and image URL
-    const imageTags = characterData.imageTags || null;
-    const imageUrl = characterData.image || null;
-
-    // Create character in backend (no super like for auto-match)
+    // Mark character as liked (no INSERT needed, character already exists)
     db.prepare(`
-      INSERT OR REPLACE INTO characters (id, user_id, name, card_data, image_url, schedule_data, personality_data, image_tags)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      selectedCharacter.id,
-      userId,
-      characterData.name || 'Character',
-      JSON.stringify(characterData),
-      imageUrl,
-      characterData.schedule ? JSON.stringify(characterData.schedule) : null,
-      characterData.personalityTraits ? JSON.stringify(characterData.personalityTraits) : null,
-      imageTags
-    );
+      UPDATE characters
+      SET is_liked = 1, liked_at = ?
+      WHERE id = ? AND user_id = ?
+    `).run(Date.now(), selectedCharacter.id, userId);
 
     // Update last auto-match date
     db.prepare('UPDATE users SET last_auto_match_date = ? WHERE id = ?').run(today, userId);
 
-    console.log(`✨ Daily auto-matched character ${characterData.name} for user ${userId}`);
+    console.log(`✨ Daily auto-matched character ${selectedCharacter.name} for user ${userId}`);
 
     res.json({
       autoMatched: true,
       character: {
         id: selectedCharacter.id,
-        name: characterData.name,
-        image: imageUrl,
+        name: selectedCharacter.name,
+        image: selectedCharacter.image_url,
         status: currentStatus
       }
     });

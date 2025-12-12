@@ -14,6 +14,251 @@ router.post('/generate-dating-profile', authenticateToken, aiGeneration.generate
 router.post('/generate-schedule', authenticateToken, aiGeneration.generateSchedule);
 router.post('/generate-personality', authenticateToken, aiGeneration.generatePersonality);
 
+// ===== Character CRUD Routes =====
+
+// GET /api/characters - List all characters for user
+router.get('/', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { filter = 'all', search } = req.query;
+
+    let query = `
+      SELECT id, name, card_data, image_url, thumbnail_url, is_liked, liked_at, created_at,
+             schedule_data, personality_data, image_tags, contextual_tags,
+             main_prompt_override, negative_prompt_override, voice_id,
+             post_instructions, memory_data
+      FROM characters WHERE user_id = ?
+    `;
+    const params = [userId];
+
+    // Apply filter
+    if (filter === 'liked') {
+      query += ' AND is_liked = 1';
+    } else if (filter === 'swipeable') {
+      query += ' AND is_liked = 0';
+    }
+
+    // Apply search
+    if (search) {
+      query += ' AND name LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const characters = db.prepare(query).all(...params);
+
+    // Format response
+    const formatted = characters.map(char => ({
+      id: char.id,
+      name: char.name,
+      cardData: JSON.parse(char.card_data || '{}'),
+      imageUrl: char.image_url,
+      thumbnailUrl: char.thumbnail_url,
+      isLiked: !!char.is_liked,
+      likedAt: char.liked_at,
+      uploadedAt: char.created_at,
+      scheduleData: char.schedule_data ? JSON.parse(char.schedule_data) : null,
+      personalityData: char.personality_data ? JSON.parse(char.personality_data) : null,
+      imageTags: char.image_tags,
+      contextualTags: char.contextual_tags,
+      mainPromptOverride: char.main_prompt_override,
+      negativePromptOverride: char.negative_prompt_override,
+      voiceId: char.voice_id,
+      postInstructions: char.post_instructions,
+      memoryData: char.memory_data ? JSON.parse(char.memory_data) : null,
+      tags: JSON.parse(char.card_data || '{}').data?.tags || []
+    }));
+
+    res.json({
+      characters: formatted,
+      total: formatted.length
+    });
+  } catch (error) {
+    console.error('Failed to get characters:', error);
+    res.status(500).json({ error: 'Failed to get characters' });
+  }
+});
+
+// GET /api/characters/stats - Get character counts
+router.get('/stats', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const total = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ?').get(userId).count;
+    const liked = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ? AND is_liked = 1').get(userId).count;
+
+    res.json({
+      total,
+      liked,
+      swipeable: total - liked
+    });
+  } catch (error) {
+    console.error('Failed to get character stats:', error);
+    res.status(500).json({ error: 'Failed to get character stats' });
+  }
+});
+
+// POST /api/characters - Create a new character
+router.post('/', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id, cardData, imageUrl, isLiked = false, imageTags, contextualTags } = req.body;
+
+    if (!id || !cardData) {
+      return res.status(400).json({ error: 'id and cardData are required' });
+    }
+
+    const name = cardData.data?.name || cardData.name || 'Unknown';
+
+    // Check if character already exists
+    const existing = db.prepare('SELECT id FROM characters WHERE id = ? AND user_id = ?').get(id, userId);
+    if (existing) {
+      return res.status(409).json({ error: 'Character already exists' });
+    }
+
+    // Insert character
+    db.prepare(`
+      INSERT INTO characters (id, user_id, name, card_data, image_url, is_liked, liked_at, created_at, image_tags, contextual_tags)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      userId,
+      name,
+      JSON.stringify(cardData),
+      imageUrl || null,
+      isLiked ? 1 : 0,
+      isLiked ? Date.now() : null,
+      Date.now(),
+      imageTags || null,
+      contextualTags || null
+    );
+
+    console.log(`✅ Created character: ${name} (${id})`);
+
+    // Return created character
+    const character = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(id, userId);
+
+    res.status(201).json({
+      character: {
+        id: character.id,
+        name: character.name,
+        cardData: JSON.parse(character.card_data || '{}'),
+        imageUrl: character.image_url,
+        isLiked: !!character.is_liked,
+        likedAt: character.liked_at,
+        uploadedAt: character.created_at
+      }
+    });
+  } catch (error) {
+    console.error('Failed to create character:', error);
+    res.status(500).json({ error: 'Failed to create character' });
+  }
+});
+
+// PUT /api/characters/:characterId - Update character (general)
+router.put('/:characterId', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const userId = req.user.id;
+    const updates = req.body;
+
+    // Check character exists
+    const existing = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+    if (!existing) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Build update query dynamically
+    const allowedFields = [
+      'name', 'card_data', 'image_url', 'is_liked', 'liked_at',
+      'schedule_data', 'personality_data', 'image_tags', 'contextual_tags',
+      'main_prompt_override', 'negative_prompt_override', 'voice_id',
+      'post_instructions', 'memory_data', 'thumbnail_url'
+    ];
+
+    const setClauses = [];
+    const values = [];
+
+    // Map frontend field names to database column names
+    const fieldMapping = {
+      cardData: 'card_data',
+      imageUrl: 'image_url',
+      isLiked: 'is_liked',
+      likedAt: 'liked_at',
+      scheduleData: 'schedule_data',
+      personalityData: 'personality_data',
+      imageTags: 'image_tags',
+      contextualTags: 'contextual_tags',
+      mainPromptOverride: 'main_prompt_override',
+      negativePromptOverride: 'negative_prompt_override',
+      voiceId: 'voice_id',
+      postInstructions: 'post_instructions',
+      memoryData: 'memory_data',
+      thumbnailUrl: 'thumbnail_url'
+    };
+
+    for (const [key, value] of Object.entries(updates)) {
+      const dbField = fieldMapping[key] || key;
+      if (allowedFields.includes(dbField)) {
+        setClauses.push(`${dbField} = ?`);
+
+        // Handle JSON fields
+        if (['card_data', 'schedule_data', 'personality_data', 'memory_data'].includes(dbField)) {
+          values.push(typeof value === 'string' ? value : JSON.stringify(value));
+        } else if (dbField === 'is_liked') {
+          values.push(value ? 1 : 0);
+          // Auto-set liked_at if liking
+          if (value && !updates.likedAt) {
+            setClauses.push('liked_at = ?');
+            values.push(Date.now());
+          }
+        } else {
+          values.push(value);
+        }
+      }
+    }
+
+    // Also update name if cardData changed
+    if (updates.cardData && updates.cardData.data?.name) {
+      setClauses.push('name = ?');
+      values.push(updates.cardData.data.name);
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    values.push(characterId, userId);
+
+    db.prepare(`
+      UPDATE characters SET ${setClauses.join(', ')}
+      WHERE id = ? AND user_id = ?
+    `).run(...values);
+
+    // Return updated character
+    const updated = db.prepare('SELECT * FROM characters WHERE id = ? AND user_id = ?').get(characterId, userId);
+
+    res.json({
+      character: {
+        id: updated.id,
+        name: updated.name,
+        cardData: JSON.parse(updated.card_data || '{}'),
+        imageUrl: updated.image_url,
+        thumbnailUrl: updated.thumbnail_url,
+        isLiked: !!updated.is_liked,
+        likedAt: updated.liked_at,
+        uploadedAt: updated.created_at,
+        imageTags: updated.image_tags,
+        contextualTags: updated.contextual_tags
+      }
+    });
+  } catch (error) {
+    console.error('Failed to update character:', error);
+    res.status(500).json({ error: 'Failed to update character' });
+  }
+});
+
 // ===== Status Routes =====
 router.get('/:characterId/status', authenticateToken, characterStatus.getCharacterStatus);
 router.post('/:characterId/status', authenticateToken, characterStatus.calculateStatus);
@@ -367,6 +612,128 @@ router.put('/:characterId/post-instructions', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Failed to update post instructions:', error);
     res.status(500).json({ error: 'Failed to update post instructions' });
+  }
+});
+
+// ===== Import Characters Route (from IndexedDB export) =====
+router.post('/import', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { characters, skipExisting = true } = req.body;
+
+    if (!Array.isArray(characters)) {
+      return res.status(400).json({ error: 'characters must be an array' });
+    }
+
+    console.log(`📦 Importing ${characters.length} characters for user ${userId}`);
+
+    const results = {
+      imported: 0,
+      skipped: 0,
+      errors: []
+    };
+
+    for (const char of characters) {
+      try {
+        // Check if character already exists
+        const existing = db.prepare('SELECT id FROM characters WHERE id = ? AND user_id = ?').get(char.id, userId);
+
+        if (existing) {
+          if (skipExisting) {
+            results.skipped++;
+            continue;
+          }
+          // Update existing character
+          db.prepare(`
+            UPDATE characters SET
+              name = ?, card_data = ?, image_url = ?, is_liked = ?, liked_at = ?
+            WHERE id = ? AND user_id = ?
+          `).run(
+            char.name,
+            JSON.stringify(char.cardData),
+            char.imageUrl,
+            char.isLiked ? 1 : 0,
+            char.likedAt,
+            char.id,
+            userId
+          );
+          results.imported++;
+        } else {
+          // Insert new character
+          db.prepare(`
+            INSERT INTO characters (id, user_id, name, card_data, image_url, is_liked, liked_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            char.id,
+            userId,
+            char.name,
+            JSON.stringify(char.cardData),
+            char.imageUrl,
+            char.isLiked ? 1 : 0,
+            char.likedAt,
+            char.uploadedAt || Date.now()
+          );
+          results.imported++;
+        }
+      } catch (charError) {
+        console.error(`Failed to import character ${char.name}:`, charError);
+        results.errors.push({ name: char.name, error: charError.message });
+      }
+    }
+
+    console.log(`✅ Import complete: ${results.imported} imported, ${results.skipped} skipped, ${results.errors.length} errors`);
+    res.json(results);
+  } catch (error) {
+    console.error('Failed to import characters:', error);
+    res.status(500).json({ error: 'Failed to import characters' });
+  }
+});
+
+// ===== Export All Characters Route =====
+router.get('/export', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const characters = db.prepare(`
+      SELECT id, name, card_data, image_url, is_liked, liked_at, created_at,
+             schedule_data, personality_data, image_tags, contextual_tags,
+             main_prompt_override, negative_prompt_override, voice_id,
+             post_instructions, memory_data, thumbnail_url
+      FROM characters WHERE user_id = ?
+    `).all(userId);
+
+    // Format for export (parse card_data JSON)
+    const exportData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      userId: userId,
+      characterCount: characters.length,
+      characters: characters.map(char => ({
+        id: char.id,
+        name: char.name,
+        cardData: JSON.parse(char.card_data || '{}'),
+        imageUrl: char.image_url,
+        isLiked: !!char.is_liked,
+        likedAt: char.liked_at,
+        uploadedAt: char.created_at,
+        scheduleData: char.schedule_data ? JSON.parse(char.schedule_data) : null,
+        personalityData: char.personality_data ? JSON.parse(char.personality_data) : null,
+        imageTags: char.image_tags,
+        contextualTags: char.contextual_tags,
+        mainPromptOverride: char.main_prompt_override,
+        negativePromptOverride: char.negative_prompt_override,
+        voiceId: char.voice_id,
+        postInstructions: char.post_instructions,
+        memoryData: char.memory_data ? JSON.parse(char.memory_data) : null,
+        thumbnailUrl: char.thumbnail_url
+      }))
+    };
+
+    console.log(`📦 Exported ${characters.length} characters for user ${userId}`);
+    res.json(exportData);
+  } catch (error) {
+    console.error('Failed to export characters:', error);
+    res.status(500).json({ error: 'Failed to export characters' });
   }
 });
 

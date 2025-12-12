@@ -1,8 +1,24 @@
+import { v4 as uuidv4 } from 'uuid';
 import { characterImageParser } from '../utils/characterImageParser';
-import characterStorage from './characterStorage';
 import api from './api';
 
+/**
+ * Character Service - Backend-only storage
+ * All character data is stored in backend SQLite, no IndexedDB
+ */
 class CharacterService {
+  /**
+   * Convert Blob to base64 string
+   */
+  async blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
   /**
    * Import character from PNG file
    */
@@ -20,21 +36,26 @@ class CharacterService {
         throw new Error('No character data found in PNG. Make sure this is a valid Character Card v2 file.');
       }
 
-      // Check if character already exists
-      const exists = await characterStorage.characterExists(userId, cardData.data.name);
-      if (exists) {
-        throw new Error(`Character "${cardData.data.name}" already exists`);
-      }
+      // Convert image to base64
+      const imageUrl = await this.blobToBase64(file);
 
-      // Store character with image
-      const character = await characterStorage.addCharacter({
+      // Generate UUID for the character
+      const id = uuidv4();
+
+      // Create character in backend
+      const response = await api.post('/characters', {
+        id,
         cardData,
-        imageBlob: file,
-        userId,
+        imageUrl,
+        isLiked: false
       });
 
-      return character;
+      return response.data.character;
     } catch (error) {
+      // Handle duplicate name error
+      if (error.response?.status === 409) {
+        throw new Error(`Character "${error.response.data.error || 'already exists'}"`);
+      }
       console.error('Failed to import character:', error);
       throw error;
     }
@@ -45,21 +66,25 @@ class CharacterService {
    */
   async createCharacter({ cardData, imageBlob, userId }) {
     try {
-      // Check if character already exists
-      const exists = await characterStorage.characterExists(userId, cardData.data.name);
-      if (exists) {
-        throw new Error(`Character "${cardData.data.name}" already exists`);
-      }
+      // Convert image to base64
+      const imageUrl = await this.blobToBase64(imageBlob);
 
-      // Store character with image
-      const character = await characterStorage.addCharacter({
+      // Generate UUID for the character
+      const id = uuidv4();
+
+      // Create character in backend
+      const response = await api.post('/characters', {
+        id,
         cardData,
-        imageBlob,
-        userId,
+        imageUrl,
+        isLiked: false
       });
 
-      return character;
+      return response.data.character;
     } catch (error) {
+      if (error.response?.status === 409) {
+        throw new Error(`Character "${cardData.data?.name || 'Unknown'}" already exists`);
+      }
       console.error('Failed to create character:', error);
       throw error;
     }
@@ -91,52 +116,82 @@ class CharacterService {
 
   /**
    * Get all characters for user
+   * @param {number} userId - User ID (not used, auth token determines user)
+   * @param {string} filter - 'all', 'liked', or 'swipeable'
+   * @param {string} search - Optional search query
    */
-  async getAllCharacters(userId) {
-    return characterStorage.getCharacters(userId);
+  async getAllCharacters(userId, filter = 'all', search = null) {
+    const params = { filter };
+    if (search) params.search = search;
+
+    const response = await api.get('/characters', { params });
+    return response.data.characters;
   }
 
   /**
    * Get character by ID
    */
   async getCharacter(characterId) {
-    return characterStorage.getCharacter(characterId);
+    const response = await api.get(`/characters/${characterId}`);
+
+    // Parse card_data if it's a string
+    const char = response.data;
+    if (typeof char.card_data === 'string') {
+      char.cardData = JSON.parse(char.card_data);
+    } else {
+      char.cardData = char.card_data || char.cardData;
+    }
+
+    // Normalize field names
+    return {
+      id: char.id,
+      name: char.name,
+      cardData: char.cardData,
+      imageUrl: char.image_url || char.imageUrl,
+      thumbnailUrl: char.thumbnail_url || char.thumbnailUrl,
+      isLiked: !!char.is_liked || !!char.isLiked,
+      likedAt: char.liked_at || char.likedAt,
+      uploadedAt: char.created_at || char.uploadedAt,
+      tags: char.cardData?.data?.tags || [],
+      scheduleData: char.schedule_data ? JSON.parse(char.schedule_data) : char.scheduleData,
+      personalityData: char.personality_data ? JSON.parse(char.personality_data) : char.personalityData,
+      imageTags: char.image_tags || char.imageTags,
+      contextualTags: char.contextual_tags || char.contextualTags,
+      voiceId: char.voice_id || char.voiceId,
+      postInstructions: char.post_instructions || char.postInstructions,
+      memoryData: char.memory_data ? JSON.parse(char.memory_data) : char.memoryData
+    };
   }
 
   /**
    * Get liked characters
    */
   async getLikedCharacters(userId) {
-    return characterStorage.getLikedCharacters(userId);
+    return this.getAllCharacters(userId, 'liked');
   }
 
   /**
    * Get characters available for swiping
    */
   async getSwipeableCharacters(userId) {
-    return characterStorage.getUnswipedCharacters(userId);
+    return this.getAllCharacters(userId, 'swipeable');
   }
 
   /**
-   * Like a character (mark as match) and check for super like
+   * Like a character (mark as match)
    */
   async likeCharacter(characterId) {
-    // Call backend first to check for max matches limit
     try {
-      const character = await characterStorage.getCharacter(characterId);
-      const response = await api.post(`/characters/${characterId}/like`, {
-        characterData: character.cardData.data
-      });
+      const response = await api.post(`/characters/${characterId}/like`);
 
-      // If backend succeeds, update local storage
-      await characterStorage.likeCharacter(characterId);
+      // Get the updated character
+      const character = await this.getCharacter(characterId);
 
       return {
         character,
         isSuperLike: response.data.isSuperLike || false
       };
     } catch (error) {
-      // If backend rejects (e.g., max matches reached), throw error to caller
       if (error.response?.status === 400) {
         throw new Error(error.response.data.error || 'Failed to match character');
       }
@@ -149,27 +204,29 @@ class CharacterService {
    * Unlike a character
    */
   async unlikeCharacter(characterId) {
-    return characterStorage.unlikeCharacter(characterId);
+    const response = await api.put(`/characters/${characterId}`, {
+      isLiked: false,
+      likedAt: null
+    });
+    return response.data.character;
   }
 
   /**
    * Delete a character
    */
   async deleteCharacter(characterId) {
-    return characterStorage.deleteCharacter(characterId);
+    await api.delete(`/characters/${characterId}`);
   }
 
   /**
    * Get character statistics
    */
   async getStats(userId) {
-    const allCharacters = await characterStorage.getCharacters(userId);
-    const likedCharacters = allCharacters.filter(c => c.isLiked);
-
+    const response = await api.get('/characters/stats');
     return {
-      total: allCharacters.length,
-      liked: likedCharacters.length,
-      remaining: allCharacters.length - likedCharacters.length,
+      total: response.data.total,
+      liked: response.data.liked,
+      remaining: response.data.swipeable,
     };
   }
 
@@ -177,22 +234,16 @@ class CharacterService {
    * Search characters by name
    */
   async searchCharacters(userId, query) {
-    const characters = await characterStorage.getCharacters(userId);
-    const lowerQuery = query.toLowerCase();
-
-    return characters.filter(char =>
-      char.name.toLowerCase().includes(lowerQuery) ||
-      char.cardData.data.description?.toLowerCase().includes(lowerQuery)
-    );
+    return this.getAllCharacters(userId, 'all', query);
   }
 
   /**
-   * Get characters by tag
+   * Get characters by tag (client-side filter on fetched data)
    */
   async getCharactersByTag(userId, tag) {
-    const characters = await characterStorage.getCharacters(userId);
+    const characters = await this.getAllCharacters(userId);
     return characters.filter(char =>
-      char.tags.some(t => t.toLowerCase() === tag.toLowerCase())
+      char.tags?.some(t => t.toLowerCase() === tag.toLowerCase())
     );
   }
 
@@ -214,10 +265,6 @@ class CharacterService {
 
   /**
    * Generate weekly schedule from description using AI
-   * @param {string} description - Character description
-   * @param {string} name - Character name
-   * @param {string} day - Optional specific day (MONDAY, TUESDAY, etc)
-   * @param {string} extraInstructions - Optional extra user instructions
    */
   async generateSchedule(description, name, day = null, extraInstructions = null) {
     const url = day
@@ -252,74 +299,11 @@ class CharacterService {
   }
 
   /**
-   * Update character card data in storage
+   * Update character card data
    */
   async updateCharacterData(characterId, updates) {
-    return characterStorage.updateCharacter(characterId, updates);
-  }
-
-  /**
-   * Sync IndexedDB with backend - removes characters that are no longer matched in backend
-   * This is useful for cleaning up orphaned characters from failed auto-unmatch events
-   * @param {number} userId - User ID
-   * @returns {Promise<{removed: number, removedCharacters: Array}>} Number of characters removed and their details
-   */
-  async syncWithBackend(userId) {
-    try {
-      console.log('🔄 Starting manual sync with backend...');
-
-      // Get all liked characters from IndexedDB
-      const localCharacters = await characterStorage.getCharacters(userId);
-      const likedCharacters = localCharacters.filter(c => c.isLiked);
-
-      console.log(`📊 Found ${likedCharacters.length} liked characters in IndexedDB`);
-
-      // Get all matched characters from backend
-      const response = await api.get('/sync/matched-characters');
-      const backendCharacterIds = new Set(response.data.characterIds);
-
-      console.log(`📊 Found ${backendCharacterIds.size} matched characters in backend`);
-
-      // Find characters in IndexedDB that are NOT in backend (orphaned)
-      const orphanedCharacters = likedCharacters.filter(
-        char => !backendCharacterIds.has(char.id)
-      );
-
-      console.log(`💔 Found ${orphanedCharacters.length} orphaned characters to remove`);
-
-      // Remove orphaned characters from IndexedDB
-      const removed = [];
-      for (const character of orphanedCharacters) {
-        console.log(`🗑️ Removing orphaned character: ${character.name} (${character.id})`);
-        await characterStorage.unlikeCharacter(character.id);
-        removed.push({
-          id: character.id,
-          name: character.name
-        });
-      }
-
-      // Notify other components to refresh
-      if (removed.length > 0) {
-        window.dispatchEvent(new Event('characterUpdated'));
-      }
-
-      console.log(`✅ Sync complete: ${removed.length} characters removed`);
-
-      return {
-        removed: removed.length,
-        removedCharacters: removed
-      };
-    } catch (error) {
-      console.error('❌ Failed to sync with backend:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Clear all local data (for account deletion)
-   */
-  async clearAllData() {
-    return characterStorage.clearAllData();
+    const response = await api.put(`/characters/${characterId}`, updates);
+    return response.data.character;
   }
 }
 

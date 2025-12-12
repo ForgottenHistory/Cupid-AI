@@ -401,55 +401,54 @@ export function testCompactUI(duration = 3000) {
 }
 
 /**
- * Sync IndexedDB characters with backend - removes orphaned characters
- * Call from browser console: window.syncCharacters()
+ * Import characters from a JSON export file
+ * Call from browser console: window.importCharacters()
  */
-export async function syncCharacters() {
-  try {
-    console.log('🔄 Starting character sync with backend...');
+export async function importCharacters() {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
 
-    // Get user from localStorage
-    const userStr = localStorage.getItem('user');
-    if (!userStr) {
-      console.error('❌ Not logged in. Please log in first.');
-      return;
-    }
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) {
+        reject(new Error('No file selected'));
+        return;
+      }
 
-    const user = JSON.parse(userStr);
-    const userId = user.id;
+      try {
+        console.log(`📦 Reading ${file.name}...`);
+        const text = await file.text();
+        const exportData = JSON.parse(text);
 
-    console.log(`👤 Syncing characters for user ${userId}...`);
+        if (!exportData.characters || !Array.isArray(exportData.characters)) {
+          throw new Error('Invalid export file format');
+        }
 
-    // Import characterService dynamically
-    const { default: characterService } = await import('../services/characterService');
+        console.log(`📊 Found ${exportData.characters.length} characters in file`);
 
-    const result = await characterService.syncWithBackend(userId);
+        const response = await api.post('/characters/import', {
+          characters: exportData.characters,
+          skipExisting: false // Overwrite existing
+        });
 
-    console.log('\n========================================');
-    console.log('✅ CHARACTER SYNC COMPLETE');
-    console.log('========================================\n');
+        console.log('✅ Import complete:', response.data);
+        console.log(`   - Imported: ${response.data.imported}`);
+        console.log(`   - Skipped: ${response.data.skipped}`);
+        if (response.data.errors.length > 0) {
+          console.log(`   - Errors: ${response.data.errors.length}`);
+        }
 
-    console.log(`📊 Results:`);
-    console.log(`   - Characters removed: ${result.removed}`);
+        resolve(response.data);
+      } catch (error) {
+        console.error('❌ Import failed:', error);
+        reject(error);
+      }
+    };
 
-    if (result.removedCharacters.length > 0) {
-      console.log('\n💔 Removed characters (no longer matched in backend):');
-      result.removedCharacters.forEach((char, index) => {
-        console.log(`   ${index + 1}. ${char.name} (${char.id})`);
-      });
-    } else {
-      console.log('\n✅ All characters in sync - no orphaned characters found');
-    }
-
-    console.log('\n========================================\n');
-
-    return result;
-  } catch (error) {
-    console.error('❌ Character sync failed:', error);
-    if (error.response?.data?.error) {
-      console.error('   Error:', error.response.data.error);
-    }
-  }
+    input.click();
+  });
 }
 
 // Expose to window for console access
@@ -459,5 +458,5 @@ if (typeof window !== 'undefined') {
   window.showConversationId = showConversationId;
   window.testMemoryExtraction = testMemoryExtraction;
   window.testCompactUI = testCompactUI;
-  window.syncCharacters = syncCharacters;
+  window.importCharacters = importCharacters;
 }

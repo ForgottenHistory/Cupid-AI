@@ -5,7 +5,6 @@ import characterService from '../services/characterService';
 import chatService from '../services/chatService';
 import { getImageUrl } from '../services/api';
 import { useDarkMode } from '../hooks/useDarkMode';
-import { syncAllCharacters, syncCharacterImages, clearAllPosts, runCharacterMigrations } from '../utils/syncCharacterImages';
 import DailyMatchModal from './DailyMatchModal';
 import api from '../services/api';
 
@@ -26,27 +25,6 @@ const MainLayout = ({ children }) => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchInputRef = useRef(null);
 
-  // Run migrations and sync all characters from IndexedDB to backend on mount
-  // This ensures all characters are available for post generation
-  useEffect(() => {
-    if (user?.id) {
-      // Run one-time migrations first (e.g., fix renamed character names)
-      runCharacterMigrations(user.id).then(() => {
-        // Then sync to backend
-        syncAllCharacters(user.id).catch(error => {
-          console.error('Failed to sync characters:', error);
-        });
-      });
-      // Also sync images to generate thumbnails
-      syncCharacterImages(user.id).then(() => {
-        // Reload thumbnails after sync
-        loadThumbnails();
-      }).catch(error => {
-        console.error('Failed to sync character images:', error);
-      });
-    }
-  }, [user?.id]);
-
   // Check for daily auto-match on mount
   useEffect(() => {
     const checkDailyAutoMatch = async () => {
@@ -56,46 +34,19 @@ const MainLayout = ({ children }) => {
       }
 
       try {
-        // Get all characters from library
-        const allCharacters = await characterService.getAllCharacters(user.id);
-
-        console.log('📚 Daily auto-match: Library check', {
-          totalCharacters: allCharacters.length,
-          characterNames: allCharacters.map(c => c.name)
-        });
-
-        if (allCharacters.length === 0) {
-          console.log('⏭️ Daily auto-match: Skipping (no characters in library)');
-          return;
-        }
-
-        // Filter to only unmatched (not liked) characters before sending
-        const unmatchedCharacters = allCharacters.filter(c => !c.isLiked);
-
-        console.log('🔍 Daily auto-match: Filtering', {
-          total: allCharacters.length,
-          liked: allCharacters.filter(c => c.isLiked).length,
-          unmatched: unmatchedCharacters.length
-        });
-
-        // Call backend to check and perform auto-match
-        const response = await api.post('/characters/daily-auto-match', {
-          libraryCharacters: unmatchedCharacters
-        });
+        // Call backend to check and perform auto-match (backend queries its own database)
+        const response = await api.post('/characters/daily-auto-match');
 
         console.log('🎲 Daily auto-match: Backend response', response.data);
 
         if (response.data.autoMatched) {
-          // Find the matched character in IndexedDB to get the full character object
-          const matchedChar = allCharacters.find(c => c.id === response.data.character.id);
+          // Get the full character object from backend
+          const matchedChar = await characterService.getCharacter(response.data.character.id);
 
           if (matchedChar) {
             console.log('✨ Daily auto-match: Showing modal for', matchedChar.name);
 
-            // Mark character as liked in IndexedDB
-            await characterService.likeCharacter(matchedChar.id);
-
-            // Pass the full character object, just like SuperLikeModal
+            // Pass the full character object
             setDailyMatchCharacter(matchedChar);
             setShowDailyMatchModal(true);
             // Reload matches to show the new one
@@ -242,7 +193,7 @@ const MainLayout = ({ children }) => {
     try {
       const dataPromises = matches.map(async (match) => {
         try {
-          // Get schedule from character card data (stored in IndexedDB)
+          // Get schedule from character card data
           const schedule = match.cardData?.data?.schedule;
           const status = await characterService.getCharacterStatus(match.id, schedule);
           return { characterId: match.id, status };

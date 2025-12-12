@@ -65,9 +65,8 @@ export const useChat = (characterId, user) => {
     setError('');
 
     try {
-      // Load character from IndexedDB
-      const characters = await characterService.getAllCharacters(user.id);
-      const char = characters.find(c => c.id === characterId);
+      // Load character from backend
+      const char = await characterService.getCharacter(characterId);
 
       if (!char) {
         setError('Character not found');

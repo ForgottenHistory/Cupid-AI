@@ -71,25 +71,6 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         cardData: updatedCardData
       });
 
-      // Sync to backend if character is matched
-      try {
-        const api = (await import('../services/api')).default;
-        await api.get(`/characters/${character.id}`);
-        // Character exists in backend, sync the updated name
-        const updatedCharacter = await characterService.getCharacter(character.id);
-        await api.post('/sync/characters', {
-          characters: [{
-            id: updatedCharacter.id,
-            cardData: updatedCharacter.cardData
-          }]
-        });
-        console.log('✅ Character name synced to backend');
-      } catch (err) {
-        if (err.response?.status !== 404) {
-          console.warn('⚠️ Failed to sync name to backend:', err);
-        }
-      }
-
       // Notify parent of update
       if (onUpdate) {
         onUpdate();
@@ -137,7 +118,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     setError('');
 
     try {
-      // Update character in IndexedDB
+      // Update character in backend
       const updatedCardData = {
         ...character.cardData,
         data: {
@@ -176,7 +157,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     try {
       const cleanedDescription = await characterService.cleanupDescription(data.description);
 
-      // Update character in IndexedDB
+      // Update character in backend
       const updatedCardData = {
         ...character.cardData,
         data: {
@@ -218,7 +199,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         character.name
       );
 
-      // Update character in IndexedDB, storing previous as backup
+      // Update character in backend, storing previous as backup
       const updatedCardData = {
         ...character.cardData,
         data: {
@@ -285,7 +266,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         };
       }
 
-      // Update character in IndexedDB, storing previous as backup (only when generating full week)
+      // Update character in backend, storing previous as backup (only when generating full week)
       const updatedCardData = {
         ...character.cardData,
         data: {
@@ -329,7 +310,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         data.personality
       );
 
-      // Update character in IndexedDB, storing previous as backup
+      // Update character in backend, storing previous as backup
       const updatedCardData = {
         ...character.cardData,
         data: {
@@ -367,7 +348,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     setError('');
 
     try {
-      // Update character in IndexedDB
+      // Update character in backend
       const updatedCardData = {
         ...character.cardData,
         data: {
@@ -402,7 +383,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     setError('');
 
     try {
-      // Update character in IndexedDB - restore original description
+      // Update character in backend - restore original description
       const updatedCardData = {
         ...character.cardData,
         data: {
@@ -467,7 +448,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     setError('');
 
     try {
-      // Update character in IndexedDB, storing previous as backup
+      // Update character in backend, storing previous as backup
       const updatedCardData = {
         ...character.cardData,
         data: {

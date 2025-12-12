@@ -120,11 +120,8 @@ const Profile = () => {
     setError('');
 
     try {
-      // Delete account from backend
+      // Delete account from backend (this also deletes all user data)
       await api.delete('/users/account');
-
-      // Clear IndexedDB data (don't await - let it happen in background)
-      characterService.clearAllData().catch(err => console.error('Failed to clear IndexedDB:', err));
 
       // Logout (clears token and user state)
       logout();

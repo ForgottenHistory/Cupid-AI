@@ -211,8 +211,8 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
     const userId = req.user.id;
 
     // Validate parameters
-    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
-      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    if (provider !== undefined && !['openrouter', 'featherless', 'nanogpt'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be openrouter, featherless, or nanogpt' });
     }
     if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
       return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
@@ -375,8 +375,8 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
     const userId = req.user.id;
 
     // Validate parameters
-    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
-      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    if (provider !== undefined && !['openrouter', 'featherless', 'nanogpt'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be openrouter, featherless, or nanogpt' });
     }
     if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
       return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
@@ -539,8 +539,8 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
     const userId = req.user.id;
 
     // Validate parameters
-    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
-      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    if (provider !== undefined && !['openrouter', 'featherless', 'nanogpt'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be openrouter, featherless, or nanogpt' });
     }
     if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
       return res.status(400).json({ error: 'Temperature must be between 0 and 2' });
@@ -696,8 +696,8 @@ router.put('/metadata-llm-settings', authenticateToken, (req, res) => {
     const userId = req.user.id;
 
     // Validate parameters
-    if (provider !== undefined && !['openrouter', 'featherless'].includes(provider)) {
-      return res.status(400).json({ error: 'Provider must be either openrouter or featherless' });
+    if (provider !== undefined && !['openrouter', 'featherless', 'nanogpt'].includes(provider)) {
+      return res.status(400).json({ error: 'Provider must be openrouter, featherless, or nanogpt' });
     }
     if (temperature !== undefined && (temperature < 0 || temperature > 2)) {
       return res.status(400).json({ error: 'Temperature must be between 0 and 2' });

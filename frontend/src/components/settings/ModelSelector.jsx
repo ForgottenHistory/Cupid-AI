@@ -19,9 +19,17 @@ const ModelSelector = ({ selectedModel, onChange, provider = 'openrouter' }) => 
       setLoadingModels(true);
 
       // Determine API endpoint based on provider
-      const apiUrl = provider === 'featherless'
-        ? 'https://api.featherless.ai/v1/models'
-        : 'https://openrouter.ai/api/v1/models';
+      let apiUrl;
+      switch (provider) {
+        case 'featherless':
+          apiUrl = 'https://api.featherless.ai/v1/models';
+          break;
+        case 'nanogpt':
+          apiUrl = 'https://nano-gpt.com/api/v1/models';
+          break;
+        default:
+          apiUrl = 'https://openrouter.ai/api/v1/models';
+      }
 
       const response = await axios.get(apiUrl);
 
@@ -34,6 +42,15 @@ const ModelSelector = ({ selectedModel, onChange, provider = 'openrouter' }) => 
           name: model.name || model.id,
           context_length: model.context_length,
           isFree: false // Featherless doesn't expose free/paid info in API
+        }));
+      } else if (provider === 'nanogpt') {
+        // NanoGPT format: { data: [ { id, name, context_length, ... } ] }
+        // Similar to OpenRouter format
+        modelData = response.data.data.map(model => ({
+          id: model.id,
+          name: model.name || model.id,
+          context_length: model.context_length,
+          isFree: false // NanoGPT is pay-per-prompt
         }));
       } else {
         // OpenRouter format: { data: [ { id, name, pricing, ... } ] }
@@ -55,14 +72,25 @@ const ModelSelector = ({ selectedModel, onChange, provider = 'openrouter' }) => 
     } catch (err) {
       console.error(`Failed to load ${provider} models:`, err);
       // Fallback to a basic list if API fails
-      const fallbackModels = provider === 'featherless'
-        ? [
+      let fallbackModels;
+      switch (provider) {
+        case 'featherless':
+          fallbackModels = [
             { id: 'GalrionSoftworks/Margnum-12B-v1', name: 'Margnum 12B v1', isFree: false },
-          ]
-        : [
+          ];
+          break;
+        case 'nanogpt':
+          fallbackModels = [
+            { id: 'chatgpt-4o-latest', name: 'ChatGPT-4o Latest', isFree: false },
+            { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', isFree: false },
+          ];
+          break;
+        default:
+          fallbackModels = [
             { id: 'deepseek/deepseek-chat-v3', name: 'DeepSeek Chat v3', isFree: true },
             { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash', isFree: true },
           ];
+      }
       setModels(fallbackModels);
     } finally {
       setLoadingModels(false);
