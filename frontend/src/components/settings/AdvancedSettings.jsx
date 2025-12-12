@@ -7,6 +7,7 @@ import api from '../../services/api';
  */
 const AdvancedSettings = ({ settings, updateSetting }) => {
   const isFeatherless = settings.provider === 'featherless';
+  const isNanoGPT = settings.provider === 'nanogpt';
   const isOpenRouter = settings.provider === 'openrouter';
   const [supportedParams, setSupportedParams] = useState([]);
   const [loadingParams, setLoadingParams] = useState(false);
@@ -36,10 +37,10 @@ const AdvancedSettings = ({ settings, updateSetting }) => {
   // Check if a specific parameter is supported (for OpenRouter)
   const isParamSupported = (paramName) => supportedParams.includes(paramName);
 
-  // Show extra params for Featherless OR for OpenRouter when supported
-  const showTopK = isFeatherless || (isOpenRouter && isParamSupported('top_k'));
-  const showRepetitionPenalty = isFeatherless || (isOpenRouter && isParamSupported('repetition_penalty'));
-  const showMinP = isFeatherless || (isOpenRouter && isParamSupported('min_p'));
+  // Show extra params for Featherless/NanoGPT (always) OR for OpenRouter when supported
+  const showTopK = isFeatherless || isNanoGPT || (isOpenRouter && isParamSupported('top_k'));
+  const showRepetitionPenalty = isFeatherless || isNanoGPT || (isOpenRouter && isParamSupported('repetition_penalty'));
+  const showMinP = isFeatherless || isNanoGPT || (isOpenRouter && isParamSupported('min_p'));
   const showExtraParams = showTopK || showRepetitionPenalty || showMinP;
 
   return (
@@ -105,7 +106,7 @@ const AdvancedSettings = ({ settings, updateSetting }) => {
           <>
             <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-3">
-                {isFeatherless ? 'Featherless Parameters' : 'Extended Parameters'}
+                {isFeatherless ? 'Featherless Parameters' : isNanoGPT ? 'NanoGPT Parameters' : 'Extended Parameters'}
                 {loadingParams && isOpenRouter && (
                   <span className="ml-2 text-gray-400">(checking model support...)</span>
                 )}
