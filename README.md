@@ -36,7 +36,8 @@ If you like the layout but not the specific aspects, I've created a template app
 - **Time-Aware Conversations**: Automatic time gap markers and context-appropriate responses
 - **Memory System**: AI extracts and stores up to 100 important facts of you per character
 - **Conversation Compacting**: Automatic AI summarization to manage context window efficiently
-- **Character Mood System**: Dynamic emotional state (e.g., "feeling flirty and playful")
+- **Character Mood System**: Dynamic emotional state
+- **Character States**: Special behavior states that affect responses
 - **Mood Effects**: Dynamic chat backgrounds based on conversation tone and message reactions
 
 ### Image Generation
@@ -56,11 +57,11 @@ If you like the layout but not the specific aspects, I've created a template app
 - Max consecutive proactive messages before auto-unmatch
 
 **LLM Configuration (3 Independent Systems):**
-- **Content LLM**: Generates character responses and conversations
+- **Chat LLM**: Generates character responses and conversations
 - **Decision LLM**: Makes behavioral decisions (reactions, moods, unmatch, voice/image)
 - **Image Tag LLM**: Generates Danbooru tags for Stable Diffusion
 
-Each LLM has separate provider (OpenRouter/Featherless), model, temperature, tokens, and parameters.
+Each LLM has separate provider (OpenRouter/Featherless/NanoGPT), model, temperature, tokens, and parameters.
 
 **AI Prompt Customization:**
 - System prompts (conversation style, pacing, NSFW handling)
@@ -75,9 +76,10 @@ Each LLM has separate provider (OpenRouter/Featherless), model, temperature, tok
 
 Node.js 18+
 
-One LLM provicer:
+One LLM provider:
 - OpenRouter API key ([get one here](https://openrouter.ai/))
 - Featherless API key ([get one here](https://featherless.ai/))
+- NanoGPT API key ([get one here](https://nano-gpt.com/))
 
 Optional:
 - Stable Diffusion WebUI (for image generation)
@@ -111,10 +113,11 @@ PORT=3000
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-random-secret-here
 
-# LLM providers (can use both)
+# LLM providers (can use any combination)
 OPENROUTER_API_KEY=your-openrouter-key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 FEATHERLESS_API_KEY=your-featherless-key
+NANOGPT_API_KEY=your-nanogpt-key
 
 # Optional: Image Generation
 SD_SERVER_URL=http://127.0.0.1:7860
@@ -140,7 +143,7 @@ Navigate to `http://localhost:5173`
 ### Getting Started
 1. **Sign up** for an account or log in (stored offline)
 2. **Import characters** from PNG cards or create new ones with the Character Wizard
-3. **Configure your LLM settings** in Profile → LLM Settings (choose models for Content/Decision/Image Tag)
+3. **Configure your LLM settings** in Profile → LLM Settings (choose models for Chat/Decision/Image Tag)
 4. **Swipe on characters** in the Discover tab (right = like, left = pass)
 5. **Chat with matches** and enjoy
 
@@ -151,7 +154,7 @@ Navigate to `http://localhost:5173`
 **Library:** Manage imported characters & create characters
 
 **Settings**
-- **LLM Settings**: Configure Content/Decision/Image Tag LLMs
+- **LLM Settings**: Configure Chat/Decision/Image Tag LLMs
 - **Behavior Settings**: Customize proactive messaging, compaction, memory, swipe limits
 - **SD Settings**: Configure Stable Diffusion parameters
 - **Prompts**: Edit AI behavior prompts
@@ -208,18 +211,17 @@ Generate AI characters in 4 steps:
 **Frontend:**
 - React + Vite
 - Tailwind CSS
-- IndexedDB (character storage)
 - Socket.IO (real-time chat)
 
 **Backend:**
 - Node.js + Express
-- SQLite (better-sqlite3)
+- SQLite (better-sqlite3) for all data storage
 - JWT Authentication
 - Socket.IO
-- Multi-provider LLM support (OpenRouter, Featherless)
+- Multi-provider LLM support (OpenRouter, Featherless, NanoGPT)
 
 **External Services:**
-- OpenRouter / Featherless (LLM providers)
+- OpenRouter / Featherless / NanoGPT (LLM providers)
 - Stable Diffusion WebUI (image generation)
 
 ### Project Structure
@@ -240,7 +242,7 @@ cupid-ai/
 │   │   ├── components/      # Reusable UI components
 │   │   ├── pages/           # Route pages
 │   │   ├── hooks/           # Custom React hooks
-│   │   ├── services/        # API clients, IndexedDB, WebSocket
+│   │   ├── services/        # API clients, WebSocket
 │   │   ├── context/         # React contexts (Auth, Mood)
 │   │   └── utils/           # Helpers, debug tools
 │   └── public/              # Static assets
@@ -266,4 +268,4 @@ MIT License - see LICENSE file for details
 
 - Character card format based on [TavernAI character spec](https://github.com/TavernAI/TavernAI)
 - Stable Diffusion integration via [AUTOMATIC1111 WebUI](https://github.com/AUTOMATIC1111/stable-diffusion-webui)
-- LLM providers: [OpenRouter](https://openrouter.ai/), [Featherless](https://featherless.ai/)
+- LLM providers: [OpenRouter](https://openrouter.ai/), [Featherless](https://featherless.ai/), [NanoGPT](https://nano-gpt.com/)

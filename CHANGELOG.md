@@ -5,6 +5,57 @@ All notable changes to Cupid AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-12
+
+### Added
+
+#### Character Mood & State System
+- **Character Mood**: Dynamic emotional state displayed as purple pill in chat header (e.g., "feeling flirty and playful")
+- **Clickable Mood UI**: Click mood pill to manually edit character's mood
+- **Character States**: Special behavior states (drunk, showering, etc.) shown as orange pill
+- **State Instructions**: Character states inject special behavior instructions into chat prompts
+- Mood/state triggers on TIME GAP or every 25 messages via Decision LLM
+- Background mood updates with 25-message cooldown
+
+#### AI Providers & Settings
+- **NanoGPT Provider**: Third AI provider option alongside OpenRouter and Featherless
+- **Extended Sampling Parameters**: OpenRouter models now support top_k, repetition_penalty, min_p when model supports them
+- **Include Full Schedule**: New behavior setting to include complete weekly schedule in chat prompts
+- **Proactive When Online**: Configure probability of proactive messages when character is online (0-100%)
+
+#### Storage & Multi-Device
+- **Backend-Only Storage**: All character data now stored in backend SQLite (no more IndexedDB)
+- **Multi-Device Support**: Login from any browser/device and all characters are available
+- **Per-User Config Files**: Each user has isolated prompt and tag library configurations
+
+#### Library & Settings
+- **Sort Dropdown**: Sort characters by Newest, Oldest, or Random in Library
+- **SD Resolution Settings**: Configure width/height for Stable Diffusion image generation
+- **Account Deletion**: Delete your account and all associated data from Danger Zone in Profile
+
+### Changed
+- Renamed "Content LLM" to "Chat LLM" in UI for clarity
+- Proactive message generation now uses Metadata LLM (better for complex reasoning tasks)
+- Character service refactored to use API calls instead of local storage
+- Simplified ImageTab and CharacterProfile components (removed dual-save logic)
+
+### Fixed
+- **Character Rename**: Now properly updates name in prompts and syncs to backend
+- **Empty Response Detection**: Detect and retry when AI returns just "Character Name:" with no content
+- **RP Action Stripping**: Strip *asterisk* roleplay actions (system prompt forbids this formatting)
+- **Schedule in Prompts**: Full schedule now placed correctly after system prompt
+- **Delete-From Messages**: Now removes correct message instead of all messages with same timestamp
+- **Typing Indicator**: Added server-side pending request tracking to prevent stuck indicators
+- **Memory Degradation**: Apply degradation once per compaction session, add safeguards against memory loss
+- **UI Lock on No Response**: Frontend now unlocks when character decides not to engage (30% chance)
+- **User Created Date**: Migration fixes users with invalid created_at timestamp
+
+### Removed
+- IndexedDB storage (frontend/src/services/db.js, characterStorage.js)
+- Character sync utilities (no longer needed with backend-only storage)
+
+---
+
 ## [1.1.0] - 2025-11-30
 
 ### Added
@@ -128,20 +179,19 @@ This is the first public release of Cupid AI, a dating app simulator with AI-pow
 **Frontend**
 - React + Vite
 - Tailwind CSS for styling
-- IndexedDB for character storage
 - Socket.IO for real-time chat
 - React Router for navigation
 
 **Backend**
 - Node.js + Express
-- SQLite (better-sqlite3) for database
+- SQLite (better-sqlite3) for all data storage
 - JWT authentication
 - Socket.IO for real-time communication
-- Multi-provider LLM support (OpenRouter, Featherless)
+- Multi-provider LLM support (OpenRouter, Featherless, NanoGPT)
 - Exponential backoff retry logic for all AI services
 
 **External Services**
-- OpenRouter / Featherless (LLM providers)
+- OpenRouter / Featherless / NanoGPT (LLM providers)
 - Stable Diffusion WebUI (optional, for image generation)
 
 #### Known Limitations
