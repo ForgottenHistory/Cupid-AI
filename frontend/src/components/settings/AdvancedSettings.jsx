@@ -1,10 +1,46 @@
+import { useState, useEffect } from 'react';
 import SliderParameter from './SliderParameter';
+import api from '../../services/api';
 
 /**
  * Collapsible advanced settings section for LLM configuration
  */
 const AdvancedSettings = ({ settings, updateSetting }) => {
   const isFeatherless = settings.provider === 'featherless';
+  const isOpenRouter = settings.provider === 'openrouter';
+  const [supportedParams, setSupportedParams] = useState([]);
+  const [loadingParams, setLoadingParams] = useState(false);
+
+  // Fetch supported parameters when model changes (for OpenRouter only)
+  useEffect(() => {
+    if (isOpenRouter && settings.model) {
+      fetchSupportedParams(settings.model);
+    } else {
+      setSupportedParams([]);
+    }
+  }, [settings.model, settings.provider]);
+
+  const fetchSupportedParams = async (modelId) => {
+    try {
+      setLoadingParams(true);
+      const response = await api.get(`/users/model-parameters/${encodeURIComponent(modelId)}`);
+      setSupportedParams(response.data.supported_parameters || []);
+    } catch (err) {
+      console.error('Failed to fetch model parameters:', err);
+      setSupportedParams([]);
+    } finally {
+      setLoadingParams(false);
+    }
+  };
+
+  // Check if a specific parameter is supported (for OpenRouter)
+  const isParamSupported = (paramName) => supportedParams.includes(paramName);
+
+  // Show extra params for Featherless OR for OpenRouter when supported
+  const showTopK = isFeatherless || (isOpenRouter && isParamSupported('top_k'));
+  const showRepetitionPenalty = isFeatherless || (isOpenRouter && isParamSupported('repetition_penalty'));
+  const showMinP = isFeatherless || (isOpenRouter && isParamSupported('min_p'));
+  const showExtraParams = showTopK || showRepetitionPenalty || showMinP;
 
   return (
     <details className="border-t pt-4">
@@ -64,47 +100,56 @@ const AdvancedSettings = ({ settings, updateSetting }) => {
           </p>
         </div>
 
-        {/* Featherless-specific parameters */}
-        {isFeatherless && (
+        {/* Extra sampling parameters (Featherless always, OpenRouter when model supports) */}
+        {showExtraParams && (
           <>
             <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 mb-3">
-                Featherless-Only Parameters
+                {isFeatherless ? 'Featherless Parameters' : 'Extended Parameters'}
+                {loadingParams && isOpenRouter && (
+                  <span className="ml-2 text-gray-400">(checking model support...)</span>
+                )}
               </p>
             </div>
 
             {/* Top K */}
-            <SliderParameter
-              label="Top K"
-              value={settings.topK ?? -1}
-              min={-1}
-              max={100}
-              step={1}
-              onChange={(value) => updateSetting('topK', value)}
-              description="Limits number of top tokens considered. -1 = consider all tokens (disabled)."
-            />
+            {showTopK && (
+              <SliderParameter
+                label="Top K"
+                value={settings.topK ?? -1}
+                min={-1}
+                max={100}
+                step={1}
+                onChange={(value) => updateSetting('topK', value)}
+                description="Limits number of top tokens considered. -1 = consider all tokens (disabled)."
+              />
+            )}
 
             {/* Repetition Penalty */}
-            <SliderParameter
-              label="Repetition Penalty"
-              value={settings.repetitionPenalty ?? 1.0}
-              min={0}
-              max={2}
-              step={0.05}
-              onChange={(value) => updateSetting('repetitionPenalty', value)}
-              description="Penalizes repetition. 1.0 = no penalty, higher values reduce repetition."
-            />
+            {showRepetitionPenalty && (
+              <SliderParameter
+                label="Repetition Penalty"
+                value={settings.repetitionPenalty ?? 1.0}
+                min={0}
+                max={2}
+                step={0.05}
+                onChange={(value) => updateSetting('repetitionPenalty', value)}
+                description="Penalizes repetition. 1.0 = no penalty, higher values reduce repetition."
+              />
+            )}
 
             {/* Min P */}
-            <SliderParameter
-              label="Min P"
-              value={settings.minP ?? 0.0}
-              min={0}
-              max={1}
-              step={0.05}
-              onChange={(value) => updateSetting('minP', value)}
-              description="Minimum probability threshold. 0.0 = disabled. Filters out low-probability tokens."
-            />
+            {showMinP && (
+              <SliderParameter
+                label="Min P"
+                value={settings.minP ?? 0.0}
+                min={0}
+                max={1}
+                step={0.05}
+                onChange={(value) => updateSetting('minP', value)}
+                description="Minimum probability threshold. 0.0 = disabled. Filters out low-probability tokens."
+              />
+            )}
           </>
         )}
       </div>

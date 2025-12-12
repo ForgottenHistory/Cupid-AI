@@ -233,17 +233,15 @@ router.put('/llm-settings', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Context window must be between 1000 and 200000' });
     }
 
-    // Featherless-specific parameter validation (only validate if provider is featherless)
-    if (provider === 'featherless') {
-      if (topK !== undefined && topK < -1) {
-        return res.status(400).json({ error: 'Top K must be -1 or greater' });
-      }
-      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
-        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
-      }
-      if (minP !== undefined && (minP < 0 || minP > 1)) {
-        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
-      }
+    // Extended parameter validation (OpenRouter supports these for many models, Featherless always)
+    if (topK !== undefined && topK < -1) {
+      return res.status(400).json({ error: 'Top K must be -1 or greater' });
+    }
+    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+    }
+    if (minP !== undefined && (minP < 0 || minP > 1)) {
+      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
     }
 
     // Build update query dynamically
@@ -399,17 +397,15 @@ router.put('/decision-llm-settings', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Context window must be between 1000 and 200000' });
     }
 
-    // Featherless-specific parameter validation (only validate if provider is featherless)
-    if (provider === 'featherless') {
-      if (topK !== undefined && topK < -1) {
-        return res.status(400).json({ error: 'Top K must be -1 or greater' });
-      }
-      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
-        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
-      }
-      if (minP !== undefined && (minP < 0 || minP > 1)) {
-        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
-      }
+    // Extended parameter validation (OpenRouter supports these for many models, Featherless always)
+    if (topK !== undefined && topK < -1) {
+      return res.status(400).json({ error: 'Top K must be -1 or greater' });
+    }
+    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+    }
+    if (minP !== undefined && (minP < 0 || minP > 1)) {
+      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
     }
 
     // Build update query dynamically
@@ -562,17 +558,15 @@ router.put('/imagetag-llm-settings', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Presence penalty must be between -2 and 2' });
     }
 
-    // Featherless-specific parameter validation (only validate if provider is featherless)
-    if (provider === 'featherless') {
-      if (topK !== undefined && topK < -1) {
-        return res.status(400).json({ error: 'Top K must be -1 or greater' });
-      }
-      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
-        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
-      }
-      if (minP !== undefined && (minP < 0 || minP > 1)) {
-        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
-      }
+    // Extended parameter validation (OpenRouter supports these for many models, Featherless always)
+    if (topK !== undefined && topK < -1) {
+      return res.status(400).json({ error: 'Top K must be -1 or greater' });
+    }
+    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+    }
+    if (minP !== undefined && (minP < 0 || minP > 1)) {
+      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
     }
 
     // Build update query dynamically
@@ -724,17 +718,15 @@ router.put('/metadata-llm-settings', authenticateToken, (req, res) => {
       return res.status(400).json({ error: 'Context window must be between 1 and 32000' });
     }
 
-    // Featherless-specific parameter validation (only validate if provider is featherless)
-    if (provider === 'featherless') {
-      if (topK !== undefined && topK < -1) {
-        return res.status(400).json({ error: 'Top K must be -1 or greater' });
-      }
-      if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
-        return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
-      }
-      if (minP !== undefined && (minP < 0 || minP > 1)) {
-        return res.status(400).json({ error: 'Min P must be between 0 and 1' });
-      }
+    // Extended parameter validation (OpenRouter supports these for many models, Featherless always)
+    if (topK !== undefined && topK < -1) {
+      return res.status(400).json({ error: 'Top K must be -1 or greater' });
+    }
+    if (repetitionPenalty !== undefined && (repetitionPenalty < 0 || repetitionPenalty > 2)) {
+      return res.status(400).json({ error: 'Repetition penalty must be between 0 and 2' });
+    }
+    if (minP !== undefined && (minP < 0 || minP > 1)) {
+      return res.status(400).json({ error: 'Min P must be between 0 and 1' });
     }
 
     // Build update query dynamically
@@ -820,6 +812,51 @@ router.put('/metadata-llm-settings', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Update Metadata LLM settings error:', error);
     res.status(500).json({ error: 'Failed to update Metadata LLM settings' });
+  }
+});
+
+/**
+ * GET /api/users/model-parameters/:modelId
+ * Get supported parameters for an OpenRouter model
+ * Uses OpenRouter's parameters API to check what params a model supports
+ */
+router.get('/model-parameters/:modelId(*)', authenticateToken, async (req, res) => {
+  try {
+    const modelId = req.params.modelId;
+
+    if (!modelId) {
+      return res.status(400).json({ error: 'Model ID is required' });
+    }
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'OpenRouter API key not configured' });
+    }
+
+    // Call OpenRouter's parameters API
+    const response = await fetch(`https://openrouter.ai/api/v1/parameters/${modelId}`, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        // Model not found or doesn't have parameter info
+        return res.json({ supported_parameters: [] });
+      }
+      throw new Error(`OpenRouter API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    res.json({
+      model: modelId,
+      supported_parameters: data.data?.supported_parameters || []
+    });
+  } catch (error) {
+    console.error('Get model parameters error:', error);
+    res.status(500).json({ error: 'Failed to get model parameters' });
   }
 });
 

@@ -286,12 +286,24 @@ class AIService {
         presence_penalty: userSettings.presence_penalty,
       };
 
-      // Add Featherless-specific parameters if using Featherless
-      if (provider === 'featherless') {
-        // Featherless supports additional sampling parameters
-        requestBody.repetition_penalty = userSettings.repetition_penalty ?? 1.0;
-        requestBody.top_k = userSettings.top_k ?? -1;
-        requestBody.min_p = userSettings.min_p ?? 0.0;
+      // Add extended sampling parameters for both providers
+      // OpenRouter supports these for many models (will be ignored if unsupported)
+      // Featherless always supports these parameters
+      if (provider === 'featherless' || provider === 'openrouter') {
+        // Only include if set to non-default values to avoid unnecessary params
+        const repPenalty = userSettings.repetition_penalty ?? 1.0;
+        const topK = userSettings.top_k ?? -1;
+        const minP = userSettings.min_p ?? 0.0;
+
+        if (repPenalty !== 1.0) {
+          requestBody.repetition_penalty = repPenalty;
+        }
+        if (topK !== -1) {
+          requestBody.top_k = topK;
+        }
+        if (minP !== 0.0) {
+          requestBody.min_p = minP;
+        }
       }
 
       // Execute request with retry logic
@@ -522,11 +534,24 @@ class AIService {
       presence_penalty: options.presence_penalty ?? 0.0,
     };
 
-    // Add Featherless-specific parameters if using Featherless
-    if (provider === 'featherless') {
-      requestBody.repetition_penalty = options.repetition_penalty ?? 1.0;
-      requestBody.top_k = options.top_k ?? -1;
-      requestBody.min_p = options.min_p ?? 0.0;
+    // Add extended sampling parameters for both providers
+    // OpenRouter supports these for many models (will be ignored if unsupported)
+    // Featherless always supports these parameters
+    if (provider === 'featherless' || provider === 'openrouter') {
+      // Only include if set to non-default values to avoid unnecessary params
+      const repPenalty = options.repetition_penalty ?? 1.0;
+      const topK = options.top_k ?? -1;
+      const minP = options.min_p ?? 0.0;
+
+      if (repPenalty !== 1.0) {
+        requestBody.repetition_penalty = repPenalty;
+      }
+      if (topK !== -1) {
+        requestBody.top_k = topK;
+      }
+      if (minP !== 0.0) {
+        requestBody.min_p = minP;
+      }
     }
 
     // Add reasoning if provided (for DeepSeek reasoning mode on OpenRouter)
