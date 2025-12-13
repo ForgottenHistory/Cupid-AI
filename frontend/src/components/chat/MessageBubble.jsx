@@ -163,6 +163,9 @@ const MessageBubble = ({
     }
   }, [isEditing, editingText]);
 
+  // Check if this is an image message
+  const isImageMessage = message.message_type === 'image' && message.image_url;
+
   // Render edit mode
   if (isEditing) {
     return (
@@ -191,24 +194,48 @@ const MessageBubble = ({
           </div>
         )}
 
-        {/* Message Bubble with contenteditable div - EXACT same structure as normal message */}
+        {/* Message Bubble with contenteditable div */}
         <div
-          className={`relative max-w-[70%] rounded-2xl px-5 py-3 ${
+          className={`relative ${isImageMessage ? 'w-fit' : 'max-w-[70%]'} rounded-2xl px-5 py-3 ${
             message.role === 'user'
               ? 'bg-gradient-to-r from-pink-500 to-purple-600 dark:from-purple-800 dark:to-purple-900 text-white shadow-lg shadow-pink-200/50 dark:shadow-purple-900/50 border border-pink-300/20 dark:border-purple-700/50'
               : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
           }`}
         >
-          <div
-            ref={textareaRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={(e) => setEditingText(e.currentTarget.textContent)}
-            className={`break-words leading-relaxed outline-none ${
-              message.role === 'user' ? 'text-white' : 'text-gray-900 dark:text-gray-100'
-            }`}
-            style={{ whiteSpace: 'pre-wrap' }}
-          />
+          {/* For image messages, show the image (read-only) with editable caption */}
+          {isImageMessage ? (
+            <div className="space-y-2 w-[200px]">
+              <img
+                src={`http://localhost:3000${message.image_url}`}
+                alt={message.role === 'user' ? "User uploaded image" : "AI-generated character image"}
+                className="rounded-lg w-full h-auto shadow-md opacity-75"
+              />
+              <div
+                ref={textareaRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => setEditingText(e.currentTarget.textContent)}
+                className={`text-xs italic break-words leading-relaxed outline-none border-b border-dashed ${
+                  message.role === 'user'
+                    ? 'text-white/80 border-white/30'
+                    : 'text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600'
+                }`}
+                style={{ whiteSpace: 'pre-wrap', minHeight: '1.5em' }}
+                placeholder="Add caption..."
+              />
+            </div>
+          ) : (
+            <div
+              ref={textareaRef}
+              contentEditable
+              suppressContentEditableWarning
+              onInput={(e) => setEditingText(e.currentTarget.textContent)}
+              className={`break-words leading-relaxed outline-none ${
+                message.role === 'user' ? 'text-white' : 'text-gray-900 dark:text-gray-100'
+              }`}
+              style={{ whiteSpace: 'pre-wrap' }}
+            />
+          )}
         </div>
 
         {/* Action Buttons (right side for user) */}
@@ -283,7 +310,7 @@ const MessageBubble = ({
 
       {/* Message Bubble */}
       <div
-        className={`relative ${message.message_type === 'image' ? 'w-fit' : 'max-w-[70%]'} rounded-2xl px-5 py-3 ${
+        className={`relative ${isImageMessage ? 'w-fit' : 'max-w-[70%]'} rounded-2xl px-5 py-3 ${
           message.role === 'user'
             ? 'bg-gradient-to-r from-pink-500 to-purple-600 dark:from-purple-800 dark:to-purple-900 text-white shadow-lg shadow-pink-200/50 dark:shadow-purple-900/50 border border-pink-300/20 dark:border-purple-700/50'
             : 'bg-white/80 dark:bg-gray-700/80 backdrop-blur-md text-gray-900 dark:text-gray-100 shadow-lg shadow-gray-200/50 dark:shadow-gray-900/30 border border-purple-100/30 dark:border-gray-600/30'
@@ -297,7 +324,7 @@ const MessageBubble = ({
             transcript={message.content}
             role={message.role}
           />
-        ) : message.message_type === 'image' && message.image_url ? (
+        ) : isImageMessage ? (
           <div className="space-y-2 w-[200px]">
             <img
               src={`http://localhost:3000${message.image_url}`}
@@ -393,7 +420,7 @@ const MessageBubble = ({
       )}
 
       {/* Image Modal */}
-      {showImageModal && message.message_type === 'image' && message.image_url && (
+      {showImageModal && isImageMessage && (
         <ImageModal
           imageUrl={`http://localhost:3000${message.image_url}`}
           imagePrompt={message.image_prompt}
