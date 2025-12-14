@@ -549,12 +549,6 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={(e) => {
-        // Close if clicking the backdrop (not the modal content)
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
     >
       <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-4xl w-full h-[85vh] overflow-hidden shadow-2xl border border-gray-200 dark:border-gray-700 flex">
         {/* Left Side: Character Image */}

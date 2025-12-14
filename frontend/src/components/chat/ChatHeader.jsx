@@ -3,46 +3,18 @@ import { createPortal } from 'react-dom';
 import MemoriesModal from './MemoriesModal';
 import PostInstructionsModal from './PostInstructionsModal';
 import CharacterMoodModal from './CharacterMoodModal';
+import ChatHeaderMenu from './ChatHeaderMenu';
+import CharacterStatusBar from './CharacterStatusBar';
+import CharacterProfile from '../CharacterProfile';
 import api from '../../services/api';
 import chatService from '../../services/chatService';
-
-// State ID to display name mapping
-const STATE_DISPLAY_NAMES = {
-  drunk: 'Drunk',
-  high: 'High',
-  showering: 'In the Shower',
-  bath: 'Taking a Bath',
-  sleeping: 'Asleep',
-  masturbating: 'Masturbating',
-  having_sex: 'Having Sex',
-  post_sex: 'Post-Sex Afterglow',
-  crying: 'Crying/Upset',
-  angry: 'Angry/Pissed',
-  exercising: 'Working Out',
-  eating: 'Eating',
-  driving: 'Driving',
-  at_work: 'At Work',
-  in_meeting: 'In a Meeting',
-  watching_movie: 'Watching Something',
-  gaming: 'Gaming',
-  with_friends: 'With Friends',
-  on_date: 'On a Date',
-  cooking: 'Cooking',
-  sick: 'Feeling Sick',
-  hungover: 'Hungover',
-  horny: 'Horny/Aroused',
-  bored: 'Extremely Bored',
-  anxious: 'Anxious/Nervous',
-  excited: 'Super Excited',
-  sleepy: 'Half-Asleep',
-};
 
 /**
  * Chat header component with banner, character info, and menu
  */
 const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate }) => {
   const [showMenu, setShowMenu] = useState(false);
-  const [showSchedule, setShowSchedule] = useState(false);
+  const [showLibraryCard, setShowLibraryCard] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
 
   // Banner collapsed state (persistent, default collapsed)
@@ -63,17 +35,9 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
   const [showMoodModal, setShowMoodModal] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // Calculate approximate token count (1 token ≈ 4 characters) for loaded messages
-  const calculateTokens = () => {
-    if (!messages || messages.length === 0) return 0;
-    const totalChars = messages.reduce((sum, msg) => sum + msg.content.length, 0);
-    return Math.ceil(totalChars / 4);
-  };
-
   // Check if mood should be shown (only if last message is within 30 minutes)
   const isMoodFresh = () => {
     if (!messages || messages.length === 0) return false;
-    // Find the last non-system message
     const lastMessage = [...messages].reverse().find(m => m.role === 'user' || m.role === 'assistant');
     if (!lastMessage?.created_at) return false;
     const lastMessageTime = new Date(lastMessage.created_at).getTime();
@@ -95,24 +59,6 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
       default:
         return 'bg-gray-400';
     }
-  };
-
-  const formatEndTime = (timeString) => {
-    if (!timeString) return null;
-    // timeString is in 24-hour format (HH:MM)
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `until ${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
-  };
-
-  const formatTime = (timeString) => {
-    if (!timeString) return null;
-    // timeString is in 24-hour format (HH:MM)
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const period = hours >= 12 ? 'PM' : 'AM';
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
   };
 
   // Get upcoming activities from schedule
@@ -161,7 +107,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
       }
     }
 
-    return upcoming.slice(0, 3); // Return max 3 upcoming activities
+    return upcoming.slice(0, 3);
   };
 
   const upcomingActivities = getUpcomingActivities();
@@ -182,7 +128,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
     }
   };
 
-  // Add new memory
+  // Memory handlers
   const handleAddMemory = async (text, importance) => {
     try {
       const response = await api.post(`/characters/${character.id}/memories`, { text, importance });
@@ -195,7 +141,6 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
     }
   };
 
-  // Edit existing memory
   const handleEditMemory = async (index, text, importance) => {
     try {
       const response = await api.put(`/characters/${character.id}/memories/${index}`, { text, importance });
@@ -208,7 +153,6 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
     }
   };
 
-  // Delete memory
   const handleDeleteMemory = async (index) => {
     try {
       const response = await api.delete(`/characters/${character.id}/memories/${index}`);
@@ -221,7 +165,6 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
     }
   };
 
-  // Clear all memories
   const handleClearAllMemories = async () => {
     try {
       const response = await api.delete(`/characters/${character.id}/memories`);
@@ -254,7 +197,6 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
   const handleSaveMood = async (newMood) => {
     try {
       await api.put(`/chat/conversations/${character.id}/mood`, { mood: newMood });
-      // Callback to update parent state if provided
       if (onMoodUpdate) {
         onMoodUpdate(newMood);
       }
@@ -262,6 +204,20 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
       console.error('Failed to update mood:', error);
       throw error;
     }
+  };
+
+  // Open library card modal
+  const handleOpenLibraryCard = () => {
+    setShowLibraryCard(true);
+  };
+
+  const handleMenuClick = (e) => {
+    e.stopPropagation();
+    if (!showMenu) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setDropdownPosition({ x: rect.right - 180, y: rect.bottom + 8 });
+    }
+    setShowMenu(!showMenu);
   };
 
   return (
@@ -305,107 +261,34 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
 
           {/* Menu Button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!showMenu) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                setDropdownPosition({ x: rect.right - 180, y: rect.bottom + 8 });
-              }
-              setShowMenu(!showMenu);
-            }}
+            onClick={handleMenuClick}
             className="relative z-30 p-2.5 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 hover:scale-110 transition-all shadow-lg border border-white/20"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
             </svg>
           </button>
-
         </div>
 
-        {/* Dropdown Menu - rendered in portal to escape overflow constraints */}
-        {showMenu && createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-[998]"
-              onClick={() => setShowMenu(false)}
-            />
-            <div
-              className="fixed bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-1 min-w-[180px] z-[999]"
-              style={{
-                left: `${dropdownPosition.x}px`,
-                top: `${dropdownPosition.y}px`
-              }}
-            >
-                <div className="px-4 py-2.5 text-gray-700 dark:text-gray-300 text-sm border-b border-purple-100/50 dark:border-purple-900/50">
-                  <div className="flex items-center gap-2 font-medium">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Conversation</span>
-                  </div>
-                  <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {hasMoreMessages ? (
-                      <>
-                        {messages.length.toLocaleString()} of {totalMessages.toLocaleString()} messages loaded
-                        <br />
-                        ~{calculateTokens().toLocaleString()} tokens (loaded)
-                      </>
-                    ) : (
-                      <>
-                        {totalMessages.toLocaleString()} {totalMessages === 1 ? 'message' : 'messages'}
-                        <br />
-                        ~{calculateTokens().toLocaleString()} tokens
-                      </>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    setShowPostInstructions(true);
-                  }}
-                  className="w-full text-left px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all font-medium flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Post Instructions
-                </button>
-                <button
-                  onClick={handleExport}
-                  disabled={exporting || !conversationId}
-                  className="w-full text-left px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-all font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  {exporting ? 'Exporting...' : 'Export Chat'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    onUnmatch();
-                  }}
-                  className="w-full text-left px-4 py-2.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all font-medium flex items-center gap-2"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 20 20">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                  Unmatch
-                </button>
-            </div>
-          </>,
-          document.body
-        )}
+        {/* Dropdown Menu */}
+        <ChatHeaderMenu
+          isOpen={showMenu}
+          position={dropdownPosition}
+          onClose={() => setShowMenu(false)}
+          messages={messages}
+          totalMessages={totalMessages}
+          hasMoreMessages={hasMoreMessages}
+          conversationId={conversationId}
+          exporting={exporting}
+          onExport={handleExport}
+          onPostInstructions={() => setShowPostInstructions(true)}
+          onOpenLibraryCard={handleOpenLibraryCard}
+          onUnmatch={onUnmatch}
+        />
 
         {/* Character Info Overlay */}
         {collapsed ? (
-          // Compact mode - just name and status
+          // Compact mode
           <div className="absolute bottom-0 left-0 right-0 px-6 py-3 text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
@@ -414,102 +297,23 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
                 </div>
               </div>
               <h2 className="text-lg font-bold drop-shadow-2xl">{character.name}</h2>
-              <div className="relative">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!showSchedule) {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      setDropdownPosition({ x: rect.left, y: rect.bottom + 8 });
-                    }
-                    setShowSchedule(!showSchedule);
-                  }}
-                  className="text-xs font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 hover:bg-black/30 transition-all cursor-pointer flex items-center gap-1"
-                >
-                  {characterStatus.status}
-                  {characterStatus.activity && ` • ${characterStatus.activity}`}
-                  {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
-                  {upcomingActivities.length > 0 && (
-                    <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </button>
-
-                {/* Schedule Dropdown */}
-                {showSchedule && upcomingActivities.length > 0 && createPortal(
-                  <>
-                    <div
-                      className="fixed inset-0 z-[998]"
-                      onClick={() => setShowSchedule(false)}
-                    />
-                    <div
-                      className="fixed bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-2 min-w-[280px] z-[999]"
-                      style={{
-                        left: `${dropdownPosition.x}px`,
-                        top: `${dropdownPosition.y}px`
-                      }}
-                    >
-                      <div className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs border-b border-purple-100/50 dark:border-purple-900/50">
-                        <div className="flex items-center gap-2 font-semibold">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                          <span>Upcoming Schedule</span>
-                        </div>
-                      </div>
-                      <div className="py-1">
-                        {upcomingActivities.map((activity, index) => (
-                          <div
-                            key={index}
-                            className="px-3 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                          >
-                            <div className="flex items-center gap-2">
-                              <div className={`w-2 h-2 ${getStatusColor(activity.status)} rounded-full flex-shrink-0`}></div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100 capitalize">
-                                  {activity.status}
-                                  {activity.activity && ` • ${activity.activity}`}
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">
-                                  {activity.day} at {formatTime(activity.time)}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>,
-                  document.body
-                )}
-              </div>
-              {/* Character Mood Display */}
-              {showMood && (
-                <button
-                  onClick={() => setShowMoodModal(true)}
-                  className="text-xs font-semibold drop-shadow-lg bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 italic text-white/70 hover:bg-black/30 hover:border-white/30 transition-all cursor-pointer"
-                  title="Click to edit mood"
-                >
-                  {characterMood}
-                </button>
-              )}
-              {/* Character State Display */}
-              {showState && (
-                <span
-                  className="text-xs font-semibold drop-shadow-lg bg-orange-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-orange-300/40 text-orange-100"
-                  title="Special state affecting behavior"
-                >
-                  {STATE_DISPLAY_NAMES[characterState] || characterState}
-                </span>
-              )}
+              <CharacterStatusBar
+                characterStatus={characterStatus}
+                characterMood={characterMood}
+                characterState={characterState}
+                upcomingActivities={upcomingActivities}
+                showMood={showMood}
+                showState={showState}
+                onMoodClick={() => setShowMoodModal(true)}
+                compact={true}
+              />
             </div>
           </div>
         ) : (
-          // Full mode - avatar and details
+          // Full mode
           <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
             <div className="flex items-end gap-4">
-              {/* Avatar with gradient ring and glow */}
+              {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl blur-lg opacity-60"></div>
                 <div className="relative p-1 bg-gradient-to-br from-pink-400 to-purple-500 rounded-2xl">
@@ -524,111 +328,29 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
                     }}
                   />
                 </div>
-                {/* Status indicator with glow */}
                 <div className={`absolute bottom-1 right-1 w-5 h-5 ${getStatusColor(characterStatus.status)} border-3 border-white rounded-full shadow-xl`}>
                   <div className={`absolute inset-0 ${getStatusColor(characterStatus.status)} rounded-full animate-ping opacity-75`}></div>
                 </div>
               </div>
               <div className="flex-1 pb-2">
                 <h2 className="text-2xl font-bold drop-shadow-2xl mb-1">{character.name}</h2>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!showSchedule) {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setDropdownPosition({ x: rect.left, y: rect.bottom + 8 });
-                        }
-                        setShowSchedule(!showSchedule);
-                      }}
-                      className="text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20 hover:bg-black/30 transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      {characterStatus.status}
-                      {characterStatus.activity && ` • ${characterStatus.activity}`}
-                      {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
-                      {upcomingActivities.length > 0 && (
-                        <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      )}
-                    </button>
-
-                    {/* Schedule Dropdown */}
-                    {showSchedule && upcomingActivities.length > 0 && createPortal(
-                      <>
-                        <div
-                          className="fixed inset-0 z-[998]"
-                          onClick={() => setShowSchedule(false)}
-                        />
-                        <div
-                          className="fixed bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border border-purple-100/50 dark:border-purple-900/50 rounded-xl shadow-xl py-2 min-w-[280px] z-[999]"
-                          style={{
-                            left: `${dropdownPosition.x}px`,
-                            top: `${dropdownPosition.y}px`
-                          }}
-                        >
-                          <div className="px-3 py-2 text-gray-700 dark:text-gray-300 text-xs border-b border-purple-100/50 dark:border-purple-900/50">
-                            <div className="flex items-center gap-2 font-semibold">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                              <span>Upcoming Schedule</span>
-                            </div>
-                          </div>
-                          <div className="py-1">
-                            {upcomingActivities.map((activity, index) => (
-                              <div
-                                key={index}
-                                className="px-3 py-2 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <div className={`w-2 h-2 ${getStatusColor(activity.status)} rounded-full flex-shrink-0`}></div>
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-medium text-gray-900 dark:text-gray-100 capitalize">
-                                      {activity.status}
-                                      {activity.activity && ` • ${activity.activity}`}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {activity.day} at {formatTime(activity.time)}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>,
-                      document.body
-                    )}
-                  </div>
-                  {/* Character Mood Display */}
-                  {showMood && (
-                    <button
-                      onClick={() => setShowMoodModal(true)}
-                      className="text-xs font-semibold drop-shadow-lg bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 italic text-white/70 hover:bg-black/30 hover:border-white/30 transition-all cursor-pointer"
-                      title="Click to edit mood"
-                    >
-                      {characterMood}
-                    </button>
-                  )}
-                  {/* Character State Display */}
-                  {showState && (
-                    <span
-                      className="text-xs font-semibold drop-shadow-lg bg-orange-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-orange-300/40 text-orange-100"
-                      title="Special state affecting behavior"
-                    >
-                      {STATE_DISPLAY_NAMES[characterState] || characterState}
-                    </span>
-                  )}
-                </div>
+                <CharacterStatusBar
+                  characterStatus={characterStatus}
+                  characterMood={characterMood}
+                  characterState={characterState}
+                  upcomingActivities={upcomingActivities}
+                  showMood={showMood}
+                  showState={showState}
+                  onMoodClick={() => setShowMoodModal(true)}
+                  compact={false}
+                />
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Memories Modal */}
+      {/* Modals */}
       <MemoriesModal
         isOpen={showMemories}
         onClose={() => setShowMemories(false)}
@@ -642,7 +364,6 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
         onClearAll={handleClearAllMemories}
       />
 
-      {/* Post Instructions Modal */}
       <PostInstructionsModal
         isOpen={showPostInstructions}
         onClose={() => setShowPostInstructions(false)}
@@ -653,7 +374,6 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
         }}
       />
 
-      {/* Character Mood Modal */}
       <CharacterMoodModal
         isOpen={showMoodModal}
         onClose={() => setShowMoodModal(false)}
@@ -662,6 +382,16 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
         currentMood={characterMood}
         onSave={handleSaveMood}
       />
+
+      {/* Library Card Modal - rendered via portal to escape stacking context */}
+      {showLibraryCard && createPortal(
+        <CharacterProfile
+          character={character}
+          onClose={() => setShowLibraryCard(false)}
+          mode="library"
+        />,
+        document.body
+      )}
     </div>
   );
 };
