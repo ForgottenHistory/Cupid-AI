@@ -24,15 +24,119 @@ const Home = () => {
   const [matchedCharacter, setMatchedCharacter] = useState(null);
   const [showSwipeLimitModal, setShowSwipeLimitModal] = useState(false);
   const [maxMatchesError, setMaxMatchesError] = useState(null);
+  const [swipeStats, setSwipeStats] = useState({ used: 0, limit: 5 });
+  const [timeUntilReset, setTimeUntilReset] = useState('');
+
+  // Check if swipes are exhausted
+  const isSwipesExhausted = swipeStats.limit > 0 && swipeStats.used >= swipeStats.limit;
+
+  // Calculate time until midnight reset
+  useEffect(() => {
+    if (!isSwipesExhausted) {
+      setTimeUntilReset('');
+      return;
+    }
+
+    const updateTimer = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      const diff = midnight - now;
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setTimeUntilReset(`${hours}h ${minutes}m ${seconds}s`);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [isSwipesExhausted]);
+
+  // Get today's date key for localStorage
+  const getTodayKey = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return `swipedCharacters-${user?.id}-${today}`;
+  };
+
+  // Get swiped character IDs for today from localStorage
+  const getSwipedToday = () => {
+    try {
+      const data = localStorage.getItem(getTodayKey());
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Add a character ID to today's swiped list
+  const addSwipedToday = (characterId) => {
+    const swiped = getSwipedToday();
+    if (!swiped.includes(characterId)) {
+      swiped.push(characterId);
+      localStorage.setItem(getTodayKey(), JSON.stringify(swiped));
+    }
+  };
+
+  // Remove a character ID from today's swiped list (for undo)
+  const removeSwipedToday = (characterId) => {
+    const swiped = getSwipedToday();
+    const filtered = swiped.filter(id => id !== characterId);
+    localStorage.setItem(getTodayKey(), JSON.stringify(filtered));
+  };
 
   useEffect(() => {
-    loadCharacters();
+    const init = async () => {
+      await loadSwipeStats();
+      loadCharacters();
+    };
+    init();
   }, [user?.id]);
+
+  const loadSwipeStats = async () => {
+    try {
+      const response = await api.get('/characters/swipe-limit');
+      const stats = { used: response.data.used, limit: response.data.limit };
+      setSwipeStats(stats);
+      return stats;
+    } catch (error) {
+      console.error('Failed to load swipe stats:', error);
+      return null;
+    }
+  };
+
+  // Seeded random number generator (mulberry32)
+  const seededRandom = (seed) => {
+    return () => {
+      seed |= 0;
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+
+  // Create a daily seed from date + user ID
+  const getDailySeed = () => {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const seedString = `${today}-${user?.id || 'default'}`;
+    // Simple string hash
+    let hash = 0;
+    for (let i = 0; i < seedString.length; i++) {
+      const char = seedString.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return hash;
+  };
 
   const shuffleArray = (array) => {
     const shuffled = [...array];
+    const rng = seededRandom(getDailySeed());
     for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
     return shuffled;
@@ -45,7 +149,10 @@ const Home = () => {
     try {
       const characters = await characterService.getSwipeableCharacters(user.id);
       const shuffledCharacters = shuffleArray(characters);
-      setCurrentCards(shuffledCharacters);
+      // Filter out characters swiped today (tracked in localStorage)
+      const swipedToday = getSwipedToday();
+      const remainingCharacters = shuffledCharacters.filter(c => !swipedToday.includes(c.id));
+      setCurrentCards(remainingCharacters);
       setTotalCount(shuffledCharacters.length);
     } catch (error) {
       console.error('Failed to load characters:', error);
@@ -65,6 +172,8 @@ const Home = () => {
         setShowSwipeLimitModal(true);
         return;
       }
+      // Update swipe stats after successful swipe
+      setSwipeStats(prev => ({ ...prev, used: prev.used + 1 }));
     } catch (error) {
       if (error.response?.status === 429) {
         setShowSwipeLimitModal(true);
@@ -74,6 +183,9 @@ const Home = () => {
     }
 
     const swipedCard = currentCards[currentCards.length - 1];
+
+    // Track this character as swiped today (for persistent order on refresh)
+    addSwipedToday(swipedCard.id);
 
     // Save like to database if swiped right
     if (direction === 'right') {
@@ -112,6 +224,9 @@ const Home = () => {
 
     const lastRemoved = removedCards[removedCards.length - 1];
 
+    // Remove from today's swiped list
+    removeSwipedToday(lastRemoved.id);
+
     // If it was liked, unlike it
     if (lastRemoved.direction === 'right') {
       try {
@@ -135,7 +250,7 @@ const Home = () => {
   return (
     <div className="h-full flex flex-col items-center justify-center p-8 overflow-hidden">
       <div className="w-full max-w-md">
-        <CardCounter remaining={currentCards.length} total={totalCount} />
+        <CardCounter remaining={currentCards.length} total={totalCount} swipesUsed={swipeStats.used} swipeLimit={swipeStats.limit} />
 
         {/* Card Stack */}
         <div className="relative w-full aspect-[3/4] mb-8 overflow-hidden">
@@ -153,15 +268,28 @@ const Home = () => {
               onReset={handleReset}
             />
           ) : (
-            currentCards.map((character, index) => (
-              <SwipeCard
-                key={character.id}
-                character={character}
-                onSwipe={handleSwipe}
-                isTop={index === currentCards.length - 1}
-                onClick={() => setSelectedCharacter(character)}
-              />
-            ))
+            <>
+              {currentCards.map((character, index) => (
+                <SwipeCard
+                  key={character.id}
+                  character={character}
+                  onSwipe={isSwipesExhausted ? () => {} : handleSwipe}
+                  isTop={index === currentCards.length - 1}
+                  onClick={() => !isSwipesExhausted && setSelectedCharacter(character)}
+                />
+              ))}
+              {/* Locked overlay when swipes exhausted */}
+              {isSwipesExhausted && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center z-10">
+                  <div className="text-6xl mb-4">🔒</div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Out of Swipes</h3>
+                  <p className="text-white/80 mb-4">Resets in</p>
+                  <div className="bg-white/20 rounded-xl px-6 py-3">
+                    <span className="text-3xl font-mono font-bold text-white">{timeUntilReset}</span>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -172,6 +300,7 @@ const Home = () => {
             onUndo={handleUndo}
             onLike={() => handleSwipe('right')}
             canUndo={removedCards.length > 0}
+            disabled={isSwipesExhausted}
           />
         )}
       </div>

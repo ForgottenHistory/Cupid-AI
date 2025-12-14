@@ -11,11 +11,13 @@ export function getSwipeLimit(req, res) {
     const userId = req.user.id;
     const canSwipe = swipeLimitService.canSwipe(userId);
     const remaining = swipeLimitService.getRemainingSwipes(userId);
+    const { used, limit } = swipeLimitService.getSwipeStats(userId);
 
     res.json({
       canSwipe,
       remaining,
-      limit: 5
+      used,
+      limit
     });
   } catch (error) {
     console.error('Check swipe limit error:', error);

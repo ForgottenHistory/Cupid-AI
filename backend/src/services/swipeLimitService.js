@@ -67,6 +67,27 @@ class SwipeLimitService {
 
     return Math.max(0, limit - user.swipes_today);
   }
+
+  /**
+   * Get swipe stats (used and limit) for today
+   */
+  getSwipeStats(userId) {
+    const user = db.prepare(`
+      SELECT swipes_today, last_swipe_date, daily_swipe_limit FROM users WHERE id = ?
+    `).get(userId);
+
+    if (!user) return { used: 0, limit: 5 };
+
+    const today = new Date().toISOString().split('T')[0];
+    const limit = user.daily_swipe_limit || 5;
+
+    // If new day, reset used count
+    if (user.last_swipe_date !== today) {
+      return { used: 0, limit };
+    }
+
+    return { used: user.swipes_today, limit };
+  }
 }
 
 export default new SwipeLimitService();
