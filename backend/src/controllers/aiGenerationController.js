@@ -87,7 +87,8 @@ export async function generateSchedule(req, res) {
       messageType: day ? `schedule-${day.toLowerCase()}` : 'schedule',
       characterName: name || 'Character',
       userId: req.user.id,
-      llmType: 'metadata'
+      llmType: 'metadata',
+      timeout: 300000 // 5 minute timeout for schedule generation
     });
 
     // Parse plaintext response into JSON

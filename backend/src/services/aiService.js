@@ -622,7 +622,7 @@ class AIService {
                 'HTTP-Referer': 'https://localhost:3000',
                 'X-Title': 'Cupid-AI',
               },
-              timeout: 120000 // 120 second timeout
+              timeout: options.timeout || 120000 // Default 120 second timeout
             }
           );
         });
