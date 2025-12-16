@@ -1,9 +1,25 @@
 import express from 'express';
 import fs from 'fs';
+import path from 'path';
 import { authenticateToken } from '../middleware/auth.js';
-import { getUserConfigPath, DEFAULT_CONFIGS } from '../utils/userConfig.js';
+import { getUserConfigPath, ensureUserConfigDir, DEFAULT_CONFIGS } from '../utils/userConfig.js';
 
 const router = express.Router();
+
+// Get presets directory for a user
+const getPresetsDir = (userId) => {
+  const userDir = ensureUserConfigDir(userId);
+  const presetsDir = path.join(userDir, 'presets');
+  if (!fs.existsSync(presetsDir)) {
+    fs.mkdirSync(presetsDir, { recursive: true });
+  }
+  return presetsDir;
+};
+
+// Sanitize preset name for filesystem
+const sanitizePresetName = (name) => {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50);
+};
 
 // Default prompts if file doesn't exist
 const DEFAULT_PROMPTS = {
@@ -424,6 +440,148 @@ router.post('/reset', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Failed to reset prompts:', error);
     res.status(500).json({ error: 'Failed to reset prompts' });
+  }
+});
+
+// ==================== PRESET ENDPOINTS ====================
+
+/**
+ * GET /api/prompts/presets
+ * List all presets for the authenticated user
+ */
+router.get('/presets', authenticateToken, (req, res) => {
+  try {
+    const presetsDir = getPresetsDir(req.user.id);
+    const files = fs.readdirSync(presetsDir).filter(f => f.endsWith('.json'));
+
+    const presets = files.map(file => {
+      const name = file.replace('.json', '');
+      const filePath = path.join(presetsDir, file);
+      const stats = fs.statSync(filePath);
+      return {
+        name,
+        createdAt: stats.birthtime,
+        updatedAt: stats.mtime
+      };
+    });
+
+    // Sort by most recent first
+    presets.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    res.json({ presets });
+  } catch (error) {
+    console.error('Failed to list presets:', error);
+    res.status(500).json({ error: 'Failed to list presets' });
+  }
+});
+
+/**
+ * POST /api/prompts/presets
+ * Save current prompts as a new preset
+ */
+router.post('/presets', authenticateToken, (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return res.status(400).json({ error: 'Preset name is required' });
+    }
+
+    const sanitizedName = sanitizePresetName(name.trim());
+    const presetsDir = getPresetsDir(req.user.id);
+    const presetPath = path.join(presetsDir, `${sanitizedName}.json`);
+
+    // Load current prompts
+    const currentPrompts = loadPrompts(req.user.id);
+
+    // Save as preset with metadata
+    const presetData = {
+      name: name.trim(),
+      savedAt: new Date().toISOString(),
+      prompts: currentPrompts
+    };
+
+    fs.writeFileSync(presetPath, JSON.stringify(presetData, null, 2), 'utf-8');
+
+    console.log(`✅ Preset "${name}" saved for user ${req.user.id}`);
+    res.json({ success: true, message: `Preset "${name}" saved successfully`, name: sanitizedName });
+  } catch (error) {
+    console.error('Failed to save preset:', error);
+    res.status(500).json({ error: 'Failed to save preset' });
+  }
+});
+
+/**
+ * GET /api/prompts/presets/:name
+ * Get a specific preset
+ */
+router.get('/presets/:name', authenticateToken, (req, res) => {
+  try {
+    const sanitizedName = sanitizePresetName(req.params.name);
+    const presetsDir = getPresetsDir(req.user.id);
+    const presetPath = path.join(presetsDir, `${sanitizedName}.json`);
+
+    if (!fs.existsSync(presetPath)) {
+      return res.status(404).json({ error: 'Preset not found' });
+    }
+
+    const data = JSON.parse(fs.readFileSync(presetPath, 'utf-8'));
+    res.json(data);
+  } catch (error) {
+    console.error('Failed to get preset:', error);
+    res.status(500).json({ error: 'Failed to get preset' });
+  }
+});
+
+/**
+ * POST /api/prompts/presets/:name/load
+ * Load a preset into current prompts
+ */
+router.post('/presets/:name/load', authenticateToken, (req, res) => {
+  try {
+    const sanitizedName = sanitizePresetName(req.params.name);
+    const presetsDir = getPresetsDir(req.user.id);
+    const presetPath = path.join(presetsDir, `${sanitizedName}.json`);
+
+    if (!fs.existsSync(presetPath)) {
+      return res.status(404).json({ error: 'Preset not found' });
+    }
+
+    const presetData = JSON.parse(fs.readFileSync(presetPath, 'utf-8'));
+    const configPath = getUserConfigPath(req.user.id, 'prompts');
+
+    // Apply preset prompts to current prompts
+    fs.writeFileSync(configPath, JSON.stringify(presetData.prompts, null, 2), 'utf-8');
+
+    console.log(`✅ Preset "${presetData.name}" loaded for user ${req.user.id}`);
+    res.json({ success: true, message: `Preset "${presetData.name}" loaded successfully`, prompts: presetData.prompts });
+  } catch (error) {
+    console.error('Failed to load preset:', error);
+    res.status(500).json({ error: 'Failed to load preset' });
+  }
+});
+
+/**
+ * DELETE /api/prompts/presets/:name
+ * Delete a preset
+ */
+router.delete('/presets/:name', authenticateToken, (req, res) => {
+  try {
+    const sanitizedName = sanitizePresetName(req.params.name);
+    const presetsDir = getPresetsDir(req.user.id);
+    const presetPath = path.join(presetsDir, `${sanitizedName}.json`);
+
+    if (!fs.existsSync(presetPath)) {
+      return res.status(404).json({ error: 'Preset not found' });
+    }
+
+    fs.unlinkSync(presetPath);
+
+    console.log(`✅ Preset "${sanitizedName}" deleted for user ${req.user.id}`);
+    res.json({ success: true, message: 'Preset deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete preset:', error);
+    res.status(500).json({ error: 'Failed to delete preset' });
   }
 });
 
