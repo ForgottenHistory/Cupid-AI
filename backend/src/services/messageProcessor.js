@@ -221,7 +221,9 @@ class MessageProcessor {
       // Check if character mood should be updated (TIME GAP, every 10 messages, pending from background mood change, or no mood set)
       const hasPendingMoodUpdate = engagementState?.pending_character_mood_update === 1;
       const hasNoMood = !conversation?.character_mood;
-      const shouldUpdateCharacterMood = timeGapInserted || (totalMessageCount > 0 && totalMessageCount % 10 === 0) || hasPendingMoodUpdate || hasNoMood;
+      // Message counts jump by 2 each exchange (user + assistant), so check if we cross a 10-message boundary
+      const crossesTenMessageBoundary = totalMessageCount > 0 && Math.floor((totalMessageCount + 2) / 10) > Math.floor(totalMessageCount / 10);
+      const shouldUpdateCharacterMood = timeGapInserted || crossesTenMessageBoundary || hasPendingMoodUpdate || hasNoMood;
       if (shouldUpdateCharacterMood) {
         const moodTrigger = hasNoMood ? 'no mood set' : (hasPendingMoodUpdate ? 'pending from background mood change' : (timeGapInserted ? 'TIME GAP' : `10-message interval (${totalMessageCount})`));
         console.log(`🎭 Character mood update will be requested: ${moodTrigger}`);
