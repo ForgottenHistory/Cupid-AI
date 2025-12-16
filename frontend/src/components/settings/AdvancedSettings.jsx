@@ -153,6 +153,20 @@ const AdvancedSettings = ({ settings, updateSetting }) => {
             )}
           </>
         )}
+
+        {/* Request Timeout */}
+        <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+          <SliderParameter
+            label="Request Timeout"
+            value={settings.requestTimeout ?? 120}
+            min={10}
+            max={600}
+            step={10}
+            onChange={(value) => updateSetting('requestTimeout', value)}
+            description="Maximum time in seconds to wait for a response. Increase for slower models/providers."
+            unit="s"
+          />
+        </div>
       </div>
     </details>
   );

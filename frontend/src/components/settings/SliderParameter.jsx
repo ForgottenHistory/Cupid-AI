@@ -9,12 +9,13 @@ const SliderParameter = ({
   step,
   onChange,
   description,
-  labels
+  labels,
+  unit
 }) => {
   return (
     <div>
       <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-        {label}: {value}
+        {label}: {value}{unit && unit}
       </label>
       <input
         type="range"

@@ -1003,6 +1003,17 @@ function runMigrations() {
       console.log('✅ sd_width, sd_height, sd_randomize_orientation columns added to users table');
     }
 
+    // Migration: Add request timeout settings for all LLM types
+    if (!userColumnsForSchedule.includes('llm_request_timeout')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN llm_request_timeout INTEGER DEFAULT 120;
+        ALTER TABLE users ADD COLUMN decision_llm_request_timeout INTEGER DEFAULT 120;
+        ALTER TABLE users ADD COLUMN imagetag_llm_request_timeout INTEGER DEFAULT 120;
+        ALTER TABLE users ADD COLUMN metadata_llm_request_timeout INTEGER DEFAULT 120;
+      `);
+      console.log('✅ request_timeout columns added for all LLM types');
+    }
+
     // Fix users with invalid created_at (epoch 0 or NULL)
     const usersWithBadCreatedAt = db.prepare(`
       SELECT id FROM users

@@ -13,7 +13,8 @@ const LLM_VALIDATION_RULES = {
   contextWindow: { validate: (v) => v >= 1000 && v <= 200000, error: 'Context window must be between 1000 and 200000' },
   topK: { validate: (v) => v >= -1, error: 'Top K must be -1 or greater' },
   repetitionPenalty: { validate: (v) => v >= 0 && v <= 2, error: 'Repetition penalty must be between 0 and 2' },
-  minP: { validate: (v) => v >= 0 && v <= 1, error: 'Min P must be between 0 and 1' }
+  minP: { validate: (v) => v >= 0 && v <= 1, error: 'Min P must be between 0 and 1' },
+  requestTimeout: { validate: (v) => v >= 10 && v <= 600, error: 'Request timeout must be between 10 and 600 seconds' }
 };
 
 /**
@@ -30,7 +31,8 @@ const FIELD_TO_DB_SUFFIX = {
   contextWindow: 'context_window',
   topK: 'top_k',
   repetitionPenalty: 'repetition_penalty',
-  minP: 'min_p'
+  minP: 'min_p',
+  requestTimeout: 'request_timeout'
 };
 
 /**
@@ -39,19 +41,19 @@ const FIELD_TO_DB_SUFFIX = {
 const LLM_TYPES = {
   content: {
     prefix: 'llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout']
   },
   decision: {
     prefix: 'decision_llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout']
   },
   imagetag: {
     prefix: 'imagetag_llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'topK', 'repetitionPenalty', 'minP']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout']
   },
   metadata: {
     prefix: 'metadata_llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout']
   }
 };
 

@@ -273,7 +273,7 @@ class AIService {
 
       if (decision) {
         if (decision.shouldSendImage && decision.imageTags) {
-          primeContent = `${characterName}: [IMAGE: ${decision.imageTags}]\n${characterName}: `;
+          primeContent = `${characterName}: [IMAGE: ${decision.imageTags}]\n[Now write a short caption to go with this pic.]\n${characterName}: `;
         } else if (decision.shouldSendVoice) {
           primeContent = `${characterName}: [VOICE]\n${characterName}: `;
         }
@@ -356,7 +356,7 @@ class AIService {
                   'HTTP-Referer': 'https://localhost:3000',
                   'X-Title': 'Cupid-AI',
                 },
-                timeout: 120000 // 120 second timeout
+                timeout: (userSettings.request_timeout || 120) * 1000
               }
             );
           });
@@ -622,7 +622,7 @@ class AIService {
                 'HTTP-Referer': 'https://localhost:3000',
                 'X-Title': 'Cupid-AI',
               },
-              timeout: options.timeout || 120000 // Default 120 second timeout
+              timeout: options.timeout || (userSettings.request_timeout || 120) * 1000
             }
           );
         });
@@ -884,7 +884,7 @@ class AIService {
                 'X-Title': 'Cupid-AI',
               },
               responseType: 'stream',
-              timeout: 120000 // 120 second timeout
+              timeout: (userSettings.request_timeout || 120) * 1000
             }
           );
         });

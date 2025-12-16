@@ -26,7 +26,7 @@ class LLMSettingsService {
       const settings = db.prepare(`
         SELECT llm_provider, llm_model, llm_temperature, llm_max_tokens, llm_top_p,
                llm_frequency_penalty, llm_presence_penalty, llm_context_window,
-               llm_top_k, llm_repetition_penalty, llm_min_p
+               llm_top_k, llm_repetition_penalty, llm_min_p, llm_request_timeout
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -45,7 +45,8 @@ class LLMSettingsService {
         context_window: settings.llm_context_window ?? 4000,
         top_k: settings.llm_top_k ?? -1,
         repetition_penalty: settings.llm_repetition_penalty ?? 1.0,
-        min_p: settings.llm_min_p ?? 0.0
+        min_p: settings.llm_min_p ?? 0.0,
+        request_timeout: settings.llm_request_timeout ?? 120
       };
     } catch (error) {
       console.error('Error fetching user LLM settings:', error);
@@ -65,7 +66,7 @@ class LLMSettingsService {
       const settings = db.prepare(`
         SELECT decision_llm_provider, decision_llm_model, decision_llm_temperature, decision_llm_max_tokens, decision_llm_top_p,
                decision_llm_frequency_penalty, decision_llm_presence_penalty, decision_llm_context_window,
-               decision_llm_top_k, decision_llm_repetition_penalty, decision_llm_min_p
+               decision_llm_top_k, decision_llm_repetition_penalty, decision_llm_min_p, decision_llm_request_timeout
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -84,7 +85,8 @@ class LLMSettingsService {
         context_window: settings.decision_llm_context_window ?? 2000,
         top_k: settings.decision_llm_top_k ?? -1,
         repetition_penalty: settings.decision_llm_repetition_penalty ?? 1.0,
-        min_p: settings.decision_llm_min_p ?? 0.0
+        min_p: settings.decision_llm_min_p ?? 0.0,
+        request_timeout: settings.decision_llm_request_timeout ?? 120
       };
     } catch (error) {
       console.error('Error fetching user Decision LLM settings:', error);
@@ -107,7 +109,8 @@ class LLMSettingsService {
       context_window: 4000,
       top_k: -1,
       repetition_penalty: 1.0,
-      min_p: 0.0
+      min_p: 0.0,
+      request_timeout: 120
     };
   }
 
@@ -126,7 +129,8 @@ class LLMSettingsService {
       context_window: 2000,
       top_k: -1,
       repetition_penalty: 1.0,
-      min_p: 0.0
+      min_p: 0.0,
+      request_timeout: 120
     };
   }
 
@@ -142,7 +146,7 @@ class LLMSettingsService {
       const settings = db.prepare(`
         SELECT imagetag_llm_provider, imagetag_llm_model, imagetag_llm_temperature, imagetag_llm_max_tokens, imagetag_llm_top_p,
                imagetag_llm_frequency_penalty, imagetag_llm_presence_penalty,
-               imagetag_llm_top_k, imagetag_llm_repetition_penalty, imagetag_llm_min_p
+               imagetag_llm_top_k, imagetag_llm_repetition_penalty, imagetag_llm_min_p, imagetag_llm_request_timeout
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -160,7 +164,8 @@ class LLMSettingsService {
         presence_penalty: settings.imagetag_llm_presence_penalty ?? 0.0,
         top_k: settings.imagetag_llm_top_k ?? -1,
         repetition_penalty: settings.imagetag_llm_repetition_penalty ?? 1.0,
-        min_p: settings.imagetag_llm_min_p ?? 0.0
+        min_p: settings.imagetag_llm_min_p ?? 0.0,
+        request_timeout: settings.imagetag_llm_request_timeout ?? 120
       };
     } catch (error) {
       console.error('Error fetching user Image Tag LLM settings:', error);
@@ -182,7 +187,8 @@ class LLMSettingsService {
       presence_penalty: 0.0,
       top_k: -1,
       repetition_penalty: 1.0,
-      min_p: 0.0
+      min_p: 0.0,
+      request_timeout: 120
     };
   }
 
@@ -198,7 +204,7 @@ class LLMSettingsService {
       const settings = db.prepare(`
         SELECT metadata_llm_provider, metadata_llm_model, metadata_llm_temperature, metadata_llm_max_tokens, metadata_llm_top_p,
                metadata_llm_frequency_penalty, metadata_llm_presence_penalty, metadata_llm_context_window,
-               metadata_llm_top_k, metadata_llm_repetition_penalty, metadata_llm_min_p
+               metadata_llm_top_k, metadata_llm_repetition_penalty, metadata_llm_min_p, metadata_llm_request_timeout
         FROM users WHERE id = ?
       `).get(userId);
 
@@ -217,7 +223,8 @@ class LLMSettingsService {
         context_window: settings.metadata_llm_context_window ?? 8000,
         top_k: settings.metadata_llm_top_k ?? -1,
         repetition_penalty: settings.metadata_llm_repetition_penalty ?? 1.0,
-        min_p: settings.metadata_llm_min_p ?? 0.0
+        min_p: settings.metadata_llm_min_p ?? 0.0,
+        request_timeout: settings.metadata_llm_request_timeout ?? 120
       };
     } catch (error) {
       console.error('Error fetching user Metadata LLM settings:', error);
@@ -240,7 +247,8 @@ class LLMSettingsService {
       context_window: 8000,
       top_k: -1,
       repetition_penalty: 1.0,
-      min_p: 0.0
+      min_p: 0.0,
+      request_timeout: 120
     };
   }
 }
