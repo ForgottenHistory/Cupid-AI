@@ -241,7 +241,9 @@ class MessageProcessor {
         currentStatus: currentStatusInfo,
         schedule: schedule,
         userBio: userBio,
-        shouldGenerateCharacterMood: shouldUpdateCharacterMood
+        shouldGenerateCharacterMood: shouldUpdateCharacterMood,
+        currentCharacterState: conversation?.character_state || null,
+        currentCharacterMood: conversation?.character_mood || null
       });
 
       console.log('🎯 Decision made:', decision);

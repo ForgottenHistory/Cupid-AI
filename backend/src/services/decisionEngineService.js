@@ -27,7 +27,7 @@ class DecisionEngineService {
   /**
    * Decision Engine: Analyze conversation and decide on actions
    */
-  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodMessageCount = 0, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false }) {
+  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodMessageCount = 0, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false, currentCharacterState = null, currentCharacterMood = null }) {
     try {
       const aiService = await this.getAIService();
 
@@ -59,7 +59,7 @@ class DecisionEngineService {
       const { characterName, characterContext } = buildCharacterContext(characterData);
       const personalityContext = buildPersonalityContext(characterData);
       const conversationHistory = formatConversationHistory(messages, characterName);
-      const statusContext = buildStatusContext(currentStatus, characterName);
+      const statusContext = buildStatusContext(currentStatus, characterName, currentCharacterState, currentCharacterMood);
 
       // Load and build decision prompt template
       const { loadPrompts } = await import('../routes/prompts.js');
@@ -72,7 +72,9 @@ class DecisionEngineService {
         shouldGenerateCharacterMood,
         shouldGenerateCharacterState,
         canChangeMood,
-        userId
+        userId,
+        currentCharacterState,
+        currentCharacterMood
       });
 
       // Get character-specific post instructions

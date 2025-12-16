@@ -156,11 +156,27 @@ export function buildPersonalityContext(characterData) {
 /**
  * Build status context string (placed at bottom for recency bias)
  */
-export function buildStatusContext(currentStatus, characterName) {
-  if (!currentStatus) {
+export function buildStatusContext(currentStatus, characterName, currentCharacterState = null, currentCharacterMood = null) {
+  const parts = [];
+
+  if (currentStatus) {
+    parts.push(`⚠️ CURRENT STATUS: ${currentStatus.status.toUpperCase()}${currentStatus.activity ? ` - "${currentStatus.activity}"` : ''}`);
+    parts.push(`This is what ${characterName} is doing RIGHT NOW.`);
+  }
+
+  if (currentCharacterState) {
+    parts.push(`⚠️ CURRENT CHARACTER STATE: "${currentCharacterState}" - Only change if the situation has CHANGED. Keep the same state if still applicable.`);
+  }
+
+  if (currentCharacterMood) {
+    parts.push(`⚠️ CURRENT CHARACTER MOOD: "${currentCharacterMood}" - Only change if the emotional tone has significantly shifted.`);
+  }
+
+  if (parts.length === 0) {
     return '';
   }
-  return `\n⚠️ CURRENT STATUS: ${currentStatus.status.toUpperCase()}${currentStatus.activity ? ` - "${currentStatus.activity}"` : ''}\nThis is what ${characterName} is doing RIGHT NOW. Use this to determine the appropriate Character State.`;
+
+  return '\n' + parts.join('\n');
 }
 
 /**
