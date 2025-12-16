@@ -143,9 +143,17 @@ const Library = () => {
 
     // Apply sorting
     if (sortOrder === 'newest') {
-      result = [...result].sort((a, b) => (b.uploadedAt || 0) - (a.uploadedAt || 0));
+      result = [...result].sort((a, b) => {
+        const timeA = Number(a.uploadedAt) || 0;
+        const timeB = Number(b.uploadedAt) || 0;
+        return timeB - timeA;
+      });
     } else if (sortOrder === 'oldest') {
-      result = [...result].sort((a, b) => (a.uploadedAt || 0) - (b.uploadedAt || 0));
+      result = [...result].sort((a, b) => {
+        const timeA = Number(a.uploadedAt) || 0;
+        const timeB = Number(b.uploadedAt) || 0;
+        return timeA - timeB;
+      });
     } else if (sortOrder === 'random') {
       result = [...result].sort(() => Math.random() - 0.5);
     }

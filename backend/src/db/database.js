@@ -1024,6 +1024,28 @@ function runMigrations() {
       `).run();
       console.log('✅ Fixed users with invalid created_at');
     }
+
+    // Fix characters with invalid created_at (NULL, empty, or epoch)
+    const charsWithBadCreatedAt = db.prepare(`
+      SELECT id FROM characters
+      WHERE created_at IS NULL
+         OR created_at = ''
+         OR created_at = 0
+         OR created_at < 1000000000000
+    `).all();
+
+    if (charsWithBadCreatedAt.length > 0) {
+      console.log(`🔧 Fixing ${charsWithBadCreatedAt.length} character(s) with invalid created_at...`);
+      db.prepare(`
+        UPDATE characters
+        SET created_at = ?
+        WHERE created_at IS NULL
+           OR created_at = ''
+           OR created_at = 0
+           OR created_at < 1000000000000
+      `).run(Date.now());
+      console.log('✅ Fixed characters with invalid created_at');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }
