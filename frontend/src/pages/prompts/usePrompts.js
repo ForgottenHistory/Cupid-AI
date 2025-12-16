@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { defaultPromptState } from './promptFieldDefinitions';
 
 const API_BASE = 'http://localhost:3000/api/prompts';
+const STORAGE_KEY = 'promptsCurrentPreset';
 
 const getToken = () => localStorage.getItem('token');
 
@@ -21,6 +22,7 @@ const fetchWithAuth = async (url, options = {}) => {
  */
 export const usePrompts = (containerRef) => {
   const [prompts, setPrompts] = useState(defaultPromptState);
+  const [savedPrompts, setSavedPrompts] = useState(null); // Snapshot of last saved state
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -28,11 +30,30 @@ export const usePrompts = (containerRef) => {
   // Preset state
   const [presets, setPresets] = useState([]);
   const [loadingPresets, setLoadingPresets] = useState(false);
+  const [currentPreset, setCurrentPreset] = useState(() => {
+    // Load from localStorage on init
+    return localStorage.getItem(STORAGE_KEY) || null;
+  });
+
+  // Compute if there are unsaved changes
+  const hasUnsavedChanges = useMemo(() => {
+    if (!savedPrompts) return false;
+    return JSON.stringify(prompts) !== JSON.stringify(savedPrompts);
+  }, [prompts, savedPrompts]);
 
   useEffect(() => {
     loadPrompts();
     loadPresets();
   }, []);
+
+  // Persist currentPreset to localStorage
+  useEffect(() => {
+    if (currentPreset) {
+      localStorage.setItem(STORAGE_KEY, currentPreset);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, [currentPreset]);
 
   const showMessage = (type, text, duration = 3000) => {
     setMessage({ type, text });
@@ -57,6 +78,7 @@ export const usePrompts = (containerRef) => {
 
       const data = await response.json();
       setPrompts(data);
+      setSavedPrompts(data); // Set initial saved state
       setMessage({ type: '', text: '' });
     } catch (error) {
       console.error('Failed to load prompts:', error);
@@ -79,6 +101,7 @@ export const usePrompts = (containerRef) => {
         throw new Error('Failed to save prompts');
       }
 
+      setSavedPrompts(prompts); // Update saved snapshot
       showMessage('success', 'Prompts saved successfully!');
     } catch (error) {
       console.error('Failed to save prompts:', error);
@@ -105,6 +128,8 @@ export const usePrompts = (containerRef) => {
 
       const data = await response.json();
       setPrompts(data.prompts);
+      setSavedPrompts(data.prompts);
+      setCurrentPreset(null); // Clear current preset
       showMessage('success', 'Prompts reset to defaults!');
     } catch (error) {
       console.error('Failed to reset prompts:', error);
@@ -163,6 +188,8 @@ export const usePrompts = (containerRef) => {
         throw new Error('Failed to save preset');
       }
 
+      setSavedPrompts(prompts); // Update saved snapshot
+      setCurrentPreset(presetName.trim()); // Set as current preset
       showMessage('success', `Preset "${presetName}" saved!`);
       loadPresets();
       return true;
@@ -193,6 +220,8 @@ export const usePrompts = (containerRef) => {
 
       const data = await response.json();
       setPrompts(data.prompts);
+      setSavedPrompts(data.prompts); // Update saved snapshot
+      setCurrentPreset(presetName); // Track loaded preset
       showMessage('success', `Preset "${presetName}" loaded!`);
     } catch (error) {
       console.error('Failed to load preset:', error);
@@ -217,6 +246,11 @@ export const usePrompts = (containerRef) => {
         throw new Error('Failed to delete preset');
       }
 
+      // Clear current preset if it was the deleted one
+      if (currentPreset === presetName) {
+        setCurrentPreset(null);
+      }
+
       showMessage('success', `Preset "${presetName}" deleted!`);
       loadPresets();
     } catch (error) {
@@ -225,12 +259,17 @@ export const usePrompts = (containerRef) => {
     }
   };
 
+  const clearCurrentPreset = () => {
+    setCurrentPreset(null);
+  };
+
   return {
     // Prompt state
     prompts,
     loading,
     saving,
     message,
+    hasUnsavedChanges,
     // Prompt actions
     loadPrompts,
     savePrompts,
@@ -239,9 +278,11 @@ export const usePrompts = (containerRef) => {
     // Preset state
     presets,
     loadingPresets,
+    currentPreset,
     // Preset actions
     savePreset,
     loadPreset,
-    deletePreset
+    deletePreset,
+    clearCurrentPreset
   };
 };

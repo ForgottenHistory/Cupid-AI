@@ -15,15 +15,18 @@ const Prompts = () => {
     loading,
     saving,
     message,
+    hasUnsavedChanges,
     loadPrompts,
     savePrompts,
     resetPrompts,
     updatePrompt,
     presets,
     loadingPresets,
+    currentPreset,
     savePreset,
     loadPreset,
-    deletePreset
+    deletePreset,
+    clearCurrentPreset
   } = usePrompts(containerRef);
 
   if (loading) {
@@ -91,9 +94,12 @@ const Prompts = () => {
           presets={presets}
           loadingPresets={loadingPresets}
           saving={saving}
+          currentPreset={currentPreset}
+          hasUnsavedChanges={hasUnsavedChanges}
           onSave={savePreset}
           onLoad={loadPreset}
           onDelete={deletePreset}
+          onClearPreset={clearCurrentPreset}
         />
 
         {/* Conversation Behavior Prompts */}
