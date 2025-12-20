@@ -251,7 +251,8 @@ export function findCandidates() {
            proactive_messages_today, last_proactive_date, proactive_check_interval,
            last_proactive_check_at, left_on_read_messages_today, last_left_on_read_date,
            daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max,
-           left_on_read_character_cooldown, max_consecutive_proactive, proactive_cooldown_multiplier
+           left_on_read_character_cooldown, max_consecutive_proactive, proactive_cooldown_multiplier,
+           auto_unmatch_after_proactive
     FROM users
   `).all();
 
@@ -371,7 +372,8 @@ export function findCandidates() {
           proactiveAwayChance: user.proactive_away_chance || 50,
           proactiveBusyChance: user.proactive_busy_chance || 10,
           maxConsecutiveProactive: user.max_consecutive_proactive || 4,
-          proactiveCooldownMultiplier: user.proactive_cooldown_multiplier || 2.0
+          proactiveCooldownMultiplier: user.proactive_cooldown_multiplier || 2.0,
+          autoUnmatchAfterProactive: user.auto_unmatch_after_proactive ?? true
         }
       });
     }

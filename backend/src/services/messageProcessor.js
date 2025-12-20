@@ -362,43 +362,58 @@ class MessageProcessor {
         }
       }
 
-      // Check if character wants to unmatch
+      // Check if character wants to unmatch (Decision LLM decided)
       if (decision.shouldUnmatch) {
-        console.log(`💔 Character ${characterId} has decided to unmatch user ${userId}`);
+        console.log(`⚠️ Decision LLM returned shouldUnmatch=true for character ${characterId}, user ${userId}`);
+        console.log(`⚠️ Decision reason: ${decision.reason || 'No reason provided'}`);
 
-        const characterName = characterData.name || 'Character';
-        const unmatchReason = 'The character has decided to unmatch with you.';
+        // SAFEGUARD: Check if AI-initiated unmatch is allowed
+        const userSettings = db.prepare('SELECT allow_ai_unmatch FROM users WHERE id = ?').get(userId);
+        const allowAiUnmatch = userSettings?.allow_ai_unmatch;
 
-        // Add UNMATCH separator to conversation history (preserve memory)
-        const unmatchSeparator = `[UNMATCH: ${characterName} unmatched - ${unmatchReason}]`;
-        messageService.saveMessage(
-          conversationId,
-          'system',
-          unmatchSeparator,
-          null, // no reaction
-          'text',
-          null, // no audio
-          null, // no image
-          null, // no image tags
-          false, // not proactive
-          null  // no image prompt
-        );
-        console.log(`✅ Added UNMATCH separator: ${unmatchSeparator}`);
+        // If setting exists and is explicitly disabled (0 or false), block the unmatch
+        if (allowAiUnmatch === 0 || allowAiUnmatch === false) {
+          console.log(`🛡️ SAFEGUARD BLOCKED AI UNMATCH: allow_ai_unmatch is disabled for user ${userId}`);
+          console.log(`🛡️ Character ${characterId} will NOT be unmatched - continuing with normal response`);
+          // Don't return - continue to generate a normal response
+        } else {
+          // AI unmatch is allowed (default behavior)
+          console.log(`💔 Character ${characterId} has decided to unmatch user ${userId}`);
 
-        // Delete character from backend (removes match, but keeps conversation)
-        db.prepare(`
-          DELETE FROM characters WHERE id = ? AND user_id = ?
-        `).run(characterId, userId);
+          const characterName = characterData.name || 'Character';
+          const unmatchReason = 'The character has decided to unmatch with you.';
 
-        // Emit unmatch event to frontend
-        io.to(`user:${userId}`).emit('character_unmatched', {
-          characterId,
-          characterName: characterName,
-          reason: unmatchReason
-        });
+          // Add UNMATCH separator to conversation history (preserve memory)
+          const unmatchSeparator = `[UNMATCH: ${characterName} unmatched - ${unmatchReason}]`;
+          messageService.saveMessage(
+            conversationId,
+            'system',
+            unmatchSeparator,
+            null, // no reaction
+            'text',
+            null, // no audio
+            null, // no image
+            null, // no image tags
+            false, // not proactive
+            null  // no image prompt
+          );
+          console.log(`✅ Added UNMATCH separator: ${unmatchSeparator}`);
 
-        console.log(`✅ Character ${characterId} successfully unmatched user ${userId} (conversation preserved)`);
-        return; // Don't generate response, end processing
+          // Delete character from backend (removes match, but keeps conversation)
+          db.prepare(`
+            DELETE FROM characters WHERE id = ? AND user_id = ?
+          `).run(characterId, userId);
+
+          // Emit unmatch event to frontend
+          io.to(`user:${userId}`).emit('character_unmatched', {
+            characterId,
+            characterName: characterName,
+            reason: unmatchReason
+          });
+
+          console.log(`✅ Character ${characterId} successfully unmatched user ${userId} (conversation preserved)`);
+          return; // Don't generate response, end processing
+        }
       }
 
       // GENERATE IMAGE FIRST (if decision says so) so Content LLM knows what image was generated

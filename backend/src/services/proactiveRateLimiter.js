@@ -53,14 +53,28 @@ export function updateProactiveRateLimits(userId, characterId, characterName, us
   console.log(`📊 Consecutive proactive count: ${newConsecutiveCount}/${maxConsecutive} (next cooldown: ${cooldownDisplay}, multiplier: ${multiplier}x)`);
   console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
 
-  // Check if should unmatch
-  const autoUnmatchAfterProactive = userSettings?.autoUnmatchAfterProactive ?? true;
+  // SAFEGUARD: Double-check unmatch setting directly from database
+  const dbSettings = db.prepare('SELECT auto_unmatch_after_proactive FROM users WHERE id = ?').get(userId);
+  const dbAutoUnmatch = dbSettings?.auto_unmatch_after_proactive;
+  const passedAutoUnmatch = userSettings?.autoUnmatchAfterProactive;
+
+  // Convert to explicit boolean (SQLite stores as 0/1)
+  // Only enable unmatch if BOTH the DB value AND passed value are truthy (or default true if undefined)
+  const autoUnmatchFromDb = dbAutoUnmatch === 1 || dbAutoUnmatch === true;
+  const autoUnmatchFromSettings = passedAutoUnmatch === 1 || passedAutoUnmatch === true;
+
+  // If DB explicitly has 0 (disabled), NEVER unmatch regardless of what was passed
+  const autoUnmatchDisabledInDb = dbAutoUnmatch === 0 || dbAutoUnmatch === false;
+  const autoUnmatchAfterProactive = autoUnmatchDisabledInDb ? false : (autoUnmatchFromDb || autoUnmatchFromSettings || (dbAutoUnmatch === undefined && passedAutoUnmatch === undefined));
+
+  console.log(`🔒 Unmatch setting check: DB=${dbAutoUnmatch} (${typeof dbAutoUnmatch}), passed=${passedAutoUnmatch} (${typeof passedAutoUnmatch}), final=${autoUnmatchAfterProactive}`);
+
   const shouldUnmatch = maxConsecutive > 0 && autoUnmatchAfterProactive && newConsecutiveCount >= maxConsecutive;
 
   if (shouldUnmatch) {
     console.log(`💔 ${characterName} sent ${maxConsecutive} consecutive proactive messages - triggering unmatch for user ${userId}`);
   } else if (maxConsecutive > 0 && !autoUnmatchAfterProactive && newConsecutiveCount >= maxConsecutive) {
-    console.log(`🔔 ${characterName} at consecutive cap (${newConsecutiveCount}/${maxConsecutive}) - auto-unmatch disabled, cooldown escalation stopped`);
+    console.log(`🔔 ${characterName} at consecutive cap (${newConsecutiveCount}/${maxConsecutive}) - auto-unmatch DISABLED by user setting`);
   }
 
   return { shouldUnmatch, newConsecutiveCount, maxConsecutive };
@@ -70,6 +84,24 @@ export function updateProactiveRateLimits(userId, characterId, characterName, us
  * Handle unmatch after consecutive proactive messages cap
  */
 export function handleProactiveUnmatch(userId, characterId, characterName, conversationId, maxConsecutive, io) {
+  // FINAL SAFEGUARD: Re-check setting directly from DB before ANY deletion
+  const dbSettings = db.prepare('SELECT auto_unmatch_after_proactive FROM users WHERE id = ?').get(userId);
+  const autoUnmatchEnabled = dbSettings?.auto_unmatch_after_proactive === 1 || dbSettings?.auto_unmatch_after_proactive === true;
+
+  // If setting is explicitly disabled (0 or false), abort unmatch
+  if (dbSettings?.auto_unmatch_after_proactive === 0 || dbSettings?.auto_unmatch_after_proactive === false) {
+    console.log(`🛡️ SAFEGUARD BLOCKED UNMATCH: auto_unmatch_after_proactive is disabled in DB (value: ${dbSettings.auto_unmatch_after_proactive})`);
+    console.log(`🛡️ ${characterName} will NOT be unmatched for user ${userId}`);
+    return false;
+  }
+
+  // If setting is undefined/null but we got here somehow, also block (fail-safe)
+  if (dbSettings?.auto_unmatch_after_proactive === undefined || dbSettings?.auto_unmatch_after_proactive === null) {
+    console.log(`🛡️ SAFEGUARD WARNING: auto_unmatch_after_proactive is undefined/null, proceeding with caution`);
+  }
+
+  console.log(`🔓 Unmatch safeguard passed: auto_unmatch_after_proactive=${dbSettings?.auto_unmatch_after_proactive}`);
+
   const unmatchReason = `Character unmatched after ${maxConsecutive} consecutive unanswered messages`;
 
   // Add UNMATCH separator to conversation history
@@ -99,4 +131,5 @@ export function handleProactiveUnmatch(userId, characterId, characterName, conve
   });
 
   console.log(`✅ Unmatch complete for ${characterName} and user ${userId} (conversation preserved)`);
+  return true;
 }

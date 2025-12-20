@@ -661,6 +661,14 @@ function runMigrations() {
       console.log('✅ auto_unmatch_after_proactive column added to users table');
     }
 
+    // Refresh column names again for new migration
+    const userColumnNamesRefresh2 = db.prepare("PRAGMA table_info(users)").all().map(col => col.name);
+
+    if (!userColumnNamesRefresh2.includes('allow_ai_unmatch')) {
+      db.exec(`ALTER TABLE users ADD COLUMN allow_ai_unmatch INTEGER DEFAULT 1;`);
+      console.log('✅ allow_ai_unmatch column added to users table');
+    }
+
     // Migration: Update messages table to allow 'system' role
     // Check if the constraint needs updating
     const messagesSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'").get();

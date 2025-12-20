@@ -45,6 +45,7 @@ const FIELD_TO_COLUMN = {
   keepUncompactedMessages: 'keep_uncompacted_messages',
   autoUnmatchInactiveDays: 'auto_unmatch_inactive_days',
   autoUnmatchAfterProactive: 'auto_unmatch_after_proactive',
+  allowAiUnmatch: 'allow_ai_unmatch',
   dailySwipeLimit: 'daily_swipe_limit',
   dailyAutoMatchEnabled: 'daily_auto_match_enabled',
   compactionEnabled: 'compaction_enabled',
@@ -58,7 +59,7 @@ const FIELD_TO_COLUMN = {
 /**
  * Boolean fields that need conversion
  */
-const BOOLEAN_FIELDS = ['autoUnmatchAfterProactive', 'dailyAutoMatchEnabled', 'compactionEnabled', 'includeFullSchedule'];
+const BOOLEAN_FIELDS = ['autoUnmatchAfterProactive', 'allowAiUnmatch', 'dailyAutoMatchEnabled', 'compactionEnabled', 'includeFullSchedule'];
 
 /**
  * GET /api/users/behavior-settings
