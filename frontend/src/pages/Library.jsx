@@ -5,12 +5,12 @@ import UploadZone from '../components/UploadZone';
 import CharacterGrid from '../components/CharacterGrid';
 import CharacterProfile from '../components/CharacterProfile';
 import characterService from '../services/characterService';
-import api from '../services/api';
 
 const Library = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [characters, setCharacters] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'liked', 'unviewed'
   const [stats, setStats] = useState({ total: 0, liked: 0, remaining: 0 });
@@ -25,18 +25,21 @@ const Library = () => {
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const ITEMS_PER_PAGE = viewMode === 'compact' ? 50 : 24;
 
+  // Load thumbnails on mount
   useEffect(() => {
-    loadCharacters();
     loadStats();
     loadThumbnails();
   }, [user?.id]);
 
+  // Load characters when filter, search, sort, page, or items per page changes
+  useEffect(() => {
+    loadCharacters();
+  }, [user?.id, filter, debouncedSearch, sortOrder, currentPage, ITEMS_PER_PAGE]);
+
   const loadThumbnails = async () => {
     try {
-      const response = await api.get('/sync/character-thumbnails');
-      if (response.data.success) {
-        setThumbnails(response.data.thumbnails);
-      }
+      const thumbnails = await characterService.getThumbnails();
+      setThumbnails(thumbnails);
     } catch (error) {
       console.error('Failed to load thumbnails:', error);
     }
@@ -46,17 +49,48 @@ const Library = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-    }, 150);
+      setCurrentPage(1); // Reset to page 1 on search change
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Reset to page 1 when filter or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, sortOrder, viewMode]);
 
   const loadCharacters = async () => {
     if (!user?.id) return;
 
     setLoading(true);
     try {
-      const allChars = await characterService.getAllCharacters(user.id);
-      setCharacters(allChars);
+      // Map frontend filter to backend filter
+      const backendFilter = filter === 'unviewed' ? 'swipeable' : filter;
+
+      // For random sort, fetch all and shuffle client-side (can't paginate random)
+      if (sortOrder === 'random') {
+        const { characters: allChars, total } = await characterService.getCharacterList(
+          user.id,
+          backendFilter,
+          debouncedSearch || null
+        );
+        // Shuffle and paginate client-side
+        const shuffled = [...allChars].sort(() => Math.random() - 0.5);
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        setCharacters(shuffled.slice(start, start + ITEMS_PER_PAGE));
+        setTotalCount(total);
+      } else {
+        // Use server-side pagination for newest/oldest
+        const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+        const { characters: pageChars, total } = await characterService.getCharacterList(
+          user.id,
+          backendFilter,
+          debouncedSearch || null,
+          { offset, limit: ITEMS_PER_PAGE, sort: sortOrder }
+        );
+        setCharacters(pageChars);
+        setTotalCount(total);
+      }
     } catch (error) {
       console.error('Failed to load characters:', error);
     } finally {
@@ -119,59 +153,20 @@ const Library = () => {
     }
   };
 
-  const handleCharacterClick = (character) => {
-    setSelectedCharacter(character);
+  const handleCharacterClick = async (character) => {
+    // Fetch full character data for the profile modal
+    try {
+      const fullCharacter = await characterService.getCharacter(character.id);
+      setSelectedCharacter(fullCharacter);
+    } catch (error) {
+      console.error('Failed to load character details:', error);
+      // Fallback to lightweight data if fetch fails
+      setSelectedCharacter(character);
+    }
   };
 
-  const filteredCharacters = useMemo(() => {
-    let result = characters.filter((char) => {
-      // Apply filter
-      if (filter === 'liked' && !char.isLiked) return false;
-      if (filter === 'unviewed' && char.isLiked) return false;
-
-      // Apply search (name and tags)
-      if (debouncedSearch.trim()) {
-        const query = debouncedSearch.toLowerCase();
-        const nameMatch = char.name?.toLowerCase().includes(query);
-        const tags = char.cardData?.data?.tags || [];
-        const tagMatch = tags.some(tag => tag.toLowerCase().includes(query));
-        return nameMatch || tagMatch;
-      }
-
-      return true;
-    });
-
-    // Apply sorting
-    if (sortOrder === 'newest') {
-      result = [...result].sort((a, b) => {
-        const timeA = Number(a.uploadedAt) || 0;
-        const timeB = Number(b.uploadedAt) || 0;
-        return timeB - timeA;
-      });
-    } else if (sortOrder === 'oldest') {
-      result = [...result].sort((a, b) => {
-        const timeA = Number(a.uploadedAt) || 0;
-        const timeB = Number(b.uploadedAt) || 0;
-        return timeA - timeB;
-      });
-    } else if (sortOrder === 'random') {
-      result = [...result].sort(() => Math.random() - 0.5);
-    }
-
-    return result;
-  }, [characters, filter, debouncedSearch, sortOrder]);
-
-  // Reset to page 1 when filter or search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [filter, debouncedSearch]);
-
-  // Pagination
-  const totalPages = Math.ceil(filteredCharacters.length / ITEMS_PER_PAGE);
-  const paginatedCharacters = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredCharacters.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredCharacters, currentPage]);
+  // Pagination now handled server-side, just calculate total pages
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
@@ -401,7 +396,7 @@ const Library = () => {
         ) : (
           <>
           <CharacterGrid
-            characters={paginatedCharacters}
+            characters={characters}
             onDelete={handleDelete}
             onCharacterClick={handleCharacterClick}
             thumbnails={viewMode === 'compact' ? thumbnails : {}}
@@ -469,7 +464,7 @@ const Library = () => {
               </button>
 
               <span className="ml-4 text-sm text-gray-500 dark:text-gray-400">
-                {filteredCharacters.length} characters
+                {totalCount} characters
               </span>
             </div>
           )}

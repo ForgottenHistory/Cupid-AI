@@ -2,6 +2,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { characterImageParser } from '../utils/characterImageParser';
 import api from './api';
 
+// Thumbnail cache to avoid duplicate API calls
+let thumbnailCache = {
+  data: null,
+  timestamp: 0,
+  promise: null
+};
+const THUMBNAIL_CACHE_TTL = 30000; // 30 seconds
+
 /**
  * Character Service - Backend-only storage
  * All character data is stored in backend SQLite, no IndexedDB
@@ -283,6 +291,42 @@ class CharacterService {
   }
 
   /**
+   * Get lightweight character list (minimal data for UI lists)
+   * Returns only: id, name, imageUrl, thumbnailUrl, isLiked, likedAt, age, bio
+   * @param {number} userId - User ID (not used, auth token determines user)
+   * @param {string} filter - 'all', 'liked', or 'swipeable'
+   * @param {string} search - Optional search query
+   * @param {object} pagination - Optional { offset, limit } for server-side pagination
+   * @returns {object} { characters: [], total: number }
+   */
+  async getCharacterList(userId, filter = 'all', search = null, pagination = null) {
+    const params = { filter };
+    if (search) params.search = search;
+    if (pagination) {
+      if (pagination.offset !== undefined) params.offset = pagination.offset;
+      if (pagination.limit !== undefined) params.limit = pagination.limit;
+      if (pagination.sort) params.sort = pagination.sort;
+    }
+
+    const response = await api.get('/characters/list', { params });
+    return response.data; // { characters, total }
+  }
+
+  /**
+   * Get statuses for multiple characters in a single request
+   * @param {string[]} characterIds - Array of character IDs
+   * @returns {Object} Map of characterId -> status info
+   */
+  async getCharacterStatuses(characterIds) {
+    if (!characterIds || characterIds.length === 0) {
+      return {};
+    }
+
+    const response = await api.post('/characters/statuses', { characterIds });
+    return response.data.statuses;
+  }
+
+  /**
    * Get character's current status based on their schedule
    */
   async getCharacterStatus(characterId, schedule) {
@@ -304,6 +348,51 @@ class CharacterService {
   async updateCharacterData(characterId, updates) {
     const response = await api.put(`/characters/${characterId}`, updates);
     return response.data.character;
+  }
+
+  /**
+   * Get character thumbnails with caching
+   * Deduplicates requests and caches for 30 seconds
+   */
+  async getThumbnails() {
+    const now = Date.now();
+
+    // Return cached data if still fresh
+    if (thumbnailCache.data && (now - thumbnailCache.timestamp) < THUMBNAIL_CACHE_TTL) {
+      return thumbnailCache.data;
+    }
+
+    // If a request is already in flight, return that promise
+    if (thumbnailCache.promise) {
+      return thumbnailCache.promise;
+    }
+
+    // Make new request
+    thumbnailCache.promise = api.get('/sync/character-thumbnails')
+      .then(response => {
+        if (response.data.success) {
+          thumbnailCache.data = response.data.thumbnails;
+          thumbnailCache.timestamp = Date.now();
+        }
+        thumbnailCache.promise = null;
+        return thumbnailCache.data || {};
+      })
+      .catch(error => {
+        thumbnailCache.promise = null;
+        console.error('Failed to load thumbnails:', error);
+        return {};
+      });
+
+    return thumbnailCache.promise;
+  }
+
+  /**
+   * Invalidate thumbnail cache (call after character updates)
+   */
+  invalidateThumbnailCache() {
+    thumbnailCache.data = null;
+    thumbnailCache.timestamp = 0;
+    thumbnailCache.promise = null;
   }
 }
 

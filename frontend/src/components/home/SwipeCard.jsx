@@ -111,8 +111,9 @@ const SwipeCard = ({ character, onSwipe, isTop, onClick }) => {
           <div className="flex items-start justify-between mb-2">
             <div className="flex-1">
               <h2 className="text-white text-3xl font-bold">{character.name}</h2>
-              {character.cardData?.data?.datingProfile?.age && (
-                <p className="text-white/80 text-lg mt-1">{character.cardData.data.datingProfile.age}</p>
+              {/* Support both lightweight (character.age) and full format (cardData.data.datingProfile.age) */}
+              {(character.age || character.cardData?.data?.datingProfile?.age) && (
+                <p className="text-white/80 text-lg mt-1">{character.age || character.cardData.data.datingProfile.age}</p>
               )}
             </div>
             <div className="ml-3 bg-white/20 backdrop-blur-sm rounded-full p-2 hover:bg-white/30 transition">
@@ -121,11 +122,13 @@ const SwipeCard = ({ character, onSwipe, isTop, onClick }) => {
               </svg>
             </div>
           </div>
-          {(character.cardData?.data?.datingProfile?.bio || character.cardData?.data?.description) && (
+          {/* Support both lightweight (character.bio) and full format */}
+          {(character.bio || character.cardData?.data?.datingProfile?.bio || character.cardData?.data?.description) && (
             <p className="text-white/90 text-sm mt-2 line-clamp-2">
-              {character.cardData.data.datingProfile?.bio || character.cardData.data.description}
+              {character.bio || character.cardData?.data?.datingProfile?.bio || character.cardData?.data?.description}
             </p>
           )}
+          {/* Interests only available with full data */}
           {character.cardData?.data?.datingProfile?.interests && character.cardData.data.datingProfile.interests.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-3">
               {character.cardData.data.datingProfile.interests.slice(0, 3).map((interest, index) => (

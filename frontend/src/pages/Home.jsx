@@ -147,7 +147,8 @@ const Home = () => {
 
     setLoading(true);
     try {
-      const characters = await characterService.getSwipeableCharacters(user.id);
+      // Use lightweight endpoint for swipeable characters (minimal data)
+      const { characters } = await characterService.getCharacterList(user.id, 'swipeable');
       const shuffledCharacters = shuffleArray(characters);
       // Filter out characters swiped today (tracked in localStorage)
       const swipedToday = getSwipedToday();
@@ -275,7 +276,17 @@ const Home = () => {
                   character={character}
                   onSwipe={isSwipesExhausted ? () => {} : handleSwipe}
                   isTop={index === currentCards.length - 1}
-                  onClick={() => !isSwipesExhausted && setSelectedCharacter(character)}
+                  onClick={async () => {
+                    if (isSwipesExhausted) return;
+                    // Fetch full character data for profile modal
+                    try {
+                      const fullCharacter = await characterService.getCharacter(character.id);
+                      setSelectedCharacter(fullCharacter);
+                    } catch (error) {
+                      console.error('Failed to load character details:', error);
+                      setSelectedCharacter(character);
+                    }
+                  }}
                 />
               ))}
               {/* Locked overlay when swipes exhausted */}

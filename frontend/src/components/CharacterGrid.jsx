@@ -63,9 +63,10 @@ const CharacterCard = memo(({ character, onDelete, onClick, thumbnailUrl }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="absolute bottom-0 left-0 right-0 p-4">
             <h3 className="text-white font-bold text-lg mb-1">{character.name}</h3>
-            {character.cardData?.data?.description && (
+            {/* Support both lightweight (character.bio) and full format */}
+            {(character.bio || character.cardData?.data?.description) && (
               <p className="text-white/90 text-sm line-clamp-2">
-                {character.cardData.data.description}
+                {character.bio || character.cardData.data.description}
               </p>
             )}
           </div>
@@ -141,9 +142,10 @@ const CompactCharacterRow = memo(({ character, onDelete, onClick, thumbnailUrl }
       />
       <div className="flex-1 min-w-0">
         <div className="font-medium text-gray-900 dark:text-gray-100 truncate">{character.name}</div>
-        {character.cardData?.data?.tags?.length > 0 && (
+        {/* Support both lightweight (character.tags) and full format */}
+        {(character.tags?.length > 0 || character.cardData?.data?.tags?.length > 0) && (
           <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
-            {character.cardData.data.tags.slice(0, 3).join(', ')}
+            {(character.tags || character.cardData.data.tags).slice(0, 3).join(', ')}
           </div>
         )}
       </div>

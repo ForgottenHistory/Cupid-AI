@@ -69,7 +69,7 @@ const MainLayout = ({ children }) => {
     if (user?.id) {
       window.debugDailyMatch = async () => {
         try {
-          const allCharacters = await characterService.getAllCharacters(user.id);
+          const { characters: allCharacters } = await characterService.getCharacterList(user.id);
           const matchedCharacterIds = matches.map(m => m.id);
           const unmatchedCharacters = allCharacters.filter(
             char => !matchedCharacterIds.includes(char.id)
@@ -143,14 +143,30 @@ const MainLayout = ({ children }) => {
   }, [matches.length]);
 
   useEffect(() => {
-    // Poll character statuses every minute
+    // Smart polling: only poll when tab is visible
     if (matches.length === 0) return;
 
-    const interval = setInterval(() => {
-      loadCharacterStatuses();
-    }, 60000); // Poll every 60 seconds
+    const pollIfVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadCharacterStatuses();
+      }
+    };
 
-    return () => clearInterval(interval);
+    // Poll every minute, but only if tab is visible
+    const interval = setInterval(pollIfVisible, 60000);
+
+    // Also refresh when user returns to tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadCharacterStatuses();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [matches.length]);
 
   // Update browser tab title with unread count
@@ -171,8 +187,9 @@ const MainLayout = ({ children }) => {
   const loadMatches = async () => {
     if (!user?.id) return;
     try {
-      const likedChars = await characterService.getLikedCharacters(user.id);
-      setMatches(likedChars);
+      // Use lightweight endpoint for sidebar (minimal data)
+      const { characters } = await characterService.getCharacterList(user.id, 'liked');
+      setMatches(characters);
     } catch (error) {
       console.error('Failed to load matches:', error);
     }
@@ -191,23 +208,10 @@ const MainLayout = ({ children }) => {
   const loadCharacterStatuses = async () => {
     if (!user?.id || matches.length === 0) return;
     try {
-      const dataPromises = matches.map(async (match) => {
-        try {
-          // Get schedule from character card data
-          const schedule = match.cardData?.data?.schedule;
-          const status = await characterService.getCharacterStatus(match.id, schedule);
-          return { characterId: match.id, status };
-        } catch (err) {
-          console.error(`Failed to load status for ${match.id}:`, err);
-          return { characterId: match.id, status: null };
-        }
-      });
-      const results = await Promise.all(dataPromises);
-      const statusMap = {};
-      results.forEach(({ characterId, status }) => {
-        statusMap[characterId] = status;
-      });
-      setCharacterStatuses(statusMap);
+      // Use batch endpoint - single API call for all statuses
+      const characterIds = matches.map(m => m.id);
+      const statuses = await characterService.getCharacterStatuses(characterIds);
+      setCharacterStatuses(statuses);
     } catch (error) {
       console.error('Failed to load character statuses:', error);
     }
@@ -226,10 +230,8 @@ const MainLayout = ({ children }) => {
   const loadThumbnails = async () => {
     if (!user?.id) return;
     try {
-      const response = await api.get('/sync/character-thumbnails');
-      if (response.data.success) {
-        setCharacterThumbnails(response.data.thumbnails);
-      }
+      const thumbnails = await characterService.getThumbnails();
+      setCharacterThumbnails(thumbnails);
     } catch (error) {
       console.error('Failed to load thumbnails:', error);
     }
@@ -306,9 +308,14 @@ const MainLayout = ({ children }) => {
       );
     }
 
+    // Build conversation lookup map for O(1) access instead of O(n) find() per comparison
+    const conversationMap = new Map(
+      conversations.map(c => [c.character_id, c])
+    );
+
     return filtered.sort((a, b) => {
-      const convA = conversations.find(c => c.character_id === a.id);
-      const convB = conversations.find(c => c.character_id === b.id);
+      const convA = conversationMap.get(a.id);
+      const convB = conversationMap.get(b.id);
 
       // If both have conversations, sort by last message time
       if (convA?.last_message_at && convB?.last_message_at) {

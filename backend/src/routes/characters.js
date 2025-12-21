@@ -5,6 +5,7 @@ import * as characterStatus from '../controllers/characterStatusController.js';
 import * as characterInteraction from '../controllers/characterInteractionController.js';
 import memoryService from '../services/memoryService.js';
 import db from '../db/database.js';
+import { calculateCurrentStatus } from '../utils/characterHelpers.js';
 
 const router = express.Router();
 
@@ -77,6 +78,156 @@ router.get('/', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Failed to get characters:', error);
     res.status(500).json({ error: 'Failed to get characters' });
+  }
+});
+
+// GET /api/characters/list - Lightweight list for UI (minimal data)
+// Supports pagination with offset/limit params and sorting
+router.get('/list', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { filter = 'all', search, offset, limit, sort = 'newest' } = req.query;
+
+    // Build WHERE clause
+    let whereClause = 'WHERE user_id = ?';
+    const params = [userId];
+
+    if (filter === 'liked') {
+      whereClause += ' AND is_liked = 1';
+    } else if (filter === 'swipeable') {
+      whereClause += ' AND is_liked = 0';
+    }
+
+    if (search) {
+      whereClause += ' AND name LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    // Get total count first (before pagination)
+    const countQuery = `SELECT COUNT(*) as total FROM characters ${whereClause}`;
+    const { total } = db.prepare(countQuery).get(...params);
+
+    // Determine sort order
+    const sortOrder = sort === 'oldest' ? 'ASC' : 'DESC';
+
+    // Build main query with pagination
+    let query = `
+      SELECT id, name, image_url, thumbnail_url, is_liked, liked_at, card_data
+      FROM characters ${whereClause}
+      ORDER BY created_at ${sortOrder}
+    `;
+
+    // Apply pagination if provided
+    if (limit !== undefined) {
+      const limitNum = parseInt(limit, 10);
+      const offsetNum = parseInt(offset || '0', 10);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        query += ` LIMIT ${limitNum}`;
+        if (!isNaN(offsetNum) && offsetNum > 0) {
+          query += ` OFFSET ${offsetNum}`;
+        }
+      }
+    }
+
+    const characters = db.prepare(query).all(...params);
+
+    // Format response with minimal data - extract only age/bio from cardData
+    const formatted = characters.map(char => {
+      let age = null;
+      let bio = null;
+
+      try {
+        const cardData = JSON.parse(char.card_data || '{}');
+        const datingProfile = cardData.data?.datingProfile;
+        if (datingProfile) {
+          age = datingProfile.age || null;
+          // Limit bio to 200 chars for list views
+          bio = datingProfile.bio ? datingProfile.bio.substring(0, 200) : null;
+        }
+        // Fallback to description if no bio
+        if (!bio && cardData.data?.description) {
+          bio = cardData.data.description.substring(0, 200);
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+
+      return {
+        id: char.id,
+        name: char.name,
+        imageUrl: char.image_url,
+        thumbnailUrl: char.thumbnail_url,
+        isLiked: !!char.is_liked,
+        likedAt: char.liked_at,
+        age,
+        bio,
+        tags: (() => {
+          try {
+            return JSON.parse(char.card_data || '{}').data?.tags || [];
+          } catch (e) {
+            return [];
+          }
+        })()
+      };
+    });
+
+    res.json({
+      characters: formatted,
+      total
+    });
+  } catch (error) {
+    console.error('Failed to get character list:', error);
+    res.status(500).json({ error: 'Failed to get character list' });
+  }
+});
+
+// POST /api/characters/statuses - Batch get statuses for multiple characters
+router.post('/statuses', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { characterIds } = req.body;
+
+    if (!Array.isArray(characterIds) || characterIds.length === 0) {
+      return res.status(400).json({ error: 'characterIds array is required' });
+    }
+
+    // Fetch schedule data for all requested characters in one query
+    const placeholders = characterIds.map(() => '?').join(',');
+    const characters = db.prepare(`
+      SELECT id, schedule_data FROM characters
+      WHERE id IN (${placeholders}) AND user_id = ?
+    `).all(...characterIds, userId);
+
+    // Build status map
+    const statuses = {};
+    const characterMap = new Map(characters.map(c => [c.id, c]));
+
+    for (const charId of characterIds) {
+      const character = characterMap.get(charId);
+
+      if (!character) {
+        // Character not found, return default online status
+        statuses[charId] = { status: 'online', activity: null, nextChange: null };
+        continue;
+      }
+
+      // Parse schedule and calculate status
+      let schedule = null;
+      if (character.schedule_data) {
+        try {
+          schedule = JSON.parse(character.schedule_data);
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+
+      statuses[charId] = calculateCurrentStatus(schedule);
+    }
+
+    res.json({ statuses });
+  } catch (error) {
+    console.error('Failed to get character statuses:', error);
+    res.status(500).json({ error: 'Failed to get character statuses' });
   }
 });
 
