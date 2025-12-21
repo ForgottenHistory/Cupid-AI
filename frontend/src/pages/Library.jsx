@@ -115,8 +115,24 @@ const Library = () => {
 
       setUploadResults(results);
 
-      // Reload characters
-      await loadCharacters();
+      // Force reload to show newly imported characters
+      // Must set page to 1 first, then reload (useEffect won't trigger if already on page 1)
+      setCurrentPage(1);
+      // Manually reload since state update is async and useEffect may not trigger
+      setLoading(true);
+      try {
+        const backendFilter = filter === 'unviewed' ? 'swipeable' : filter;
+        const { characters: pageChars, total } = await characterService.getCharacterList(
+          user.id,
+          backendFilter,
+          debouncedSearch || null,
+          { offset: 0, limit: ITEMS_PER_PAGE, sort: sortOrder }
+        );
+        setCharacters(pageChars);
+        setTotalCount(total);
+      } finally {
+        setLoading(false);
+      }
       await loadStats();
 
       // Show results

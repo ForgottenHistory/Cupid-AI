@@ -45,7 +45,11 @@ router.get('/', authenticateToken, (req, res) => {
       params.push(`%${search}%`);
     }
 
-    query += ' ORDER BY created_at DESC';
+    // Use normalized sorting to handle mixed timestamp formats (string vs numeric)
+    query += ` ORDER BY CASE
+      WHEN typeof(created_at) = 'text' THEN strftime('%s', created_at) * 1000
+      ELSE created_at
+    END DESC`;
 
     const characters = db.prepare(query).all(...params);
 
@@ -108,13 +112,18 @@ router.get('/list', authenticateToken, (req, res) => {
     const { total } = db.prepare(countQuery).get(...params);
 
     // Determine sort order
-    const sortOrder = sort === 'oldest' ? 'ASC' : 'DESC';
+    const sortDirection = sort === 'oldest' ? 'ASC' : 'DESC';
 
     // Build main query with pagination
+    // Use normalized sorting to handle mixed timestamp formats (string vs numeric)
+    // String timestamps: "2024-12-21 10:30:00", Numeric: 1734789123456
     let query = `
       SELECT id, name, image_url, thumbnail_url, is_liked, liked_at, card_data
       FROM characters ${whereClause}
-      ORDER BY created_at ${sortOrder}
+      ORDER BY CASE
+        WHEN typeof(created_at) = 'text' THEN strftime('%s', created_at) * 1000
+        ELSE created_at
+      END ${sortDirection}
     `;
 
     // Apply pagination if provided
