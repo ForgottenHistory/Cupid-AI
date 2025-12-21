@@ -157,11 +157,12 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     try {
       const cleanedDescription = await characterService.cleanupDescription(data.description);
 
-      // Update character in backend
+      // Update character in backend, storing original as backup for revert
       const updatedCardData = {
         ...character.cardData,
         data: {
           ...character.cardData.data,
+          originalDescription: data.originalDescription || data.description, // Save original (keep existing if already set)
           description: cleanedDescription
         }
       };
