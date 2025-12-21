@@ -1065,6 +1065,31 @@ function runMigrations() {
       `).run(Date.now());
       console.log('✅ Fixed characters with invalid created_at');
     }
+
+    // Sync schedule_data from card_data for characters that have schedule in card_data but not in schedule_data
+    const charsNeedingScheduleSync = db.prepare(`
+      SELECT id, card_data FROM characters
+      WHERE (schedule_data IS NULL OR schedule_data = '')
+        AND card_data IS NOT NULL
+    `).all();
+
+    let syncedCount = 0;
+    for (const char of charsNeedingScheduleSync) {
+      try {
+        const cardData = JSON.parse(char.card_data);
+        const schedule = cardData?.data?.schedule;
+        if (schedule) {
+          db.prepare('UPDATE characters SET schedule_data = ? WHERE id = ?')
+            .run(JSON.stringify(schedule), char.id);
+          syncedCount++;
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+    if (syncedCount > 0) {
+      console.log(`✅ Synced schedule_data for ${syncedCount} character(s)`);
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

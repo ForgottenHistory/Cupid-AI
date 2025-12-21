@@ -278,13 +278,17 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
       };
 
       await characterService.updateCharacterData(character.id, {
-        cardData: updatedCardData
+        cardData: updatedCardData,
+        scheduleData: finalSchedule  // Also update schedule_data column for status endpoint
       });
 
       // Notify parent of update
       if (onUpdate) {
         onUpdate();
       }
+
+      // Dispatch event to update sidebar status
+      window.dispatchEvent(new Event('characterUpdated'));
 
       alert(day ? `${day.charAt(0) + day.slice(1).toLowerCase()} schedule generated!` : 'Schedule generated successfully!');
     } catch (err) {
@@ -460,13 +464,17 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
       };
 
       await characterService.updateCharacterData(character.id, {
-        cardData: updatedCardData
+        cardData: updatedCardData,
+        scheduleData: updatedSchedule  // Also update schedule_data column for status endpoint
       });
 
       // Notify parent of update
       if (onUpdate) {
         onUpdate();
       }
+
+      // Dispatch event to update sidebar status
+      window.dispatchEvent(new Event('characterUpdated'));
 
       alert('Schedule saved successfully!');
     } catch (err) {
@@ -497,13 +505,17 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
       };
 
       await characterService.updateCharacterData(character.id, {
-        cardData: updatedCardData
+        cardData: updatedCardData,
+        scheduleData: data.previousSchedule  // Also update schedule_data column for status endpoint
       });
 
       // Notify parent of update
       if (onUpdate) {
         onUpdate();
       }
+
+      // Dispatch event to update sidebar status
+      window.dispatchEvent(new Event('characterUpdated'));
     } catch (err) {
       console.error('Revert schedule error:', err);
       setError(err.response?.data?.error || 'Failed to revert schedule');
