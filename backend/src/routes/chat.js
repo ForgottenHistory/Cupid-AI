@@ -1072,6 +1072,48 @@ router.put('/conversations/:characterId/mood', authenticateToken, (req, res) => 
 });
 
 /**
+ * PUT /api/chat/conversations/:characterId/state
+ * Update character state for the conversation
+ */
+router.put('/conversations/:characterId/state', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { state } = req.body;
+    const userId = req.user.id;
+
+    // State can be null (to clear) or a string
+    if (state !== null && typeof state !== 'string') {
+      return res.status(400).json({ error: 'State must be a string or null' });
+    }
+
+    // Get conversation
+    const conversation = conversationService.getConversation(userId, characterId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Update state in database (null clears the state)
+    const stateValue = state ? state.trim() : null;
+    db.prepare(`UPDATE conversations SET character_state = ? WHERE id = ?`).run(stateValue, conversation.id);
+
+    console.log(`⚡ Character state manually updated: ${stateValue || '(cleared)'}`);
+
+    // Emit state update to frontend
+    const io = req.app.get('io');
+    io.to(`user:${userId}`).emit('character_state_update', {
+      characterId,
+      conversationId: conversation.id,
+      state: stateValue
+    });
+
+    res.json({ success: true, state: stateValue });
+  } catch (error) {
+    console.error('Update state error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update state' });
+  }
+});
+
+/**
  * POST /api/chat/conversations/:characterId/debug-mood
  * Debug endpoint to trigger mood change
  */

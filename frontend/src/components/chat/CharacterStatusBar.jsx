@@ -43,6 +43,7 @@ const CharacterStatusBar = ({
   showMood,
   showState,
   onMoodClick,
+  onStateClick,
   compact = false
 }) => {
   const [showSchedule, setShowSchedule] = useState(false);
@@ -131,12 +132,13 @@ const CharacterStatusBar = ({
 
       {/* Character State */}
       {showState && (
-        <span
-          className="text-xs font-semibold drop-shadow-lg bg-orange-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-orange-300/40 text-orange-100"
-          title="Special state affecting behavior"
+        <button
+          onClick={onStateClick}
+          className="text-xs font-semibold drop-shadow-lg bg-orange-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-orange-300/40 text-orange-100 hover:bg-orange-500/40 hover:border-orange-300/60 transition-all cursor-pointer"
+          title="Click to edit state"
         >
           {STATE_DISPLAY_NAMES[characterState] || characterState}
-        </span>
+        </button>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import MemoriesModal from './MemoriesModal';
 import PostInstructionsModal from './PostInstructionsModal';
 import CharacterMoodModal from './CharacterMoodModal';
+import CharacterStateModal from './CharacterStateModal';
 import ChatHeaderMenu from './ChatHeaderMenu';
 import CharacterStatusBar from './CharacterStatusBar';
 import CharacterProfile from '../CharacterProfile';
@@ -12,7 +13,7 @@ import chatService from '../../services/chatService';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate }) => {
+const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onStateUpdate }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showLibraryCard, setShowLibraryCard] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
@@ -33,6 +34,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
   const [loadingMemories, setLoadingMemories] = useState(false);
   const [showPostInstructions, setShowPostInstructions] = useState(false);
   const [showMoodModal, setShowMoodModal] = useState(false);
+  const [showStateModal, setShowStateModal] = useState(false);
   const [exporting, setExporting] = useState(false);
 
   // Check if mood should be shown (only if last message is within 30 minutes)
@@ -206,6 +208,19 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
     }
   };
 
+  // Update character state
+  const handleSaveState = async (newState) => {
+    try {
+      await api.put(`/chat/conversations/${character.id}/state`, { state: newState });
+      if (onStateUpdate) {
+        onStateUpdate(newState);
+      }
+    } catch (error) {
+      console.error('Failed to update state:', error);
+      throw error;
+    }
+  };
+
   // Open library card modal
   const handleOpenLibraryCard = () => {
     setShowLibraryCard(true);
@@ -305,6 +320,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
                 showMood={showMood}
                 showState={showState}
                 onMoodClick={() => setShowMoodModal(true)}
+                onStateClick={() => setShowStateModal(true)}
                 compact={true}
               />
             </div>
@@ -342,6 +358,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
                   showMood={showMood}
                   showState={showState}
                   onMoodClick={() => setShowMoodModal(true)}
+                  onStateClick={() => setShowStateModal(true)}
                   compact={false}
                 />
               </div>
@@ -381,6 +398,15 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
         characterName={character.name}
         currentMood={characterMood}
         onSave={handleSaveMood}
+      />
+
+      <CharacterStateModal
+        isOpen={showStateModal}
+        onClose={() => setShowStateModal(false)}
+        characterId={character.id}
+        characterName={character.name}
+        currentState={characterState}
+        onSave={handleSaveState}
       />
 
       {/* Library Card Modal - rendered via portal to escape stacking context */}

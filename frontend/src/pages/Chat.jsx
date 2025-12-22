@@ -575,6 +575,7 @@ const Chat = () => {
             onUnmatch={handleUnmatch}
             conversationId={conversation?.id}
             onMoodUpdate={setCharacterMood}
+            onStateUpdate={setCharacterState}
           />
         </div>
       )}
