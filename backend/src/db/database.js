@@ -1022,6 +1022,17 @@ function runMigrations() {
       console.log('✅ request_timeout columns added for all LLM types');
     }
 
+    // Migration: Add reasoning_effort settings for all LLM types (for reasoning models)
+    if (!userColumnsForSchedule.includes('llm_reasoning_effort')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN llm_reasoning_effort TEXT DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN decision_llm_reasoning_effort TEXT DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN imagetag_llm_reasoning_effort TEXT DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN metadata_llm_reasoning_effort TEXT DEFAULT NULL;
+      `);
+      console.log('✅ reasoning_effort columns added for all LLM types');
+    }
+
     // Fix users with invalid created_at (epoch 0 or NULL)
     const usersWithBadCreatedAt = db.prepare(`
       SELECT id FROM users

@@ -99,6 +99,7 @@ function getDefaultSettings(type) {
       repetitionPenalty: 1.0,
       minP: 0.0,
       requestTimeout: 120,
+      reasoningEffort: null,
     };
   } else if (type === 'decision') {
     return {
@@ -114,6 +115,7 @@ function getDefaultSettings(type) {
       repetitionPenalty: 1.0,
       minP: 0.0,
       requestTimeout: 120,
+      reasoningEffort: null,
     };
   } else if (type === 'imagetag') {
     return {
@@ -128,6 +130,7 @@ function getDefaultSettings(type) {
       repetitionPenalty: 1.0,
       minP: 0.0,
       requestTimeout: 120,
+      reasoningEffort: null,
     };
   } else if (type === 'metadata') {
     return {
@@ -143,6 +146,7 @@ function getDefaultSettings(type) {
       repetitionPenalty: 1.0,
       minP: 0.0,
       requestTimeout: 120,
+      reasoningEffort: null,
     };
   }
 }

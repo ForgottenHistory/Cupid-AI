@@ -151,6 +151,28 @@ const AdvancedSettings = ({ settings, updateSetting }) => {
                 description="Minimum probability threshold. 0.0 = disabled. Filters out low-probability tokens."
               />
             )}
+
+            {/* Reasoning Effort (NanoGPT only for now) */}
+            {isNanoGPT && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Reasoning Effort
+                </label>
+                <select
+                  value={settings.reasoningEffort || ''}
+                  onChange={(e) => updateSetting('reasoningEffort', e.target.value || null)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="">None (disabled)</option>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                  For reasoning/thinking models. Controls how much effort the model puts into reasoning before responding. Higher = more thorough but slower and costlier.
+                </p>
+              </div>
+            )}
           </>
         )}
 

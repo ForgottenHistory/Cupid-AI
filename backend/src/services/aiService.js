@@ -46,6 +46,13 @@ class AIService {
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
     content = content.replace(/<\/?think>/gi, '').trim();
 
+    // Strip everything before and including </think> (for models that leak reasoning without opening tag)
+    // This handles cases like: "<|tool_call_begin|>reasoning...</think>actual response"
+    const thinkEndIndex = content.lastIndexOf('</think>');
+    if (thinkEndIndex !== -1) {
+      content = content.substring(thinkEndIndex + '</think>'.length).trim();
+    }
+
     // Strip RP actions wrapped in asterisks (e.g. *leans back*, *sighs*)
     // The system prompt forbids roleplay formatting, so remove it
     content = content.replace(/\*[^*]+\*/g, '').trim();
@@ -128,7 +135,12 @@ class AIService {
   async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null, characterMood = null, characterState = null }) {
     try {
       const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName, userId);
-      const userSettings = llmSettingsService.getUserSettings(userId);
+
+      // Use Metadata LLM for proactive-fresh messages, Content LLM for everything else
+      const useMetadataLlm = isProactive && proactiveType === 'fresh';
+      const userSettings = useMetadataLlm
+        ? llmSettingsService.getMetadataSettings(userId)
+        : llmSettingsService.getUserSettings(userId);
 
       // Get includeFullSchedule setting from database
       const behaviorSettings = db.prepare('SELECT include_full_schedule FROM users WHERE id = ?').get(userId);
@@ -159,7 +171,8 @@ class AIService {
         max_tokens: effectiveMaxTokens,
         context_window: userSettings.context_window,
         messageCount: trimmedMessages.length + 1, // +1 for system prompt
-        originalMessageCount: messages.length
+        originalMessageCount: messages.length,
+        llmType: useMetadataLlm ? 'metadata' : 'content'
       });
 
       // Split message history: keep last 5 separate for recency
@@ -331,6 +344,13 @@ class AIService {
         if (minP !== 0.0) {
           requestBody.min_p = minP;
         }
+
+        // NanoGPT reasoning support for thinking models
+        if (userSettings.reasoning_effort) {
+          requestBody.reasoning_effort = userSettings.reasoning_effort;
+          // Exclude reasoning from response to prevent leaking into content
+          requestBody.reasoning = { exclude: true };
+        }
       } else {
         // OpenRouter: Use OpenAI-style parameters (widely supported across providers)
         requestBody.frequency_penalty = userSettings.frequency_penalty ?? 0.0;
@@ -424,10 +444,11 @@ class AIService {
       // Strip any leading "Name: " pattern (AI priming artifact)
       // Example: "Jane Doe: message" -> "message"
       // Only matches names (letters, spaces, hyphens, apostrophes), NOT brackets or special chars
-      // Multiline mode: strips from start of each line, not just start of entire string
-      while (content.match(/^[A-Za-z\s'-]+:\s*/m)) {
-        content = content.replace(/^[A-Za-z\s'-]+:\s*/gm, '');
-      }
+      content = content.replace(/^[A-Za-z\s'-]+:\s*/, '');
+
+      // Strip "\nName: ..." pattern and everything after (model incorrectly continued with another primed line)
+      // Example: "valid message\nJane: invalid continuation" -> "valid message"
+      content = content.replace(/\n[A-Za-z\s'-]+:\s*[\s\S]*$/, '').trim();
 
       // Strip any text in square brackets [...]
       // Remove entire lines that contain only bracketed text, or inline brackets
@@ -586,11 +607,18 @@ class AIService {
       }
     }
 
-    // Add reasoning if provided (for DeepSeek reasoning mode on OpenRouter)
-    if (options.reasoning_effort && provider === 'openrouter') {
-      requestBody.reasoning = {
-        effort: options.reasoning_effort
-      };
+    // Add reasoning support for reasoning models
+    if (options.reasoning_effort) {
+      if (provider === 'nanogpt') {
+        // NanoGPT: top-level reasoning_effort + exclude reasoning from response
+        requestBody.reasoning_effort = options.reasoning_effort;
+        requestBody.reasoning = { exclude: true };
+      } else if (provider === 'openrouter') {
+        // OpenRouter: nested reasoning object with effort
+        requestBody.reasoning = {
+          effort: options.reasoning_effort
+        };
+      }
     }
 
     // Log prompt if messageType provided (keep last 5 per type)
