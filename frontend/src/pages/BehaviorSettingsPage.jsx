@@ -183,11 +183,13 @@ const BehaviorSettingsPage = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="font-semibold text-gray-900 dark:text-gray-100">Daily Proactive Message Limit</label>
-                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.dailyProactiveLimit} per day</span>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.dailyProactiveLimit === 0 ? 'Unlimited' : `${settings.dailyProactiveLimit} per day`}
+                </span>
               </div>
               <input
                 type="range"
-                min="1"
+                min="0"
                 max="20"
                 step="1"
                 value={settings.dailyProactiveLimit}
@@ -195,10 +197,10 @@ const BehaviorSettingsPage = () => {
                 className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-                <span>1</span>
+                <span>Unlimited</span>
                 <span>20</span>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum proactive messages across all characters per day</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Maximum proactive messages across all characters per day (0 = unlimited)</p>
             </div>
 
             {/* Proactive Check Interval */}

@@ -9,7 +9,7 @@ const router = express.Router();
  */
 const BEHAVIOR_VALIDATION = {
   proactiveMessageHours: { min: 1, max: 24, error: 'Proactive message hours must be between 1 and 24' },
-  dailyProactiveLimit: { min: 1, max: 20, error: 'Daily proactive limit must be between 1 and 20' },
+  dailyProactiveLimit: { min: 0, max: 20, error: 'Daily proactive limit must be between 0 and 20' },
   proactiveOnlineChance: { min: 0, max: 100, error: 'Proactive online chance must be between 0 and 100' },
   proactiveAwayChance: { min: 0, max: 100, error: 'Proactive away chance must be between 0 and 100' },
   proactiveBusyChance: { min: 0, max: 100, error: 'Proactive busy chance must be between 0 and 100' },

@@ -51,7 +51,7 @@ export function updateProactiveRateLimits(userId, characterId, characterName, us
   const maxConsecutive = userSettings?.maxConsecutiveProactive || 4;
   console.log(`⏱️  Rate limits updated: Global cooldown (30 min) and ${characterName} cooldown (${cooldownDisplay}) started`);
   console.log(`📊 Consecutive proactive count: ${newConsecutiveCount}/${maxConsecutive} (next cooldown: ${cooldownDisplay}, multiplier: ${multiplier}x)`);
-  console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit}`);
+  console.log(`📊 Daily proactive count: ${userCount.proactive_messages_today}/${userCount.daily_proactive_limit === 0 ? '∞' : userCount.daily_proactive_limit}`);
 
   // SAFEGUARD: Double-check unmatch setting directly from database
   const dbSettings = db.prepare('SELECT auto_unmatch_after_proactive FROM users WHERE id = ?').get(userId);

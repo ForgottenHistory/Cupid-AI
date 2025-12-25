@@ -33,7 +33,7 @@ function shouldCheckUser(user) {
  * Check and reset daily counters if needed
  */
 function checkDailyLimits(user, today) {
-  const dailyLimit = user.daily_proactive_limit || 5;
+  const dailyLimit = user.daily_proactive_limit ?? 5;
 
   // Reset counter if it's a new day
   if (user.last_proactive_date !== today) {
@@ -41,6 +41,9 @@ function checkDailyLimits(user, today) {
     user.proactive_messages_today = 0;
     console.log(`📅 Reset daily proactive counter for user ${user.id}`);
   }
+
+  // 0 = unlimited
+  if (dailyLimit === 0) return true;
 
   return user.proactive_messages_today < dailyLimit;
 }
@@ -269,8 +272,8 @@ export function findCandidates() {
 
     // Check daily limit
     if (!checkDailyLimits(user, today)) {
-      const dailyLimit = user.daily_proactive_limit || 5;
-      console.log(`🚫 User ${user.id} has reached daily proactive limit (${user.proactive_messages_today}/${dailyLimit})`);
+      const dailyLimit = user.daily_proactive_limit ?? 5;
+      console.log(`🚫 User ${user.id} has reached daily proactive limit (${user.proactive_messages_today}/${dailyLimit === 0 ? '∞' : dailyLimit})`);
       continue;
     }
 
@@ -368,7 +371,7 @@ export function findCandidates() {
         isFirstMessage: isFirstMessage,
         triggerType: 'normal',
         userSettings: {
-          dailyProactiveLimit: user.daily_proactive_limit || 5,
+          dailyProactiveLimit: user.daily_proactive_limit ?? 5,
           proactiveAwayChance: user.proactive_away_chance || 50,
           proactiveBusyChance: user.proactive_busy_chance || 10,
           maxConsecutiveProactive: user.max_consecutive_proactive || 4,
