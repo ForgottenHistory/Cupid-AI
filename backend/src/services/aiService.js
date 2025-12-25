@@ -12,6 +12,25 @@ import requestBuilderService from './requestBuilderService.js';
 
 class AIService {
   /**
+   * Estimate token count for messages (rough approximation: 1 token ≈ 4 characters)
+   * @param {Array} messages - Array of message objects
+   * @returns {number} Estimated token count
+   */
+  estimateTokenCount(messages) {
+    if (!messages || messages.length === 0) {
+      return 0;
+    }
+    let totalChars = 0;
+    for (const msg of messages) {
+      if (msg.content) {
+        totalChars += msg.content.length;
+      }
+      totalChars += 10; // overhead for role and structure
+    }
+    return Math.ceil(totalChars / 4); // 1 token ≈ 4 characters
+  }
+
+  /**
    * Strip unwanted formatting from AI response content and validate it's not empty
    * @param {string} content - The response content to process
    * @param {string} rawContent - Original raw content for error context
