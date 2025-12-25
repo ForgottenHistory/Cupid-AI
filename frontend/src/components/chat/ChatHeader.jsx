@@ -13,7 +13,7 @@ import chatService from '../../services/chatService';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onStateUpdate }) => {
+const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onStateUpdate, onCharacterUpdate }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showLibraryCard, setShowLibraryCard] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
@@ -415,6 +415,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
           character={character}
           onClose={() => setShowLibraryCard(false)}
           mode="library"
+          onUpdate={onCharacterUpdate}
         />,
         document.body
       )}

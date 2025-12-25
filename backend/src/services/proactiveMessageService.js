@@ -308,6 +308,11 @@ class ProactiveMessageService {
       // Validate content
       if (contentParts.length === 0 || !contentParts[0]) {
         console.log(`⚠️ ${characterName} generated empty proactive message - skipping send`);
+        // Roll back TIME GAP marker
+        if (insertedTimeGapId) {
+          db.prepare('DELETE FROM messages WHERE id = ?').run(insertedTimeGapId);
+          console.log(`🔄 Rolled back TIME GAP marker (id: ${insertedTimeGapId}) due to empty content`);
+        }
         return false;
       }
 

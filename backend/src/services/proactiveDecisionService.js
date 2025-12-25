@@ -22,7 +22,7 @@ class ProactiveDecisionService {
   async makeProactiveDecision({ messages, characterData, characterId = null, gapHours, userId, currentStatus = null, schedule = null, userBio = null }) {
     try {
       const aiService = await this.getAIService();
-      const metadataSettings = llmSettingsService.getMetadataSettings(userId);
+      const chatSettings = llmSettingsService.getUserSettings(userId);
 
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
@@ -57,22 +57,22 @@ ${freshPrompt}
 ${prompts.proactiveDecisionPrompt}`;
 
       console.log('🎯 Proactive Decision Engine Request:', {
-        model: metadataSettings.model,
+        model: chatSettings.model,
         gapHours: gapHours.toFixed(1)
       });
 
       const response = await aiService.createBasicCompletion(decisionPrompt, {
         userId: userId,
-        provider: metadataSettings.provider,
-        model: metadataSettings.model,
-        temperature: metadataSettings.temperature,
-        max_tokens: metadataSettings.max_tokens,
-        top_p: metadataSettings.top_p,
-        frequency_penalty: metadataSettings.frequency_penalty,
-        presence_penalty: metadataSettings.presence_penalty,
-        top_k: metadataSettings.top_k,
-        repetition_penalty: metadataSettings.repetition_penalty,
-        min_p: metadataSettings.min_p,
+        provider: chatSettings.provider,
+        model: chatSettings.model,
+        temperature: chatSettings.temperature,
+        max_tokens: chatSettings.max_tokens,
+        top_p: chatSettings.top_p,
+        frequency_penalty: chatSettings.frequency_penalty,
+        presence_penalty: chatSettings.presence_penalty,
+        top_k: chatSettings.top_k,
+        repetition_penalty: chatSettings.repetition_penalty,
+        min_p: chatSettings.min_p,
         messageType: 'decision-proactive',
         characterName: characterName
       });

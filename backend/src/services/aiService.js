@@ -136,11 +136,7 @@ class AIService {
     try {
       const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName, userId);
 
-      // Use Metadata LLM for proactive-fresh messages, Content LLM for everything else
-      const useMetadataLlm = isProactive && proactiveType === 'fresh';
-      const userSettings = useMetadataLlm
-        ? llmSettingsService.getMetadataSettings(userId)
-        : llmSettingsService.getUserSettings(userId);
+      const userSettings = llmSettingsService.getUserSettings(userId);
 
       // Get includeFullSchedule setting from database
       const behaviorSettings = db.prepare('SELECT include_full_schedule FROM users WHERE id = ?').get(userId);
@@ -172,7 +168,7 @@ class AIService {
         context_window: userSettings.context_window,
         messageCount: trimmedMessages.length + 1, // +1 for system prompt
         originalMessageCount: messages.length,
-        llmType: useMetadataLlm ? 'metadata' : 'content'
+        llmType: 'content'
       });
 
       // Split message history: keep last 5 separate for recency
@@ -222,12 +218,6 @@ class AIService {
       const timeReminder = `⏰ IMPORTANT: Current date and time is ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}. Make sure any time/day references in your message are accurate!`;
       finalMessages.push({ role: 'system', content: timeReminder });
 
-      // For proactive messages, append instructions
-      if (isProactive && proactiveType) {
-        const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage, userId);
-        finalMessages.push({ role: 'system', content: proactiveInstructions });
-      }
-
       // Append current status and schedule activities
       const contextParts = [];
 
@@ -269,6 +259,13 @@ class AIService {
       // Add last 5 messages for maximum recency (right before character prime)
       // TIME GAP messages are already included if they immediately precede the last 5
       finalMessages.push(...last5Messages);
+
+      // For proactive messages, append instructions right after conversation history
+      // This placement ensures maximum recency bias for the proactive instructions
+      if (isProactive && proactiveType) {
+        const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage, userId);
+        finalMessages.push({ role: 'system', content: proactiveInstructions });
+      }
 
       // Add character-specific post instructions right before character name primer
       const postInstructions = promptBuilderService.getPostInstructions(characterId);

@@ -156,27 +156,43 @@ export function buildPersonalityContext(characterData) {
 /**
  * Build status context string (placed at bottom for recency bias)
  */
-export function buildStatusContext(currentStatus, characterName, currentCharacterState = null, currentCharacterMood = null) {
+export function buildStatusContext(currentStatus, characterName, currentCharacterState = null, currentCharacterMood = null, schedule = null, recentImageCount = 0) {
   const parts = [];
 
+  // Current activity context
   if (currentStatus) {
-    parts.push(`⚠️ CURRENT STATUS: ${currentStatus.status.toUpperCase()}${currentStatus.activity ? ` - "${currentStatus.activity}"` : ''}`);
-    parts.push(`This is what ${characterName} is doing RIGHT NOW.`);
+    parts.push(`📍 CURRENT ACTIVITY: ${currentStatus.status.toUpperCase()} - "${currentStatus.activity || 'available'}"`);
+
+    // Add activity implications for image decisions
+    if (currentStatus.status === 'busy') {
+      parts.push(`(At work/focused - unlikely to take photos right now)`);
+    } else if (currentStatus.status === 'away') {
+      parts.push(`(Doing something - might snap a pic if relevant)`);
+    } else if (currentStatus.status === 'online') {
+      parts.push(`(Free/relaxed - can take photos if the mood is right)`);
+    }
   }
 
+  // Recent image context
+  if (recentImageCount > 0) {
+    parts.push(`📷 RECENT IMAGES: Sent ${recentImageCount} image(s) in last few messages - space them out!`);
+  }
+
+  // Current state
   if (currentCharacterState) {
-    parts.push(`⚠️ CURRENT CHARACTER STATE: "${currentCharacterState}" - Only change if the situation has CHANGED. Keep the same state if still applicable.`);
+    parts.push(`🎭 CURRENT STATE: "${currentCharacterState}"`);
   }
 
+  // Current mood
   if (currentCharacterMood) {
-    parts.push(`⚠️ CURRENT CHARACTER MOOD: "${currentCharacterMood}" - Only change if the emotional tone has significantly shifted.`);
+    parts.push(`💭 CURRENT MOOD: "${currentCharacterMood}"`);
   }
 
   if (parts.length === 0) {
     return '';
   }
 
-  return '\n' + parts.join('\n');
+  return '\n\n--- CHARACTER CONTEXT ---\n' + parts.join('\n');
 }
 
 /**

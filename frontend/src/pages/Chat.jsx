@@ -576,6 +576,10 @@ const Chat = () => {
             conversationId={conversation?.id}
             onMoodUpdate={setCharacterMood}
             onStateUpdate={setCharacterState}
+            onCharacterUpdate={async () => {
+              const updatedChar = await characterService.getCharacter(characterId);
+              setCharacter(updatedChar);
+            }}
           />
         </div>
       )}

@@ -712,7 +712,12 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       hasVoice: hasVoice,
       hasImage: hasImage,
       lastMoodMessageCount: lastMoodMessageCount,
-      assistantMessageCount: totalMessageCount
+      assistantMessageCount: totalMessageCount,
+      currentStatus: currentStatusInfo,
+      schedule: characterData.schedule,
+      userBio: userBio,
+      currentCharacterState: conversation?.character_state || null,
+      currentCharacterMood: conversation?.character_mood || null
     });
 
     console.log('🎯 Decision made (regenerate):', decision);

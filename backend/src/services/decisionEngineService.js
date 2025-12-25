@@ -6,7 +6,6 @@ import {
   buildDecisionPromptTemplate,
   buildCharacterContext,
   buildPersonalityContext,
-  buildStatusContext,
   formatConversationHistory,
   assembleDecisionPrompt
 } from './decisionPromptBuilder.js';
@@ -55,11 +54,25 @@ class DecisionEngineService {
       // Character state uses same trigger as characterMood
       const shouldGenerateCharacterState = shouldGenerateCharacterMood;
 
+      // Count recent images (last 5 messages from assistant)
+      const recentAssistantMessages = messages.filter(m => m.role === 'assistant').slice(-5);
+      const recentImageCount = recentAssistantMessages.filter(m => m.message_type === 'image' || m.image_url).length;
+
       // Build context pieces
       const { characterName, characterContext } = buildCharacterContext(characterData);
       const personalityContext = buildPersonalityContext(characterData);
       const conversationHistory = formatConversationHistory(messages, characterName);
-      const statusContext = buildStatusContext(currentStatus, characterName, currentCharacterState, currentCharacterMood);
+
+      // Build status context using the same method as chat prompt (which works)
+      let statusContext = '';
+      const baseStatusContext = promptBuilderService.buildCurrentStatus(currentStatus, currentCharacterMood, currentCharacterState, userId);
+      if (baseStatusContext) {
+        statusContext = '\n\n--- CHARACTER CONTEXT ---\n' + baseStatusContext;
+      }
+      // Add recent image context for image decision
+      if (recentImageCount > 0) {
+        statusContext += `\n📷 RECENT IMAGES: Sent ${recentImageCount} image(s) in last few messages - space them out!`;
+      }
 
       // Load and build decision prompt template
       const { loadPrompts } = await import('../routes/prompts.js');
