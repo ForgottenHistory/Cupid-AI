@@ -3,6 +3,7 @@ import profileRoutes from './users/profile.js';
 import llmSettingsRoutes from './users/llmSettings.js';
 import sdSettingsRoutes from './users/sdSettings.js';
 import behaviorSettingsRoutes from './users/behaviorSettings.js';
+import { loadCharacterStates } from '../services/decisionPromptBuilder.js';
 
 const router = express.Router();
 
@@ -57,6 +58,20 @@ router.delete('/account', authenticateToken, (req, res) => {
   } catch (error) {
     console.error('Delete account error:', error);
     res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+/**
+ * GET /api/users/character-states
+ * Get available character states from user config file
+ */
+router.get('/character-states', authenticateToken, (req, res) => {
+  try {
+    const states = loadCharacterStates(req.user.id);
+    res.json(states);
+  } catch (error) {
+    console.error('Get character states error:', error);
+    res.status(500).json({ error: 'Failed to get character states' });
   }
 });
 

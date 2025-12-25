@@ -1,35 +1,13 @@
 import { useState } from 'react';
 import ScheduleDropdown from './ScheduleDropdown';
 
-// State ID to display name mapping
-const STATE_DISPLAY_NAMES = {
-  drunk: 'Drunk',
-  high: 'High',
-  showering: 'In the Shower',
-  bath: 'Taking a Bath',
-  sleeping: 'Asleep',
-  masturbating: 'Masturbating',
-  having_sex: 'Having Sex',
-  post_sex: 'Post-Sex Afterglow',
-  crying: 'Crying/Upset',
-  angry: 'Angry/Pissed',
-  exercising: 'Working Out',
-  eating: 'Eating',
-  driving: 'Driving',
-  at_work: 'At Work',
-  in_meeting: 'In a Meeting',
-  watching_movie: 'Watching Something',
-  gaming: 'Gaming',
-  with_friends: 'With Friends',
-  on_date: 'On a Date',
-  cooking: 'Cooking',
-  sick: 'Feeling Sick',
-  hungover: 'Hungover',
-  horny: 'Horny/Aroused',
-  bored: 'Extremely Bored',
-  anxious: 'Anxious/Nervous',
-  excited: 'Super Excited',
-  sleepy: 'Half-Asleep',
+// Format state ID to display name (capitalize words, replace underscores)
+const formatStateName = (stateId) => {
+  if (!stateId) return '';
+  return stateId
+    .split('_')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
 
 /**
@@ -137,7 +115,7 @@ const CharacterStatusBar = ({
           className="text-xs font-semibold drop-shadow-lg bg-orange-500/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-orange-300/40 text-orange-100 hover:bg-orange-500/40 hover:border-orange-300/60 transition-all cursor-pointer"
           title="Click to edit state"
         >
-          {STATE_DISPLAY_NAMES[characterState] || characterState}
+          {formatStateName(characterState)}
         </button>
       )}
     </div>

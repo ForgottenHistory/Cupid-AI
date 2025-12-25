@@ -1,37 +1,6 @@
 import { createPortal } from 'react-dom';
 import { useState, useEffect } from 'react';
-
-// State ID to display name mapping (same as CharacterStatusBar)
-const STATE_OPTIONS = [
-  { id: 'none', label: 'None (Clear State)' },
-  { id: 'drunk', label: 'Drunk' },
-  { id: 'high', label: 'High' },
-  { id: 'showering', label: 'In the Shower' },
-  { id: 'bath', label: 'Taking a Bath' },
-  { id: 'sleeping', label: 'Asleep' },
-  { id: 'masturbating', label: 'Masturbating' },
-  { id: 'having_sex', label: 'Having Sex' },
-  { id: 'post_sex', label: 'Post-Sex Afterglow' },
-  { id: 'crying', label: 'Crying/Upset' },
-  { id: 'angry', label: 'Angry/Pissed' },
-  { id: 'exercising', label: 'Working Out' },
-  { id: 'eating', label: 'Eating' },
-  { id: 'driving', label: 'Driving' },
-  { id: 'at_work', label: 'At Work' },
-  { id: 'in_meeting', label: 'In a Meeting' },
-  { id: 'watching_movie', label: 'Watching Something' },
-  { id: 'gaming', label: 'Gaming' },
-  { id: 'with_friends', label: 'With Friends' },
-  { id: 'on_date', label: 'On a Date' },
-  { id: 'cooking', label: 'Cooking' },
-  { id: 'sick', label: 'Feeling Sick' },
-  { id: 'hungover', label: 'Hungover' },
-  { id: 'horny', label: 'Horny/Aroused' },
-  { id: 'bored', label: 'Extremely Bored' },
-  { id: 'anxious', label: 'Anxious/Nervous' },
-  { id: 'excited', label: 'Super Excited' },
-  { id: 'sleepy', label: 'Half-Asleep' },
-];
+import api from '../../services/api';
 
 /**
  * Modal component to view and edit character's current state
@@ -39,11 +8,25 @@ const STATE_OPTIONS = [
 const CharacterStateModal = ({ isOpen, onClose, characterId, characterName, currentState, onSave }) => {
   const [selectedState, setSelectedState] = useState(currentState || 'none');
   const [saving, setSaving] = useState(false);
+  const [stateOptions, setStateOptions] = useState([{ id: 'none', name: 'None (Clear State)' }]);
+  const [loading, setLoading] = useState(false);
 
-  // Sync with prop when modal opens or currentState changes
+  // Fetch states from backend when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedState(currentState || 'none');
+      setLoading(true);
+      api.get('/users/character-states')
+        .then(response => {
+          const states = [{ id: 'none', name: 'None (Clear State)' }, ...response.data];
+          setStateOptions(states);
+        })
+        .catch(error => {
+          console.error('Failed to load character states:', error);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   }, [isOpen, currentState]);
 
@@ -114,19 +97,23 @@ const CharacterStateModal = ({ isOpen, onClose, characterId, characterName, curr
                 Current State
               </label>
               <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-2">
-                {STATE_OPTIONS.map((state) => (
-                  <button
-                    key={state.id}
-                    onClick={() => setSelectedState(state.id)}
-                    className={`px-3 py-2 text-sm rounded-lg border transition-all text-left ${
-                      selectedState === state.id
-                        ? 'bg-orange-500 text-white border-orange-500'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
-                    }`}
-                  >
-                    {state.label}
-                  </button>
-                ))}
+                {loading ? (
+                  <div className="col-span-2 text-center py-4 text-gray-500">Loading states...</div>
+                ) : (
+                  stateOptions.map((state) => (
+                    <button
+                      key={state.id}
+                      onClick={() => setSelectedState(state.id)}
+                      className={`px-3 py-2 text-sm rounded-lg border transition-all text-left ${
+                        selectedState === state.id
+                          ? 'bg-orange-500 text-white border-orange-500'
+                          : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                      }`}
+                    >
+                      {state.name}
+                    </button>
+                  ))
+                )}
               </div>
               <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
                 States affect how the character behaves and responds
