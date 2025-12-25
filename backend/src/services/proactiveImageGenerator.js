@@ -32,7 +32,8 @@ export async function generateProactiveImage(characterId, conversationId, imageT
       SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
              sd_enable_hr, sd_hr_scale, sd_hr_upscaler, sd_hr_steps,
              sd_hr_cfg, sd_denoising_strength, sd_enable_adetailer, sd_adetailer_model,
-             sd_main_prompt, sd_negative_prompt, sd_model
+             sd_main_prompt, sd_negative_prompt, sd_model,
+             sd_width, sd_height, sd_randomize_orientation
       FROM users WHERE id = ?
     `).get(userId);
 
