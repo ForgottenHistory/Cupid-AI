@@ -8,22 +8,25 @@ export async function generateProactiveImage(characterId, conversationId, imageT
   console.log(`🎨 Generating image for proactive message from character ${characterId}`);
 
   try {
-    // Get recent messages for context (last 50)
-    const recentMessages = db.prepare(`
-      SELECT role, content, message_type FROM messages
-      WHERE conversation_id = ?
-      ORDER BY created_at DESC
-      LIMIT 50
-    `).all(conversationId);
+    // Get conversation for mood and state
+    const conversation = db.prepare('SELECT character_mood, character_state FROM conversations WHERE id = ?').get(conversationId);
 
     // Use Image Tag LLM to generate context-aware tags
-    const { imageTagGenerationService } = await import('./imageTagGenerationService.js');
-    const generatedContextTags = await imageTagGenerationService.generateContextTags(
-      characterData,
-      imageTags,
-      recentMessages.reverse(),
-      userId
-    );
+    const { default: imageTagGenerationService } = await import('./imageTagGenerationService.js');
+    const recentMessages = imageTagGenerationService.getRecentMessages(conversationId, db);
+
+    // Get current status from schedule
+    const { getCurrentStatusFromSchedule } = await import('../utils/chatHelpers.js');
+    const currentStatusInfo = getCurrentStatusFromSchedule(characterData.schedule);
+
+    const generatedContextTags = await imageTagGenerationService.generateTags({
+      recentMessages,
+      contextualTags: characterData.contextualTags || '',
+      currentStatus: currentStatusInfo,
+      userId: userId,
+      characterMood: conversation?.character_mood || null,
+      characterState: conversation?.character_state || null
+    });
 
     console.log(`🏷️ Generated context tags for proactive image:`, generatedContextTags);
 

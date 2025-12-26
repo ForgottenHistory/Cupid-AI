@@ -430,11 +430,17 @@ class MessageProcessor {
           const recentMessages = imageTagGenerationService.getRecentMessages(conversationId, db);
 
           // Generate context-aware tags using user's Image Tag LLM settings
+          // Include mood and state so images reflect character's current situation
+          const currentMoodForImage = decision.characterMood || conversation?.character_mood || null;
+          const currentStateForImage = decision.characterState || conversation?.character_state || null;
+
           generatedContextTags = await imageTagGenerationService.generateTags({
             recentMessages,
             contextualTags: contextualTags || '',
             currentStatus: currentStatusInfo,
-            userId: userId
+            userId: userId,
+            characterMood: currentMoodForImage,
+            characterState: currentStateForImage
           });
 
           console.log(`📍 Current Status: ${currentStatusInfo.status}${currentStatusInfo.activity ? ` (${currentStatusInfo.activity})` : ''}`);

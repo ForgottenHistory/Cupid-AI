@@ -23,9 +23,11 @@ class ImageTagGenerationService {
    * @param {string} contextualTags - Character-specific contextual tags
    * @param {Object} currentStatus - Character's current status and activity
    * @param {number} userId - User ID for getting Image Tag LLM settings
+   * @param {string} characterMood - Character's current mood (e.g., "feeling flirty")
+   * @param {string} characterState - Character's current state (e.g., "drunk", "showering")
    * @returns {Promise<string>} Comma-separated validated tags
    */
-  async generateTags({ recentMessages, contextualTags, currentStatus, userId }) {
+  async generateTags({ recentMessages, contextualTags, currentStatus, userId, characterMood = null, characterState = null }) {
     try {
       console.log('🎨 Generating image tags from conversation context...');
 
@@ -59,8 +61,8 @@ class ImageTagGenerationService {
         .map(msg => `${msg.role === 'user' ? 'User' : 'Character'}: ${msg.content}`)
         .join('\n');
 
-      // Build prompt for LLM with previous image tags and time gap info
-      const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGapSinceLastImage, userId);
+      // Build prompt for LLM with previous image tags, time gap info, mood, and state
+      const prompt = this.buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGapSinceLastImage, userId, characterMood, characterState);
 
       // Call LLM to generate tags using user's configured settings
       const response = await aiService.createBasicCompletion(prompt, {
@@ -96,7 +98,7 @@ class ImageTagGenerationService {
   /**
    * Build prompt for LLM tag generation
    */
-  buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGap = false, userId = null) {
+  buildTagGenerationPrompt(conversationContext, contextualTags, currentStatus, previousImageTags, hasTimeGap = false, userId = null, characterMood = null, characterState = null) {
     // Load prompts and tag library for this user
     const prompts = loadImageTagPrompts(userId);
     const tagLibrary = this.getTagLibrary(userId);
@@ -108,6 +110,15 @@ class ImageTagGenerationService {
       if (currentStatus.activity) {
         statusInfo += ` (${currentStatus.activity})`;
       }
+    }
+
+    // Format mood and state info
+    let moodStateInfo = '';
+    if (characterMood) {
+      moodStateInfo += `\nCharacter's current mood: ${characterMood}`;
+    }
+    if (characterState) {
+      moodStateInfo += `\nCharacter's current state/situation: ${characterState}`;
     }
 
     // Build base prompt
@@ -129,8 +140,8 @@ ${conversationContext}
 
 ---
 
-IMPORTANT - Character's current status: ${statusInfo}
-Consider this status when selecting location, activity, and clothing tags.
+IMPORTANT - Character's current status: ${statusInfo}${moodStateInfo}
+Consider this status${moodStateInfo ? ', mood, and state' : ''} when selecting location, activity, expression, and clothing tags.
 
 ---
 

@@ -373,6 +373,12 @@ router.put('/:characterId', authenticateToken, (req, res) => {
             setClauses.push('liked_at = ?');
             values.push(Date.now());
           }
+          // Clear post_instructions when unliking (unmatch)
+          if (!value) {
+            setClauses.push('post_instructions = ?');
+            values.push(null);
+            console.log(`🧹 Clearing post_instructions on unmatch`);
+          }
         } else {
           values.push(value);
         }

@@ -262,11 +262,11 @@ class PromptBuilderService {
       parts.push(`\nCurrent Mood: ${characterMood} - Let this influence your tone and responses.`);
     }
 
-    // Add character state if available - this is a SPECIAL state that overrides normal behavior
+    // Add character state if available - subtle influence on behavior
     if (characterState && userId) {
       const stateDescription = this.getCharacterStateDescription(characterState, userId);
       if (stateDescription) {
-        parts.push(`\n\n⚠️ SPECIAL STATE: ${stateDescription.name}\n${stateDescription.description}\nYou MUST write your messages as if you are currently in this state. This takes priority over your normal behavior.`);
+        parts.push(`\n\n[Right now: ${stateDescription.name}]\n${stateDescription.description}\nLet this subtly affect your responses without constantly mentioning it.`);
       }
     }
 

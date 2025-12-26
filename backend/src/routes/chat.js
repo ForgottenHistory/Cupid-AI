@@ -486,12 +486,17 @@ router.post('/messages/:messageId/regenerate', authenticateToken, async (req, re
         content: m.content
       }));
 
+      // Get conversation for mood and state
+      const conversation = db.prepare('SELECT character_mood, character_state FROM conversations WHERE id = ?').get(message.conversation_id);
+
       // Generate context-aware tags using user's Image Tag LLM settings
       const generatedContextTags = await imageTagGenerationService.generateTags({
         recentMessages,
         contextualTags: contextualTags,
         currentStatus: currentStatusInfo,
-        userId: userId
+        userId: userId,
+        characterMood: conversation?.character_mood || null,
+        characterState: conversation?.character_state || null
       });
 
       console.log(`📝 Always Needed Tags: ${imageTags}`);
@@ -738,11 +743,17 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
         const recentMessages = imageTagGenerationService.getRecentMessages(conversation.id, db);
 
         // Generate context-aware tags using user's Image Tag LLM settings
+        // Include mood and state so images reflect character's current situation
+        const currentMoodForImage = decision.characterMood || conversation?.character_mood || null;
+        const currentStateForImage = decision.characterState || conversation?.character_state || null;
+
         generatedContextTags = await imageTagGenerationService.generateTags({
           recentMessages,
           contextualTags: backendCharacter.contextual_tags || '',
           currentStatus: currentStatusInfo,
-          userId: userId
+          userId: userId,
+          characterMood: currentMoodForImage,
+          characterState: currentStateForImage
         });
 
         console.log(`📍 Current Status: ${currentStatusInfo.status}${currentStatusInfo.activity ? ` (${currentStatusInfo.activity})` : ''}`);
