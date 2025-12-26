@@ -61,6 +61,9 @@ const Chat = () => {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  // Temporary toggle to hide the background (resets per chat)
+  const [backgroundHidden, setBackgroundHidden] = useState(false);
+
   // Listen for storage changes (when setting is changed in SDSettingsPage)
   useEffect(() => {
     const handleStorageChange = () => {
@@ -241,6 +244,8 @@ const Chat = () => {
     // Randomize initial image index
     setCurrentImageIndex(receivedImages.length > 0 ? Math.floor(Math.random() * receivedImages.length) : 0);
     hasAutoEnabledRef.current = false;
+    // Reset background hidden state
+    setBackgroundHidden(false);
   }, [characterId, receivedImages.length]);
 
   // Auto-scroll timer for cycling through received images
@@ -600,7 +605,7 @@ const Chat = () => {
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30 relative">
       {/* Horizontal Image Background */}
-      {showAsBackground && currentDisplayImage && showCharacterImage && (
+      {showAsBackground && currentDisplayImage && !backgroundHidden && (
         <div className="absolute inset-0 z-0">
           <img
             src={currentDisplayImage}
@@ -614,61 +619,50 @@ const Chat = () => {
           />
           {/* Gradient overlay for readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/50"></div>
+        </div>
+      )}
 
-          {/* Floating controls for horizontal background */}
-          <div className="absolute bottom-24 right-4 flex flex-col gap-2 z-20">
-            {/* Auto-scroll Toggle */}
-            {receivedImages.length > 0 && (
-              <button
-                onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
-                className={`p-2.5 backdrop-blur-md rounded-lg transition-all shadow-lg border border-white/20 ${
-                  autoScrollEnabled
-                    ? 'bg-purple-500/80 hover:bg-purple-600/80'
-                    : 'bg-black/40 hover:bg-black/60'
-                }`}
-                title={autoScrollEnabled ? `Auto-scroll ON (${currentImageIndex + 1}/${receivedImages.length})` : `Enable auto-scroll (${receivedImages.length} images)`}
-              >
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {autoScrollEnabled ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  )}
-                </svg>
-              </button>
-            )}
-            {/* Hide Background Button */}
+      {/* Floating controls for horizontal background - outside z-0 container so they're clickable */}
+      {showAsBackground && currentDisplayImage && !backgroundHidden && (
+        <div className="absolute bottom-36 right-8 flex flex-col gap-2 z-20">
+          {/* Auto-scroll Toggle */}
+          {receivedImages.length > 0 && (
             <button
-              onClick={() => setShowCharacterImage(false)}
-              className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-lg transition-all shadow-lg border border-white/20"
-              title="Hide background image"
+              onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
+              className={`p-2.5 backdrop-blur-md rounded-lg transition-all shadow-lg border border-white/20 ${
+                autoScrollEnabled
+                  ? 'bg-purple-500/80 hover:bg-purple-600/80'
+                  : 'bg-black/40 hover:bg-black/60'
+              }`}
+              title={autoScrollEnabled ? `Auto-scroll ON (${currentImageIndex + 1}/${receivedImages.length})` : `Enable auto-scroll (${receivedImages.length} images)`}
             >
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                {autoScrollEnabled ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                )}
               </svg>
             </button>
-          </div>
-
-          {/* Image counter badge */}
-          {autoScrollEnabled && receivedImages.length > 0 && (
-            <div className="absolute bottom-24 left-4 z-20">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/80 backdrop-blur-md rounded-full text-xs font-medium text-white shadow-lg border border-white/20">
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
-                  <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
-                </svg>
-                <span>{currentImageIndex + 1} / {receivedImages.length}</span>
-              </div>
-            </div>
           )}
+          {/* Hide Background Button */}
+          <button
+            onClick={() => setBackgroundHidden(true)}
+            className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-lg transition-all shadow-lg border border-white/20"
+            title="Hide background image"
+          >
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+            </svg>
+          </button>
         </div>
       )}
 
       {/* Show Background Button (when horizontal image is hidden) */}
-      {showAsBackground && character && !showCharacterImage && (
+      {showAsBackground && character && backgroundHidden && (
         <button
-          onClick={() => setShowCharacterImage(true)}
-          className="absolute bottom-24 right-4 z-20 p-2.5 bg-white/90 dark:bg-gray-800/90 hover:bg-purple-100 dark:hover:bg-gray-700 backdrop-blur-md rounded-lg transition-all shadow-lg border border-purple-200/50 dark:border-gray-600/50"
+          onClick={() => setBackgroundHidden(false)}
+          className="absolute bottom-36 right-8 z-20 p-2.5 bg-white/90 dark:bg-gray-800/90 hover:bg-purple-100 dark:hover:bg-gray-700 backdrop-blur-md rounded-lg transition-all shadow-lg border border-purple-200/50 dark:border-gray-600/50"
           title="Show background image"
         >
           <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
