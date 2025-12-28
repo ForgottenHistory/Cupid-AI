@@ -51,8 +51,11 @@ class AIService {
     // Strip RP actions wrapped in asterisks (e.g. *leans back*, *sighs*)
     content = content.replace(/\*[^*]+\*/g, '').trim();
 
-    // Strip standalone timestamp lines (e.g. "12:17 PM", "3:45 AM")
-    content = content.replace(/^\d{1,2}:\d{2}\s*(?:AM|PM)\s*$/gim, '').trim();
+    // Strip standalone timestamp/datetime lines (e.g. "12:17 PM", "12/28/2025, 5:14pm", "7:00 PM, Sunday December 28, 2025")
+    content = content.replace(/^(?:\d{1,2}\/\d{1,2}\/\d{2,4},?\s*)?\d{1,2}:\d{2}\s*(?:AM|PM)?(?:,?\s*(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)?\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)?\s*\d{0,2},?\s*\d{0,4})?\s*$/gim, '').trim();
+
+    // Strip blockquote-style lines (lines starting with >)
+    content = content.replace(/^>\s*.*/gm, '').trim();
 
     // Check if content is empty after stripping
     if (!content && rawContent) {
@@ -175,7 +178,7 @@ class AIService {
       const messageType = isProactive ? `proactive-${proactiveType}${isFirstMessage ? '-first' : ''}` : 'chat';
       const logId = promptLogService.savePromptLog(finalMessages, messageType, characterName, logUserName);
 
-      // Execute request with retry
+      // Execute request with provider retry (for network/API errors)
       const response = await providerService.executeWithRetry(
         () => queueService.enqueue(provider, () =>
           axios.post(

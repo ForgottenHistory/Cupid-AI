@@ -53,13 +53,14 @@ const FIELD_TO_COLUMN = {
   maxMatches: 'max_matches',
   thoughtFrequency: 'thought_frequency',
   memoryDegradationPoints: 'memory_degradation_points',
-  includeFullSchedule: 'include_full_schedule'
+  includeFullSchedule: 'include_full_schedule',
+  retryOnInvalidResponse: 'retry_on_invalid_response'
 };
 
 /**
  * Boolean fields that need conversion
  */
-const BOOLEAN_FIELDS = ['autoUnmatchAfterProactive', 'allowAiUnmatch', 'dailyAutoMatchEnabled', 'compactionEnabled', 'includeFullSchedule'];
+const BOOLEAN_FIELDS = ['autoUnmatchAfterProactive', 'allowAiUnmatch', 'dailyAutoMatchEnabled', 'compactionEnabled', 'includeFullSchedule', 'retryOnInvalidResponse'];
 
 /**
  * GET /api/users/behavior-settings

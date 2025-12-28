@@ -10,6 +10,7 @@ import messageService from '../services/messageService.js';
 import messageProcessor from '../services/messageProcessor.js';
 import imageTagGenerationService from '../services/imageTagGenerationService.js';
 import sdService from '../services/sdService.js';
+import responseProcessorService from '../services/responseProcessorService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 import db from '../db/database.js';
 
@@ -843,24 +844,29 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     // Get mood and state from conversation for context
     const currentMood = conversation?.character_mood || null;
     const currentState = conversation?.character_state || null;
+    const characterName = characterData.data?.name || characterData.name || 'Character';
 
-    const aiResponse = await aiService.createChatCompletion({
-      messages: aiMessages,
-      characterData: characterData,
-      characterId: characterId,
-      userId: userId,
-      currentStatus: currentStatusInfo,
-      userBio: userBio,
-      schedule: characterData.schedule,
-      decision: decision,  // Pass decision with image tags
-      isProactive: isProactive,  // Preserve proactive flag
-      proactiveType: proactiveType,  // Use 'fresh' type for proactive regeneration
-      characterMood: currentMood,
-      characterState: currentState
+    // Use shared response processor with retry logic
+    const { cleanedContent, contentParts, aiResponse } = await responseProcessorService.processWithRetry({
+      generateFn: () => aiService.createChatCompletion({
+        messages: aiMessages,
+        characterData: characterData,
+        characterId: characterId,
+        userId: userId,
+        currentStatus: currentStatusInfo,
+        userBio: userBio,
+        schedule: characterData.schedule,
+        decision: decision,
+        isProactive: isProactive,
+        proactiveType: proactiveType,
+        characterMood: currentMood,
+        characterState: currentState
+      }),
+      conversationId: conversation.id,
+      aiMessages,
+      userId,
+      characterName
     });
-
-    // Clean up em dashes (replace with periods and capitalize next letter)
-    const cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
 
     // Update last_mood_message_count if mood was set
     if (decision.mood && decision.mood !== 'none') {
@@ -872,48 +878,20 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       console.log(`✅ Updated last_mood_message_count to ${totalMessageCount} for character ${characterId} (regenerate)`);
     }
 
-    // Split content by newlines to create separate messages
-    const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
-
-    // Validate that we have actual content to send
-    if (contentParts.length === 0 || !contentParts[0]) {
-      const characterName = characterData.data?.name || characterData.name || 'Character';
-      console.warn(`⚠️ ${characterName} generated empty message on regenerate - skipping`);
-      return res.status(400).json({ error: 'AI generated empty response' });
-    }
-
-    // Save first part as media message (image with all metadata)
-    const firstPart = contentParts[0];
-    messageService.saveMessage(
-      conversation.id,
-      'assistant',
-      firstPart,
-      decision.reaction,
-      messageType,
-      null, // audioUrl
-      imageUrl,
-      generatedContextTags || null,
-      isProactive, // Preserve proactive flag on regenerate
-      imagePrompt, // imagePrompt
-      aiResponse.reasoning // reasoning
-    );
-
-    // Save subsequent parts as separate text messages
-    for (let i = 1; i < contentParts.length; i++) {
-      messageService.saveMessage(
-        conversation.id,
-        'assistant',
-        contentParts[i],
-        null, // no reaction on subsequent messages
-        'text', // always text
-        null, // no audio
-        null, // no image
-        null, // no image tags
-        isProactive, // Preserve proactive flag on regenerate
-        null, // no image prompt
-        null // no reasoning (only on first message)
-      );
-    }
+    // Save messages using shared service
+    responseProcessorService.saveMessageParts({
+      conversationId: conversation.id,
+      contentParts,
+      firstMessageOptions: {
+        reaction: decision.reaction,
+        messageType,
+        imageUrl,
+        imageTags: generatedContextTags || null,
+        isProactive,
+        imagePrompt,
+        reasoning: aiResponse.reasoning
+      }
+    });
 
     // Update conversation timestamp and increment unread count
     conversationService.incrementUnreadCount(conversation.id);

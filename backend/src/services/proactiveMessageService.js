@@ -3,6 +3,7 @@ import aiService from './aiService.js';
 import messageService from './messageService.js';
 import conversationService from './conversationService.js';
 import timeGapService from './timeGapService.js';
+import responseProcessorService from './responseProcessorService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 import { findCandidates, calculateSendProbability } from './proactiveCandidateFinder.js';
 import { generateProactiveImage } from './proactiveImageGenerator.js';
@@ -282,36 +283,41 @@ class ProactiveMessageService {
         console.log(`📷 Proactive image decision: NO`);
       }
 
-      // Generate proactive message content
-      const aiResponse = await aiService.createChatCompletion({
-        messages: updatedMessages,
-        characterData,
-        characterId,
-        userId,
-        userName,
-        currentStatus: currentStatusInfo,
-        userBio,
-        schedule,
-        isProactive: true,
-        proactiveType: decision?.messageType || 'icebreaker',
-        gapHours,
-        isFirstMessage,
-        matchedDate,
-        characterMood: newCharacterMood,
-        characterState: newCharacterState
-      });
-
-      // Clean up content
-      const cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
-      const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
-
-      // Validate content
-      if (contentParts.length === 0 || !contentParts[0]) {
-        console.log(`⚠️ ${characterName} generated empty proactive message - skipping send`);
+      // Generate proactive message content with retry logic
+      let cleanedContent, contentParts, aiResponse;
+      try {
+        const result = await responseProcessorService.processWithRetry({
+          generateFn: () => aiService.createChatCompletion({
+            messages: updatedMessages,
+            characterData,
+            characterId,
+            userId,
+            userName,
+            currentStatus: currentStatusInfo,
+            userBio,
+            schedule,
+            isProactive: true,
+            proactiveType: decision?.messageType || 'icebreaker',
+            gapHours,
+            isFirstMessage,
+            matchedDate,
+            characterMood: newCharacterMood,
+            characterState: newCharacterState
+          }),
+          conversationId,
+          aiMessages: updatedMessages,
+          userId,
+          characterName
+        });
+        cleanedContent = result.cleanedContent;
+        contentParts = result.contentParts;
+        aiResponse = result.aiResponse;
+      } catch (error) {
+        console.log(`⚠️ ${characterName} proactive message failed: ${error.message}`);
         // Roll back TIME GAP marker
         if (insertedTimeGapId) {
           db.prepare('DELETE FROM messages WHERE id = ?').run(insertedTimeGapId);
-          console.log(`🔄 Rolled back TIME GAP marker (id: ${insertedTimeGapId}) due to empty content`);
+          console.log(`🔄 Rolled back TIME GAP marker (id: ${insertedTimeGapId}) due to: ${error.message}`);
         }
         return false;
       }

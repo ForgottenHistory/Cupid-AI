@@ -8,6 +8,7 @@ import ttsService from './ttsService.js';
 import sdService from './sdService.js';
 import imageTagGenerationService from './imageTagGenerationService.js';
 import timeGapService from './timeGapService.js';
+import responseProcessorService from './responseProcessorService.js';
 import { getCurrentStatusFromSchedule, sleep } from '../utils/chatHelpers.js';
 
 class MessageProcessor {
@@ -524,6 +525,9 @@ class MessageProcessor {
 
       // NOW generate AI response (if shouldRespond is true) - it will know what image was generated
       let aiResponse = null;
+      let cleanedContent = null;
+      let contentParts = null;
+
       if (decision.shouldRespond) {
         // Use new mood/state from decision if available, otherwise use existing from conversation
         const currentMood = decision.characterMood || conversation?.character_mood || null;
@@ -532,20 +536,33 @@ class MessageProcessor {
 
         console.log(`🎭 Chat prompt context: mood="${currentMood}", state="${currentCharacterState}", conversation.character_mood="${conversation?.character_mood}", conversation.character_state="${conversation?.character_state}"`);
 
-        aiResponse = await aiService.createChatCompletion({
-          messages: aiMessages,
-          characterData: characterData,
-          characterId: characterId,
-          userId: userId,
-          currentStatus: currentStatusInfo,
-          userBio: userBio,
-          schedule: schedule,
-          isDeparting: isDeparting,
-          decision: decision,  // Pass decision with image tags
-          matchedDate: matchedDate,
-          characterMood: currentMood,
-          characterState: currentCharacterState
+        const characterName = characterData.data?.name || characterData.name || 'Character';
+
+        // Use shared response processor with retry logic
+        const result = await responseProcessorService.processWithRetry({
+          generateFn: () => aiService.createChatCompletion({
+            messages: aiMessages,
+            characterData: characterData,
+            characterId: characterId,
+            userId: userId,
+            currentStatus: currentStatusInfo,
+            userBio: userBio,
+            schedule: schedule,
+            isDeparting: isDeparting,
+            decision: decision,
+            matchedDate: matchedDate,
+            characterMood: currentMood,
+            characterState: currentCharacterState
+          }),
+          conversationId,
+          aiMessages,
+          userId,
+          characterName
         });
+
+        aiResponse = result.aiResponse;
+        cleanedContent = result.cleanedContent;
+        contentParts = result.contentParts;
       }
 
       // If decision says not to respond, notify frontend and exit
@@ -556,24 +573,7 @@ class MessageProcessor {
       }
 
       // Save AI response with reaction
-      if (aiResponse) {
-        // Clean up em dashes (replace with periods and capitalize next letter)
-        let cleanedContent = aiResponse.content.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
-
-        // Strip emojis from every 3rd assistant message to reduce repetition
-        const assistantMessageCount = db.prepare(`
-          SELECT COUNT(*) as count
-          FROM messages
-          WHERE conversation_id = ? AND role = 'assistant'
-        `).get(conversationId).count;
-
-        // If this will be the 3rd, 6th, 9th, etc. message (count is 2, 5, 8, etc.)
-        if ((assistantMessageCount + 1) % 3 === 0) {
-          // Strip all emojis using comprehensive regex
-          cleanedContent = cleanedContent.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]/gu, '').trim();
-          console.log(`🚫 Stripped emojis from message ${assistantMessageCount + 1} (every 3rd message)`);
-        }
-
+      if (aiResponse && cleanedContent) {
         let messageType = 'text';
         let audioUrl = null;
 
@@ -630,24 +630,6 @@ class MessageProcessor {
 
         // Store generated context tags if image was generated
         const imageTagsToStore = (messageType === 'image' && generatedContextTags) ? generatedContextTags : null;
-
-        // Split content by newlines to create separate messages
-        const contentParts = cleanedContent.split('\n').map(part => part.trim()).filter(part => part.length > 0);
-
-        // Validate that we have actual content to send
-        if (contentParts.length === 0 || !contentParts[0]) {
-          const characterName = characterData.data?.name || characterData.name || 'Character';
-          console.warn(`⚠️ ${characterName} generated empty message - this should not happen. Skipping send.`);
-          throw new Error('AI generated empty response');
-        }
-
-        // Check if the new message is a 1:1 copy of the last AI message
-        const lastAiMessage = aiMessages.slice().reverse().find(msg => msg.role === 'assistant');
-        if (lastAiMessage && lastAiMessage.content === cleanedContent) {
-          const characterName = characterData.data?.name || characterData.name || 'Character';
-          console.warn(`⚠️ ${characterName} generated duplicate message (exact copy of previous response)`);
-          throw new Error('AI generated duplicate response');
-        }
 
         // Save first part as media message (image/voice/text with all metadata)
         const firstPart = contentParts[0];

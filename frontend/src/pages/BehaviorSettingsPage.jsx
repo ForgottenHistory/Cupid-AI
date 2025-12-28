@@ -28,7 +28,8 @@ const BehaviorSettingsPage = () => {
     maxMatches: 0,
     thoughtFrequency: 10,
     memoryDegradationPoints: 0,
-    includeFullSchedule: false
+    includeFullSchedule: false,
+    retryOnInvalidResponse: true
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,7 +105,8 @@ const BehaviorSettingsPage = () => {
       maxMemories: 50,
       maxMatches: 0,
       thoughtFrequency: 10,
-      includeFullSchedule: false
+      includeFullSchedule: false,
+      retryOnInvalidResponse: true
     });
     setSuccess('');
     setError('');
@@ -499,6 +501,23 @@ const BehaviorSettingsPage = () => {
                 </label>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">When enabled, the character's complete weekly schedule will be included in the chat prompt. This uses more tokens but gives the AI better context about the character's availability.</p>
+            </div>
+
+            {/* Retry on Invalid Response */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Retry on Invalid Response</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.retryOnInvalidResponse}
+                    onChange={(e) => updateSetting('retryOnInvalidResponse', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When enabled, automatically retry up to 3 times if the AI returns an invalid response (empty content, duplicate message, etc.)</p>
             </div>
 
             {/* Conversation Compacting Section Header */}

@@ -1033,6 +1033,12 @@ function runMigrations() {
       console.log('✅ reasoning_effort columns added for all LLM types');
     }
 
+    // Migration: Add retry_on_invalid_response setting
+    if (!userColumnsForSchedule.includes('retry_on_invalid_response')) {
+      db.exec(`ALTER TABLE users ADD COLUMN retry_on_invalid_response INTEGER DEFAULT 1;`);
+      console.log('✅ retry_on_invalid_response column added');
+    }
+
     // Fix users with invalid created_at (epoch 0 or NULL)
     const usersWithBadCreatedAt = db.prepare(`
       SELECT id FROM users
