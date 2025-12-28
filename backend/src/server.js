@@ -13,7 +13,7 @@ import { mkdirSync, existsSync } from 'fs';
 // Import routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
-import chatRoutes from './routes/chat.js';
+import chatRoutes from './routes/chat/index.js';
 import charactersRoutes from './routes/characters.js';
 import ttsRoutes from './routes/tts.js';
 import debugRoutes from './routes/debug.js';

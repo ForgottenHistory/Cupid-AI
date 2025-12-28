@@ -1,155 +1,21 @@
 import express from 'express';
-import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { authenticateToken } from '../middleware/auth.js';
-import aiService from '../services/aiService.js';
-import conversationService from '../services/conversationService.js';
-import messageService from '../services/messageService.js';
-import messageProcessor from '../services/messageProcessor.js';
-import imageTagGenerationService from '../services/imageTagGenerationService.js';
-import sdService from '../services/sdService.js';
-import responseProcessorService from '../services/responseProcessorService.js';
-import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
-import db from '../db/database.js';
+import { authenticateToken } from '../../middleware/auth.js';
+import aiService from '../../services/aiService.js';
+import conversationService from '../../services/conversationService.js';
+import messageService from '../../services/messageService.js';
+import imageTagGenerationService from '../../services/imageTagGenerationService.js';
+import sdService from '../../services/sdService.js';
+import responseProcessorService from '../../services/responseProcessorService.js';
+import { getCurrentStatusFromSchedule } from '../../utils/chatHelpers.js';
+import db from '../../db/database.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
-
-// Configure multer for user image uploads
-const userImageStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', '..', 'uploads', 'user_images');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const filename = `user_${req.user.id}_${Date.now()}${ext}`;
-    cb(null, filename);
-  }
-});
-
-const uploadUserImage = multer({
-  storage: userImageStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (extname && mimetype) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
-    }
-  }
-});
-
-/**
- * GET /api/chat/conversations
- * Get all conversations for the current user
- */
-router.get('/conversations', authenticateToken, (req, res) => {
-  try {
-    const conversations = conversationService.getConversations(req.user.id);
-    res.json({ conversations });
-  } catch (error) {
-    console.error('Get conversations error:', error);
-    res.status(500).json({ error: 'Failed to get conversations' });
-  }
-});
-
-/**
- * GET /api/chat/conversations/:characterId
- * Get or create a conversation with a character
- * Query params: limit (default 200), offset (default 0)
- */
-router.get('/conversations/:characterId', authenticateToken, (req, res) => {
-  try {
-    const { characterId } = req.params;
-    const userId = req.user.id;
-    const limit = parseInt(req.query.limit) || 200;
-    const offset = parseInt(req.query.offset) || 0;
-
-    const conversation = conversationService.getOrCreateConversation(userId, characterId);
-    const result = messageService.getMessagesPaginated(conversation.id, limit, offset);
-
-    res.json({
-      conversation,
-      messages: result.messages,
-      total: result.total,
-      hasMore: result.hasMore
-    });
-  } catch (error) {
-    console.error('Get conversation error:', error);
-    res.status(500).json({ error: 'Failed to get conversation' });
-  }
-});
-
-/**
- * POST /api/chat/conversations/:characterId/messages
- * Send a message - returns immediately, AI response comes via WebSocket
- */
-router.post('/conversations/:characterId/messages', authenticateToken, async (req, res) => {
-  try {
-    const { characterId } = req.params;
-    const { message, characterData, imageUrl, imageDescription } = req.body;
-    const userId = req.user.id;
-
-    if (!characterData) {
-      return res.status(400).json({ error: 'Character data is required' });
-    }
-
-    // Get or create conversation
-    const conversation = conversationService.getOrCreateConversation(
-      userId,
-      characterId,
-      characterData.name || 'Character'
-    );
-
-    let savedUserMessage = null;
-
-    // Save user message with image if present
-    if (imageUrl && imageDescription) {
-      // User sent an image with description
-      savedUserMessage = messageService.saveMessage(
-        conversation.id,
-        'user',
-        imageDescription, // Store description as content
-        null, // No reaction
-        'image', // messageType
-        null, // audioUrl
-        imageUrl, // imageUrl
-        null // imageTags
-      );
-    } else if (message && message.trim()) {
-      // Regular text message
-      savedUserMessage = messageService.saveMessage(conversation.id, 'user', message);
-    }
-
-    // Return immediately with saved user message (or null if empty)
-    res.json({
-      success: true,
-      message: savedUserMessage,
-      conversation
-    });
-
-    // Process AI response asynchronously (works even with empty user message)
-    const io = req.app.get('io');
-    messageProcessor.processMessage(io, userId, characterId, conversation.id, characterData).catch(error => {
-      console.error('Async AI response error:', error);
-    });
-  } catch (error) {
-    console.error('Send message error:', error);
-    res.status(500).json({ error: error.message || 'Failed to send message' });
-  }
-});
 
 /**
  * POST /api/chat/conversations/:characterId/first-message
@@ -158,7 +24,7 @@ router.post('/conversations/:characterId/messages', authenticateToken, async (re
 router.post('/conversations/:characterId/first-message', authenticateToken, async (req, res) => {
   try {
     const { characterId } = req.params;
-    const { characterData } = req.body;
+    const { characterData, isSuperLike } = req.body;
     const userId = req.user.id;
 
     if (!characterData) {
@@ -194,7 +60,7 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
       currentStatus: currentStatusInfo,
       userBio: userBio,
       schedule: characterData.schedule,
-      isSuperLike: isSuperLike,
+      isSuperLike: isSuperLike || false,
     });
 
     // Clean up em dashes (replace with periods and capitalize next letter)
@@ -246,168 +112,6 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
   } catch (error) {
     console.error('Generate first message error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate first message' });
-  }
-});
-
-/**
- * POST /api/chat/conversations/:characterId/mark-read
- * Mark all messages in conversation as read
- */
-router.post('/conversations/:characterId/mark-read', authenticateToken, (req, res) => {
-  try {
-    const { characterId } = req.params;
-    const userId = req.user.id;
-
-    conversationService.markAsRead(userId, characterId);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Mark read error:', error);
-    const status = error.message === 'Conversation not found' ? 404 : 500;
-    res.status(status).json({ error: error.message || 'Failed to mark messages as read' });
-  }
-});
-
-/**
- * DELETE /api/chat/conversations/:conversationId
- * Delete a conversation and all its messages
- */
-router.delete('/conversations/:conversationId', authenticateToken, (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const userId = req.user.id;
-
-    conversationService.deleteConversation(userId, conversationId);
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Delete conversation error:', error);
-    const status = error.message.includes('not found') || error.message.includes('unauthorized') ? 404 : 500;
-    res.status(status).json({ error: error.message || 'Failed to delete conversation' });
-  }
-});
-
-/**
- * GET /api/chat/conversations/:conversationId/export
- * Export conversation as JSON file
- */
-router.get('/conversations/:conversationId/export', authenticateToken, (req, res) => {
-  try {
-    const { conversationId } = req.params;
-    const userId = req.user.id;
-
-    // Get conversation and verify ownership
-    const conversation = conversationService.getConversationById(parseInt(conversationId));
-
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    if (conversation.user_id !== userId) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    // Get all messages
-    const messages = messageService.getMessages(parseInt(conversationId));
-
-    // Get character info
-    const character = db.prepare(`
-      SELECT id, name, card_data FROM characters
-      WHERE id = ? AND user_id = ?
-    `).get(conversation.character_id, userId);
-
-    // Build export object
-    const exportData = {
-      exportedAt: new Date().toISOString(),
-      conversation: {
-        id: conversation.id,
-        characterId: conversation.character_id,
-        characterName: character?.name || conversation.character_name || 'Unknown',
-        createdAt: conversation.created_at,
-        lastMessage: conversation.last_message,
-        messageCount: messages.length
-      },
-      character: character ? {
-        id: character.id,
-        name: character.name,
-        cardData: character.card_data ? JSON.parse(character.card_data) : null
-      } : null,
-      messages: messages.map(msg => ({
-        id: msg.id,
-        role: msg.role,
-        content: msg.content,
-        messageType: msg.message_type || 'text',
-        createdAt: msg.created_at,
-        reaction: msg.reaction,
-        imageUrl: msg.image_url,
-        audioUrl: msg.audio_url,
-        reasoning: msg.reasoning
-      }))
-    };
-
-    // Set headers for file download
-    const filename = `conversation-${conversation.character_name || 'export'}-${Date.now()}.json`;
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-    res.json(exportData);
-  } catch (error) {
-    console.error('Export conversation error:', error);
-    res.status(500).json({ error: error.message || 'Failed to export conversation' });
-  }
-});
-
-/**
- * PUT /api/chat/messages/:messageId
- * Edit a message's content
- */
-router.put('/messages/:messageId', authenticateToken, (req, res) => {
-  try {
-    const { messageId } = req.params;
-    const { content } = req.body;
-    const userId = req.user.id;
-
-    if (!content || !content.trim()) {
-      return res.status(400).json({ error: 'Content is required' });
-    }
-
-    messageService.editMessage(messageId, userId, content);
-
-    // Update conversation timestamp
-    const message = messageService.getMessageWithUser(messageId);
-    conversationService.updateTimestamp(message.conversation_id);
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Edit message error:', error);
-    let status = 500;
-    if (error.message === 'Message not found') status = 404;
-    if (error.message === 'Unauthorized') status = 403;
-    res.status(status).json({ error: error.message || 'Failed to edit message' });
-  }
-});
-
-/**
- * POST /api/chat/messages/:messageId/swipe
- * Navigate to a different swipe variant
- */
-router.post('/messages/:messageId/swipe', authenticateToken, (req, res) => {
-  try {
-    const { messageId } = req.params;
-    const { swipeIndex } = req.body;
-    const userId = req.user.id;
-
-    if (typeof swipeIndex !== 'number') {
-      return res.status(400).json({ error: 'swipeIndex is required and must be a number' });
-    }
-
-    const message = messageService.setSwipeIndex(parseInt(messageId), userId, swipeIndex);
-    res.json({ success: true, message });
-  } catch (error) {
-    console.error('Swipe message error:', error);
-    let status = 500;
-    if (error.message === 'Message not found') status = 404;
-    if (error.message === 'Unauthorized') status = 403;
-    if (error.message === 'Swipe index out of range') status = 400;
-    res.status(status).json({ error: error.message || 'Failed to swipe message' });
   }
 });
 
@@ -518,7 +222,7 @@ router.post('/messages/:messageId/regenerate', authenticateToken, async (req, re
       }
 
       // Save the new image file
-      const imageDir = path.join(__dirname, '..', '..', 'uploads', 'images');
+      const imageDir = path.join(__dirname, '..', '..', '..', 'uploads', 'images');
       if (!fs.existsSync(imageDir)) {
         fs.mkdirSync(imageDir, { recursive: true });
       }
@@ -590,58 +294,6 @@ router.post('/messages/:messageId/regenerate', authenticateToken, async (req, re
   } catch (error) {
     console.error('Regenerate message error:', error);
     res.status(500).json({ error: error.message || 'Failed to regenerate message' });
-  }
-});
-
-/**
- * GET /api/chat/messages/:messageId/swipes
- * Get swipe info for a message
- */
-router.get('/messages/:messageId/swipes', authenticateToken, (req, res) => {
-  try {
-    const { messageId } = req.params;
-    const userId = req.user.id;
-
-    // Verify ownership
-    const message = messageService.getMessageWithUser(parseInt(messageId));
-
-    if (!message) {
-      return res.status(404).json({ error: 'Message not found' });
-    }
-
-    if (message.user_id !== userId) {
-      return res.status(403).json({ error: 'Unauthorized' });
-    }
-
-    const swipeInfo = messageService.getSwipeInfo(parseInt(messageId));
-    res.json(swipeInfo);
-  } catch (error) {
-    console.error('Get swipes error:', error);
-    res.status(500).json({ error: error.message || 'Failed to get swipes' });
-  }
-});
-
-/**
- * DELETE /api/chat/messages/:messageId/delete-from
- * Delete a message and all messages after it in the conversation
- */
-router.delete('/messages/:messageId/delete-from', authenticateToken, (req, res) => {
-  try {
-    const { messageId } = req.params;
-    const userId = req.user.id;
-
-    const conversationId = messageService.deleteFromMessage(messageId, userId);
-
-    // Update conversation timestamp
-    conversationService.updateTimestamp(conversationId);
-
-    res.json({ success: true });
-  } catch (error) {
-    console.error('Delete from message error:', error);
-    let status = 500;
-    if (error.message === 'Message not found') status = 404;
-    if (error.message === 'Unauthorized') status = 403;
-    res.status(status).json({ error: error.message || 'Failed to delete messages' });
   }
 });
 
@@ -761,8 +413,6 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
         console.log(`📝 Always Needed Tags: ${backendCharacter.image_tags}`);
         console.log(`🤖 AI-Generated Context Tags: ${generatedContextTags}`);
 
-        const sdService = (await import('../services/sdService.js')).default;
-
         // Fetch user's SD settings for image generation
         const sdSettings = db.prepare(`
           SELECT sd_steps, sd_cfg_scale, sd_sampler, sd_scheduler,
@@ -789,14 +439,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
 
         if (imageResult.success) {
           // Save image file
-          const fs = await import('fs');
-          const path = await import('path');
-          const { fileURLToPath } = await import('url');
-
-          const __filename = fileURLToPath(import.meta.url);
-          const __dirname = path.dirname(__filename);
-
-          const imageDir = path.join(__dirname, '..', '..', 'uploads', 'images');
+          const imageDir = path.join(__dirname, '..', '..', '..', 'uploads', 'images');
           if (!fs.existsSync(imageDir)) {
             fs.mkdirSync(imageDir, { recursive: true });
           }
@@ -816,7 +459,6 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
 
           // Log result to prompt log file
           if (imageResult.logFilename) {
-            const sdService = (await import('../services/sdService.js')).default;
             sdService.appendImageResult({
               logFilename: imageResult.logFilename,
               success: true,
@@ -982,195 +624,6 @@ Output ONLY the suggested reply text, nothing else.`;
   } catch (error) {
     console.error('Suggest reply error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate suggestion' });
-  }
-});
-
-/**
- * POST /api/chat/upload-user-image
- * Upload a user image for sending in chat
- */
-router.post('/upload-user-image', authenticateToken, uploadUserImage.single('image'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image file provided' });
-    }
-
-    const imageUrl = `/uploads/user_images/${req.file.filename}`;
-    console.log(`✅ User image uploaded: ${imageUrl}`);
-
-    res.json({ imageUrl });
-  } catch (error) {
-    console.error('Upload user image error:', error);
-    res.status(500).json({ error: error.message || 'Failed to upload image' });
-  }
-});
-
-/**
- * GET /api/chat/conversations/:characterId/pending
- * Check if there's a pending AI response for this character
- */
-router.get('/conversations/:characterId/pending', authenticateToken, (req, res) => {
-  try {
-    const { characterId } = req.params;
-    const userId = req.user.id;
-
-    const isPending = messageProcessor.isPending(userId, characterId);
-    const pendingInfo = messageProcessor.getPendingInfo(userId, characterId);
-
-    res.json({
-      pending: isPending,
-      startedAt: pendingInfo?.startedAt || null
-    });
-  } catch (error) {
-    console.error('Check pending error:', error);
-    res.status(500).json({ error: error.message || 'Failed to check pending status' });
-  }
-});
-
-/**
- * PUT /api/chat/conversations/:characterId/mood
- * Update character mood for the conversation
- */
-router.put('/conversations/:characterId/mood', authenticateToken, (req, res) => {
-  try {
-    const { characterId } = req.params;
-    const { mood } = req.body;
-    const userId = req.user.id;
-
-    if (!mood || typeof mood !== 'string') {
-      return res.status(400).json({ error: 'Mood is required and must be a string' });
-    }
-
-    // Get conversation
-    const conversation = conversationService.getConversation(userId, characterId);
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    // Update mood in database
-    db.prepare(`UPDATE conversations SET character_mood = ? WHERE id = ?`).run(mood.trim(), conversation.id);
-
-    console.log(`🎭 Character mood manually updated: ${mood}`);
-
-    // Emit mood update to frontend
-    const io = req.app.get('io');
-    io.to(`user:${userId}`).emit('character_mood_update', {
-      characterId,
-      conversationId: conversation.id,
-      mood: mood.trim()
-    });
-
-    res.json({ success: true, mood: mood.trim() });
-  } catch (error) {
-    console.error('Update mood error:', error);
-    res.status(500).json({ error: error.message || 'Failed to update mood' });
-  }
-});
-
-/**
- * PUT /api/chat/conversations/:characterId/state
- * Update character state for the conversation
- */
-router.put('/conversations/:characterId/state', authenticateToken, (req, res) => {
-  try {
-    const { characterId } = req.params;
-    const { state } = req.body;
-    const userId = req.user.id;
-
-    // State can be null (to clear) or a string
-    if (state !== null && typeof state !== 'string') {
-      return res.status(400).json({ error: 'State must be a string or null' });
-    }
-
-    // Get conversation
-    const conversation = conversationService.getConversation(userId, characterId);
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    // Update state in database (null clears the state)
-    const stateValue = state ? state.trim() : null;
-    db.prepare(`UPDATE conversations SET character_state = ? WHERE id = ?`).run(stateValue, conversation.id);
-
-    console.log(`⚡ Character state manually updated: ${stateValue || '(cleared)'}`);
-
-    // Emit state update to frontend
-    const io = req.app.get('io');
-    io.to(`user:${userId}`).emit('character_state_update', {
-      characterId,
-      conversationId: conversation.id,
-      state: stateValue
-    });
-
-    res.json({ success: true, state: stateValue });
-  } catch (error) {
-    console.error('Update state error:', error);
-    res.status(500).json({ error: error.message || 'Failed to update state' });
-  }
-});
-
-/**
- * POST /api/chat/conversations/:characterId/debug-mood
- * Debug endpoint to trigger mood change
- */
-router.post('/conversations/:characterId/debug-mood', authenticateToken, (req, res) => {
-  try {
-    const { characterId } = req.params;
-    const { mood, characterName } = req.body;
-    const userId = req.user.id;
-
-    const validMoods = ['hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
-    if (!validMoods.includes(mood)) {
-      return res.status(400).json({ error: `Invalid mood. Must be one of: ${validMoods.join(', ')}` });
-    }
-
-    const charName = characterName || 'Character';
-
-    // Get or create conversation
-    const conversation = conversationService.getOrCreateConversation(userId, characterId, charName);
-    const systemMessage = `[${charName} switched background to ${mood.toUpperCase()}]`;
-
-    // Save background effect system message to conversation history
-    const savedMessage = messageService.saveMessage(
-      conversation.id,
-      'system',
-      systemMessage,
-      null, // no reaction
-      'text',
-      null, // no audio
-      null, // no image
-      null, // no image tags
-      false, // not proactive
-      null  // no image prompt
-    );
-
-    console.log(`🎨 [DEBUG] Background effect inserted: ${charName} → ${mood}`);
-
-    // Get total message count and update last_mood_message_count
-    const totalMsgCount = db.prepare(`
-      SELECT COUNT(*) as count FROM messages WHERE conversation_id = ? AND role IN ('user', 'assistant')
-    `).get(conversation.id).count;
-
-    db.prepare(`
-      UPDATE character_states
-      SET last_mood_message_count = ?
-      WHERE user_id = ? AND character_id = ?
-    `).run(totalMsgCount, userId, characterId);
-
-    // Emit mood change to frontend
-    const io = req.app.get('io');
-    io.to(`user:${userId}`).emit('mood_change', {
-      characterId,
-      mood: mood,
-      characterName: charName,
-      systemMessage: systemMessage,
-      messageId: savedMessage.id
-    });
-
-    res.json({ success: true, mood, systemMessage });
-  } catch (error) {
-    console.error('Debug mood error:', error);
-    res.status(500).json({ error: error.message || 'Failed to trigger mood' });
   }
 });
 
