@@ -51,6 +51,9 @@ class AIService {
     // Strip RP actions wrapped in asterisks (e.g. *leans back*, *sighs*)
     content = content.replace(/\*[^*]+\*/g, '').trim();
 
+    // Strip standalone timestamp lines (e.g. "12:17 PM", "3:45 AM")
+    content = content.replace(/^\d{1,2}:\d{2}\s*(?:AM|PM)\s*$/gim, '').trim();
+
     // Check if content is empty after stripping
     if (!content && rawContent) {
       console.warn('⚠️ Response is empty after stripping formatting');
