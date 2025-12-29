@@ -1039,6 +1039,12 @@ function runMigrations() {
       console.log('✅ retry_on_invalid_response column added');
     }
 
+    // Migration: Add use_name_primer setting (can cause issues with thinking models)
+    if (!userColumnsForSchedule.includes('use_name_primer')) {
+      db.exec(`ALTER TABLE users ADD COLUMN use_name_primer INTEGER DEFAULT 1;`);
+      console.log('✅ use_name_primer column added');
+    }
+
     // Fix users with invalid created_at (epoch 0 or NULL)
     const usersWithBadCreatedAt = db.prepare(`
       SELECT id FROM users

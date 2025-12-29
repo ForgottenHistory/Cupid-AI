@@ -54,13 +54,14 @@ const FIELD_TO_COLUMN = {
   thoughtFrequency: 'thought_frequency',
   memoryDegradationPoints: 'memory_degradation_points',
   includeFullSchedule: 'include_full_schedule',
-  retryOnInvalidResponse: 'retry_on_invalid_response'
+  retryOnInvalidResponse: 'retry_on_invalid_response',
+  useNamePrimer: 'use_name_primer'
 };
 
 /**
  * Boolean fields that need conversion
  */
-const BOOLEAN_FIELDS = ['autoUnmatchAfterProactive', 'allowAiUnmatch', 'dailyAutoMatchEnabled', 'compactionEnabled', 'includeFullSchedule', 'retryOnInvalidResponse'];
+const BOOLEAN_FIELDS = ['autoUnmatchAfterProactive', 'allowAiUnmatch', 'dailyAutoMatchEnabled', 'compactionEnabled', 'includeFullSchedule', 'retryOnInvalidResponse', 'useNamePrimer'];
 
 /**
  * GET /api/users/behavior-settings

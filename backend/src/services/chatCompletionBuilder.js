@@ -29,7 +29,8 @@ class ChatCompletionBuilder {
       characterId,
       characterData,
       decision,
-      userName
+      userName,
+      useNamePrimer = true
     } = options;
 
     // Trim messages to fit within context window
@@ -99,9 +100,11 @@ class ChatCompletionBuilder {
       finalMessages.push({ role: 'system', content: postInstructions });
     }
 
-    // Add character name prompt to prime the response
-    const primeContent = this.buildPrimeContent(characterData, decision);
-    finalMessages.push({ role: 'assistant', content: primeContent, prefix: true });
+    // Add character name prompt to prime the response (if enabled)
+    if (useNamePrimer) {
+      const primeContent = this.buildPrimeContent(characterData, decision);
+      finalMessages.push({ role: 'assistant', content: primeContent, prefix: true });
+    }
 
     return { finalMessages, trimmedMessages };
   }

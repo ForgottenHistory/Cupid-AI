@@ -40,19 +40,34 @@ class AIService {
   stripAndValidateContent(content, rawContent) {
     // Strip any <think></think> tags (reasoning/thinking output from some models)
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-    content = content.replace(/<\/?think>/gi, '').trim();
 
-    // Strip everything before and including </think> (for models that leak reasoning without opening tag)
+    // Strip everything before and including </think> BEFORE removing standalone tags
+    // (for models that leak reasoning without opening tag)
     const thinkEndIndex = content.lastIndexOf('</think>');
     if (thinkEndIndex !== -1) {
       content = content.substring(thinkEndIndex + '</think>'.length).trim();
     }
 
+    // Now strip any remaining standalone think tags
+    content = content.replace(/<\/?think>/gi, '').trim();
+
     // Strip RP actions wrapped in asterisks (e.g. *leans back*, *sighs*)
     content = content.replace(/\*[^*]+\*/g, '').trim();
 
-    // Strip standalone timestamp/datetime lines (e.g. "12:17 PM", "12/28/2025, 5:14pm", "7:00 PM, Sunday December 28, 2025")
-    content = content.replace(/^(?:\d{1,2}\/\d{1,2}\/\d{2,4},?\s*)?\d{1,2}:\d{2}\s*(?:AM|PM)?(?:,?\s*(?:Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)?\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)?\s*\d{0,2},?\s*\d{0,4})?\s*$/gim, '').trim();
+    // Strip lines that are just "Name:" or "Name: " with nothing after (empty prefix)
+    content = content.replace(/^[^:\n]+:\s*$/gim, '').trim();
+
+    // Strip lines that are just timestamps (e.g. "8:07 PM", "12:30pm")
+    content = content.replace(/^\d{1,2}:\d{2}\s*(?:AM|PM)?\s*$/gim, '').trim();
+
+    // Strip lines that are "Name: timestamp" (e.g. "Chisaka Airi: 8:07 PM")
+    content = content.replace(/^[^:\n]+:\s*\d{1,2}:\d{2}\s*(?:AM|PM)?\s*$/gim, '').trim();
+
+    // Strip lines with numeric dates (e.g. "12/28/2025", "12/28/2025, 5:14pm")
+    content = content.replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}.*$/gim, '').trim();
+
+    // Strip lines with spelled-out dates/days (e.g. "Monday morning.", "Monday, December 29, 2025")
+    content = content.replace(/^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[\s,.].*$/gim, '').trim();
 
     // Strip blockquote-style lines (lines starting with >)
     content = content.replace(/^>\s*.*/gm, '').trim();
@@ -111,8 +126,9 @@ class AIService {
       const userSettings = llmSettingsService.getUserSettings(userId);
 
       // Get settings
-      const behaviorSettings = db.prepare('SELECT include_full_schedule FROM users WHERE id = ?').get(userId);
+      const behaviorSettings = db.prepare('SELECT include_full_schedule, use_name_primer FROM users WHERE id = ?').get(userId);
       const includeFullSchedule = behaviorSettings?.include_full_schedule === 1;
+      const useNamePrimer = behaviorSettings?.use_name_primer !== 0; // Default to true if not set
       const selectedModel = model || userSettings.model;
       const effectiveMaxTokens = maxTokens || userSettings.max_tokens;
       const provider = userSettings.provider || 'openrouter';
@@ -142,7 +158,8 @@ class AIService {
         characterId,
         characterData,
         decision,
-        userName
+        userName,
+        useNamePrimer
       });
 
       console.log(`🤖 ${providerConfig.name} Request:`, {

@@ -29,7 +29,8 @@ const BehaviorSettingsPage = () => {
     thoughtFrequency: 10,
     memoryDegradationPoints: 0,
     includeFullSchedule: false,
-    retryOnInvalidResponse: true
+    retryOnInvalidResponse: true,
+    useNamePrimer: true
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -106,7 +107,8 @@ const BehaviorSettingsPage = () => {
       maxMatches: 0,
       thoughtFrequency: 10,
       includeFullSchedule: false,
-      retryOnInvalidResponse: true
+      retryOnInvalidResponse: true,
+      useNamePrimer: true
     });
     setSuccess('');
     setError('');
@@ -518,6 +520,23 @@ const BehaviorSettingsPage = () => {
                 </label>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">When enabled, automatically retry up to 3 times if the AI returns an invalid response (empty content, duplicate message, etc.)</p>
+            </div>
+
+            {/* Use Name Primer */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Use Name Primer</label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.useNamePrimer}
+                    onChange={(e) => updateSetting('useNamePrimer', e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 dark:after:border-gray-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                </label>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">When enabled, adds the character's name as a response primer (e.g., "Character: "). This helps guide the model but may interfere with thinking/reasoning models. Disable if responses contain leaked reasoning.</p>
             </div>
 
             {/* Conversation Compacting Section Header */}
