@@ -118,7 +118,8 @@ export function parseScheduleFromPlaintext(text) {
   const cleanedText = stripMarkdown(text);
 
   // Split by day headers (must be on their own line with a colon, e.g. "MONDAY:")
-  const dayRegex = /^(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY):\s*$/gim;
+  // Allow optional leading whitespace (some models add a space before the first day)
+  const dayRegex = /^\s*(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY):\s*$/gim;
   const sections = cleanedText.split(dayRegex).filter(s => s.trim());
 
   for (let i = 0; i < sections.length; i += 2) {

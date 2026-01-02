@@ -34,10 +34,14 @@ class AIService {
    * Strip unwanted formatting from AI response content and validate it's not empty
    * @param {string} content - The response content to process
    * @param {string} rawContent - Original raw content for error context
+   * @param {object} options - Options for stripping
+   * @param {boolean} options.isChat - If true, apply chat-specific stripping (name prefixes, timestamps, etc.)
    * @returns {string} Processed content
    * @throws {Error} If content is empty or invalid after processing
    */
-  stripAndValidateContent(content, rawContent) {
+  stripAndValidateContent(content, rawContent, options = {}) {
+    const { isChat = false } = options;
+
     // Strip any <think></think> tags (reasoning/thinking output from some models)
     content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
@@ -51,26 +55,29 @@ class AIService {
     // Now strip any remaining standalone think tags
     content = content.replace(/<\/?think>/gi, '').trim();
 
-    // Strip RP actions wrapped in asterisks (e.g. *leans back*, *sighs*)
-    content = content.replace(/\*[^*]+\*/g, '').trim();
+    // Chat-specific stripping (not for metadata like schedules, dating profiles, etc.)
+    if (isChat) {
+      // Strip RP actions wrapped in asterisks (e.g. *leans back*, *sighs*)
+      content = content.replace(/\*[^*]+\*/g, '').trim();
 
-    // Strip lines that are just "Name:" or "Name: " with nothing after (empty prefix)
-    content = content.replace(/^[^:\n]+:\s*$/gim, '').trim();
+      // Strip lines that are just "Name:" or "Name: " with nothing after (empty prefix)
+      content = content.replace(/^[^:\n]+:\s*$/gim, '').trim();
 
-    // Strip lines that are just timestamps (e.g. "8:07 PM", "12:30pm")
-    content = content.replace(/^\d{1,2}:\d{2}\s*(?:AM|PM)?\s*$/gim, '').trim();
+      // Strip lines that are just timestamps (e.g. "8:07 PM", "12:30pm")
+      content = content.replace(/^\d{1,2}:\d{2}\s*(?:AM|PM)?\s*$/gim, '').trim();
 
-    // Strip lines that are "Name: timestamp" (e.g. "Chisaka Airi: 8:07 PM")
-    content = content.replace(/^[^:\n]+:\s*\d{1,2}:\d{2}\s*(?:AM|PM)?\s*$/gim, '').trim();
+      // Strip lines that are "Name: timestamp" (e.g. "Chisaka Airi: 8:07 PM")
+      content = content.replace(/^[^:\n]+:\s*\d{1,2}:\d{2}\s*(?:AM|PM)?\s*$/gim, '').trim();
 
-    // Strip lines with numeric dates (e.g. "12/28/2025", "12/28/2025, 5:14pm")
-    content = content.replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}.*$/gim, '').trim();
+      // Strip lines with numeric dates (e.g. "12/28/2025", "12/28/2025, 5:14pm")
+      content = content.replace(/^\d{1,2}\/\d{1,2}\/\d{2,4}.*$/gim, '').trim();
 
-    // Strip lines with spelled-out dates/days (e.g. "Monday morning.", "Monday, December 29, 2025")
-    content = content.replace(/^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[\s,.].*$/gim, '').trim();
+      // Strip lines with spelled-out dates/days (e.g. "Monday morning.", "Monday, December 29, 2025")
+      content = content.replace(/^(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)[\s,.].*$/gim, '').trim();
 
-    // Strip blockquote-style lines (lines starting with >)
-    content = content.replace(/^>\s*.*/gm, '').trim();
+      // Strip blockquote-style lines (lines starting with >)
+      content = content.replace(/^>\s*.*/gm, '').trim();
+    }
 
     // Check if content is empty after stripping
     if (!content && rawContent) {
@@ -78,8 +85,8 @@ class AIService {
       throw new Error('Response was empty after stripping formatting.');
     }
 
-    // Check if content is just a character name followed by colon with nothing after
-    if (/^[^:]+:\s*$/.test(content)) {
+    // Chat-specific: Check if content is just a character name followed by colon with nothing after
+    if (isChat && /^[^:]+:\s*$/.test(content)) {
       console.warn('⚠️ Response is just character name with colon, no actual content:', content);
       throw new Error('Response was empty - model returned only character name prefix without content.');
     }
@@ -102,8 +109,8 @@ class AIService {
       throw new Error('Response contains incomplete <think> tag - response was truncated. Please retry or increase max_tokens.');
     }
 
-    // Strip formatting and validate
-    content = this.stripAndValidateContent(content, rawContent);
+    // Strip formatting and validate (isChat: true for chat-specific stripping)
+    content = this.stripAndValidateContent(content, rawContent, { isChat: true });
 
     // Strip any leading "Name: " pattern (AI priming artifact)
     content = content.replace(/^[A-Za-z\s'-]+:\s*/, '');
