@@ -39,7 +39,8 @@ class PersonalityService {
         max_tokens: 200,
         messageType: 'personality',
         characterName: characterName,
-        userId: userId
+        userId: userId,
+        llmType: 'metadata'
       });
 
       const content = response.content.trim();

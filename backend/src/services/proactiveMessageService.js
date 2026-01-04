@@ -1,5 +1,6 @@
 import db from '../db/database.js';
 import aiService from './aiService.js';
+import decisionEngineService from './decisionEngineService.js';
 import messageService from './messageService.js';
 import conversationService from './conversationService.js';
 import timeGapService from './timeGapService.js';
@@ -70,7 +71,7 @@ class ProactiveMessageService {
     const userBio = user?.bio || null;
     const currentStatusInfo = getCurrentStatusFromSchedule(schedule);
 
-    decision = await aiService.makeProactiveDecision({
+    decision = await decisionEngineService.makeProactiveDecision({
       messages,
       characterData,
       characterId,
@@ -101,7 +102,7 @@ class ProactiveMessageService {
     console.log(`🔄 Reset character mood and state for proactive message`);
 
     // Call decision engine to generate fresh mood/state
-    const proactiveDecisionResult = await aiService.makeDecision({
+    const proactiveDecisionResult = await decisionEngineService.makeDecision({
       messages: updatedMessages,
       characterData,
       userMessage: `[PROACTIVE MESSAGE CONTEXT: Character is initiating conversation after ${gapHours.toFixed(1)} hour gap]`,

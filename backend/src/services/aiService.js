@@ -2,8 +2,6 @@ import axios from 'axios';
 import db from '../db/database.js';
 import llmSettingsService from './llmSettingsService.js';
 import promptBuilderService from './promptBuilderService.js';
-import decisionEngineService from './decisionEngineService.js';
-import personalityService from './personalityService.js';
 import queueService from './queueService.js';
 import providerService from './providerService.js';
 import promptLogService from './promptLogService.js';
@@ -260,30 +258,6 @@ class AIService {
       });
       throw new Error(error.response?.data?.error?.message || error.message || `${providerConfig.name} service error`);
     }
-  }
-
-  /**
-   * Decision Engine: Analyze conversation and decide on actions
-   * Delegates to decisionEngineService
-   */
-  async makeDecision(params) {
-    return decisionEngineService.makeDecision(params);
-  }
-
-  /**
-   * Proactive Decision Engine: Decide if character should send proactive message
-   * Delegates to decisionEngineService
-   */
-  async makeProactiveDecision(params) {
-    return decisionEngineService.makeProactiveDecision(params);
-  }
-
-  /**
-   * Generate Big Five personality traits for a character
-   * Delegates to personalityService
-   */
-  async generatePersonality(characterData) {
-    return personalityService.generatePersonality(characterData);
   }
 
   /**

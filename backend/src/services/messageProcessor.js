@@ -1,5 +1,6 @@
 import db from '../db/database.js';
 import aiService from './aiService.js';
+import decisionEngineService from './decisionEngineService.js';
 import engagementService from './engagementService.js';
 import conversationService from './conversationService.js';
 import messageService from './messageService.js';
@@ -230,7 +231,7 @@ class MessageProcessor {
         console.log(`🎭 Character mood update will be requested: ${moodTrigger}`);
       }
 
-      const decision = await aiService.makeDecision({
+      const decision = await decisionEngineService.makeDecision({
         messages: aiMessages,
         characterData: characterData,
         characterId: characterId,

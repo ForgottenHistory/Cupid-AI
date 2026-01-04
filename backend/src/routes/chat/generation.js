@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { authenticateToken } from '../../middleware/auth.js';
 import aiService from '../../services/aiService.js';
+import decisionEngineService from '../../services/decisionEngineService.js';
 import conversationService from '../../services/conversationService.js';
 import messageService from '../../services/messageService.js';
 import imageTagGenerationService from '../../services/imageTagGenerationService.js';
@@ -361,7 +362,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
 
     // Call Decision LLM first
     const userMessage = aiMessages[aiMessages.length - 1]?.content || '';
-    const decision = await aiService.makeDecision({
+    const decision = await decisionEngineService.makeDecision({
       messages: aiMessages,
       characterData: characterData,
       characterId: characterId,

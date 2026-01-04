@@ -1,4 +1,5 @@
 import aiService from '../services/aiService.js';
+import personalityService from '../services/personalityService.js';
 import { buildCleanupDescriptionPrompt, buildDatingProfilePrompt, buildSchedulePrompt } from '../prompts/characterPrompts.js';
 import { parseDatingProfileResponse, parseScheduleFromPlaintext } from '../parsers/characterParsers.js';
 
@@ -120,7 +121,7 @@ export async function generatePersonality(req, res) {
       personality: personality || ''
     };
 
-    const traits = await aiService.generatePersonality(characterData, req.user.id);
+    const traits = await personalityService.generatePersonality(characterData, req.user.id);
 
     res.json({ personality: traits });
   } catch (error) {
