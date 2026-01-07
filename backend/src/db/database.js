@@ -288,6 +288,12 @@ function runMigrations() {
       console.log('✅ personality_data column added to characters table');
     }
 
+    // Migration: Add attributes_data column to characters table
+    if (!charactersColumnNames.includes('attributes_data')) {
+      db.exec(`ALTER TABLE characters ADD COLUMN attributes_data TEXT;`);
+      console.log('✅ attributes_data column added to characters table');
+    }
+
     // Migration: Add proactive message tracking to users table
     if (!userColumnNames.includes('proactive_messages_today')) {
       db.exec(`

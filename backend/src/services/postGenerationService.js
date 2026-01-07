@@ -5,8 +5,8 @@ import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 class PostGenerationService {
 
   /**
-   * Select characters to post based on personality weights
-   * Returns array of character objects with their posting weight
+   * Select characters to post (random selection from online/away characters)
+   * Returns array of character objects
    */
   selectCharactersToPost(slotsAvailable) {
     // Get all characters
@@ -33,27 +33,11 @@ class PostGenerationService {
           }
         }
 
-        // Parse personality data
-        let personality = null;
-        if (character.personality_data) {
-          try {
-            personality = JSON.parse(character.personality_data);
-          } catch (error) {
-            console.error('Failed to parse personality data:', error);
-          }
-        }
-
-        // Calculate posting weight based on personality
-        // High extraversion + openness = more likely to post
-        const extraversion = personality?.extraversion || 50;
-        const openness = personality?.openness || 50;
-        const weight = (extraversion + openness) / 2;
-
+        // All characters have equal weight for posting (pure random selection)
         candidates.push({
           character,
           characterData,
-          personality,
-          weight
+          weight: 50 // Equal weight for all
         });
       } catch (error) {
         console.error('Failed to parse character data:', error);
@@ -77,7 +61,7 @@ class PostGenerationService {
    */
   async generatePost(candidate) {
     try {
-      const { character, characterData, personality } = candidate;
+      const { character, characterData } = candidate;
 
       console.log(`📝 Generating post for ${characterData.name}...`);
 

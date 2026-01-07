@@ -5,9 +5,11 @@ import {
   PresetManager,
   conversationPromptFields,
   decisionEnginePromptFields,
-  characterGenerationPromptFields,
+  characterGenerationPromptFieldsTop,
+  characterGenerationPromptFieldsBottom,
   wizardPromptFields
 } from './prompts/index';
+import AttributeSchemaEditor from './prompts/AttributeSchemaEditor';
 
 const Prompts = () => {
   const containerRef = useRef(null);
@@ -194,8 +196,21 @@ const Prompts = () => {
         {/* Character Generation Prompts */}
         <PromptSection
           title="Character Generation & Dating Profile"
-          description="AI prompts for generating character profiles, schedules, and personality traits. Use placeholder variables like {characterName} and {description} where needed."
-          fields={characterGenerationPromptFields}
+          description="AI prompts for generating character profiles and schedules. Use placeholder variables like {characterName} and {description} where needed."
+          fields={characterGenerationPromptFieldsTop}
+          prompts={prompts}
+          updatePrompt={updatePrompt}
+          showTokens
+        />
+
+        {/* Character Attributes Schema - between Dating Profile and Schedule */}
+        <div className="my-8">
+          <AttributeSchemaEditor />
+        </div>
+
+        {/* Schedule & Memory Prompts */}
+        <PromptSection
+          fields={characterGenerationPromptFieldsBottom}
           prompts={prompts}
           updatePrompt={updatePrompt}
           showTokens

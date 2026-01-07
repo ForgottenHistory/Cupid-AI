@@ -42,27 +42,11 @@ class SuperLikeService {
 
   /**
    * Check if this should be a super like
-   * Probability based on extraversion (0-10%), only if under daily limit and character is online
+   * Currently disabled - always returns false
    */
-  shouldSuperLike(userId, characterStatus, personality) {
-    // Must be online
-    if (characterStatus !== 'online') {
-      return false;
-    }
-
-    // Check daily limit
-    if (!this.checkDailyLimit(userId)) {
-      return false;
-    }
-
-    // Calculate probability based on extraversion
-    // Extraversion 0 = 0%, Extraversion 50 = 5%, Extraversion 100 = 10%
-    const extraversion = personality?.extraversion || 50;
-    const probability = extraversion / 10; // 0-10%
-
-    // Random roll
-    const roll = Math.random() * 100;
-    return roll < probability;
+  shouldSuperLike(userId, characterStatus) {
+    // Super like system is disabled
+    return false;
   }
 
   /**

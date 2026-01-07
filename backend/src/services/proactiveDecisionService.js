@@ -98,23 +98,10 @@ ${prompts.proactiveDecisionPrompt}`;
       const characterName = characterData.data?.name || characterData.name || 'Character';
       const characterDescription = characterData.data?.description || characterData.description || 'N/A';
 
-      // Calculate personality influence
-      const extraversion = personality?.extraversion || 50;
-      const neuroticism = personality?.neuroticism || 50;
-
-      let personalityGuidance = '';
-      if (extraversion > 70 || neuroticism > 70) {
-        personalityGuidance = '\nYour personality: High extraversion/anxiety - you\'re more likely to check in when left on read.';
-      } else if (extraversion < 30 && neuroticism < 30) {
-        personalityGuidance = '\nYour personality: Low extraversion/anxiety - you\'re more chill about being left on read.';
-      } else {
-        personalityGuidance = '\nYour personality: Moderate - you might check in if something feels off.';
-      }
-
       const decisionPrompt = `You are deciding if this character should send a follow-up message on a dating app.
 
 Character: ${characterName}
-Description: ${characterDescription}${personalityGuidance}
+Description: ${characterDescription}
 
 Situation: You sent a message ${minutesSinceRead} minutes ago. They opened the chat and read it, but haven't responded yet.
 
@@ -139,9 +126,7 @@ Output ONLY the three lines in the exact format shown above, nothing else.`;
 
       console.log('🎯 Left-On-Read Decision Engine Request:', {
         model: metadataSettings.model,
-        minutesSinceRead,
-        extraversion,
-        neuroticism
+        minutesSinceRead
       });
 
       const response = await aiService.createBasicCompletion(decisionPrompt, {

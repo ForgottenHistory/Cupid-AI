@@ -14,6 +14,9 @@ router.post('/cleanup-description', authenticateToken, aiGeneration.cleanupDescr
 router.post('/generate-dating-profile', authenticateToken, aiGeneration.generateDatingProfile);
 router.post('/generate-schedule', authenticateToken, aiGeneration.generateSchedule);
 router.post('/generate-personality', authenticateToken, aiGeneration.generatePersonality);
+router.post('/generate-attributes', authenticateToken, aiGeneration.generateAttributes);
+router.get('/attributes-schema', authenticateToken, aiGeneration.getAttributesSchema);
+router.put('/attributes-schema', authenticateToken, aiGeneration.saveAttributesSchema);
 
 // ===== Character CRUD Routes =====
 
@@ -25,7 +28,7 @@ router.get('/', authenticateToken, (req, res) => {
 
     let query = `
       SELECT id, name, card_data, image_url, thumbnail_url, is_liked, liked_at, created_at,
-             schedule_data, personality_data, image_tags, contextual_tags,
+             schedule_data, personality_data, attributes_data, image_tags, contextual_tags,
              main_prompt_override, negative_prompt_override, voice_id,
              post_instructions, memory_data
       FROM characters WHERE user_id = ?
@@ -65,6 +68,7 @@ router.get('/', authenticateToken, (req, res) => {
       uploadedAt: char.created_at,
       scheduleData: char.schedule_data ? JSON.parse(char.schedule_data) : null,
       personalityData: char.personality_data ? JSON.parse(char.personality_data) : null,
+      attributesData: char.attributes_data ? JSON.parse(char.attributes_data) : null,
       imageTags: char.image_tags,
       contextualTags: char.contextual_tags,
       mainPromptOverride: char.main_prompt_override,
@@ -332,7 +336,7 @@ router.put('/:characterId', authenticateToken, (req, res) => {
     // Build update query dynamically
     const allowedFields = [
       'name', 'card_data', 'image_url', 'is_liked', 'liked_at',
-      'schedule_data', 'personality_data', 'image_tags', 'contextual_tags',
+      'schedule_data', 'personality_data', 'attributes_data', 'image_tags', 'contextual_tags',
       'main_prompt_override', 'negative_prompt_override', 'voice_id',
       'post_instructions', 'memory_data', 'thumbnail_url'
     ];
@@ -348,6 +352,7 @@ router.put('/:characterId', authenticateToken, (req, res) => {
       likedAt: 'liked_at',
       scheduleData: 'schedule_data',
       personalityData: 'personality_data',
+      attributesData: 'attributes_data',
       imageTags: 'image_tags',
       contextualTags: 'contextual_tags',
       mainPromptOverride: 'main_prompt_override',
@@ -364,7 +369,7 @@ router.put('/:characterId', authenticateToken, (req, res) => {
         setClauses.push(`${dbField} = ?`);
 
         // Handle JSON fields
-        if (['card_data', 'schedule_data', 'personality_data', 'memory_data'].includes(dbField)) {
+        if (['card_data', 'schedule_data', 'personality_data', 'attributes_data', 'memory_data'].includes(dbField)) {
           values.push(typeof value === 'string' ? value : JSON.stringify(value));
         } else if (dbField === 'is_liked') {
           values.push(value ? 1 : 0);
@@ -862,7 +867,7 @@ router.get('/export', authenticateToken, (req, res) => {
 
     const characters = db.prepare(`
       SELECT id, name, card_data, image_url, is_liked, liked_at, created_at,
-             schedule_data, personality_data, image_tags, contextual_tags,
+             schedule_data, personality_data, attributes_data, image_tags, contextual_tags,
              main_prompt_override, negative_prompt_override, voice_id,
              post_instructions, memory_data, thumbnail_url
       FROM characters WHERE user_id = ?
@@ -884,6 +889,7 @@ router.get('/export', authenticateToken, (req, res) => {
         uploadedAt: char.created_at,
         scheduleData: char.schedule_data ? JSON.parse(char.schedule_data) : null,
         personalityData: char.personality_data ? JSON.parse(char.personality_data) : null,
+        attributesData: char.attributes_data ? JSON.parse(char.attributes_data) : null,
         imageTags: char.image_tags,
         contextualTags: char.contextual_tags,
         mainPromptOverride: char.main_prompt_override,

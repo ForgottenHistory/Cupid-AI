@@ -181,26 +181,6 @@ Make it realistic for this character's lifestyle and personality. Activities are
 Include ordinary moments and special, interesting moments that can bring engaging conversations.
 IMPORTANT: Write each ACTIVITY as if the character wrote it. They are single. Keep content appropriate and SFW.`,
 
-  personalityPrompt: `Analyze this character using the Big Five (OCEAN) personality model. Rate each trait on a 0-100 scale.
-
-Character: {characterName}
-Description: {description}
-Personality: {personality}
-
-Rate these Big Five traits (0-100):
-- Openness: Curiosity, creativity, open to new experiences (0 = conventional/cautious, 100 = inventive/curious)
-- Conscientiousness: Organization, dependability, discipline (0 = spontaneous/careless, 100 = efficient/organized)
-- Extraversion: Sociability, assertiveness, energy around others (0 = reserved/introverted, 100 = outgoing/energetic)
-- Agreeableness: Compassion, cooperation, trust in others (0 = competitive/detached, 100 = friendly/compassionate)
-- Neuroticism: Emotional stability vs. tendency toward anxiety (0 = calm/stable, 100 = anxious/sensitive)
-
-Output ONLY in this exact format:
-Openness: [0-100]
-Conscientiousness: [0-100]
-Extraversion: [0-100]
-Agreeableness: [0-100]
-Neuroticism: [0-100]`,
-
   memoryExtractionPrompt: `You are extracting NEW memories for the character "{characterName}" from the current conversation.
 
 Your task is to identify NEW facts that {characterName} learned about the USER in this conversation block.

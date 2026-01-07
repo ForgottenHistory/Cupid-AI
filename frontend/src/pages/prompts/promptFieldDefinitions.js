@@ -80,7 +80,7 @@ export const decisionEnginePromptFields = [
   }
 ];
 
-export const characterGenerationPromptFields = [
+export const characterGenerationPromptFieldsTop = [
   {
     key: 'cleanupDescriptionPrompt',
     label: 'Cleanup Description',
@@ -92,7 +92,10 @@ export const characterGenerationPromptFields = [
     label: 'Dating Profile Generation',
     description: 'AI prompt for generating dating profiles from character descriptions. Use {characterName} and {description} as placeholders.',
     rows: 12
-  },
+  }
+];
+
+export const characterGenerationPromptFieldsBottom = [
   {
     key: 'schedulePrompt',
     label: 'Schedule Generation (Full Week)',
@@ -103,12 +106,6 @@ export const characterGenerationPromptFields = [
     key: 'scheduleDayPrompt',
     label: 'Schedule Generation (Single Day)',
     description: 'AI prompt for generating a single day schedule. Use {characterName}, {description}, and {day} as placeholders.',
-    rows: 10
-  },
-  {
-    key: 'personalityPrompt',
-    label: 'Big Five Personality Generation',
-    description: 'AI prompt for generating OCEAN personality traits. Use {characterName}, {description}, and {personality} as placeholders.',
     rows: 10
   },
   {
@@ -123,6 +120,12 @@ export const characterGenerationPromptFields = [
     description: 'AI prompt for summarizing old conversation blocks to save context window space. Use {characterName}, {userName}, and {conversationText} as placeholders.',
     rows: 12
   }
+];
+
+// Combined for backward compatibility
+export const characterGenerationPromptFields = [
+  ...characterGenerationPromptFieldsTop,
+  ...characterGenerationPromptFieldsBottom
 ];
 
 export const wizardPromptFields = [
@@ -161,7 +164,6 @@ export const defaultPromptState = {
   datingProfilePrompt: '',
   schedulePrompt: '',
   scheduleDayPrompt: '',
-  personalityPrompt: '',
   memoryExtractionPrompt: '',
   compactionPrompt: '',
   wizardDescriptionPrompt: '',

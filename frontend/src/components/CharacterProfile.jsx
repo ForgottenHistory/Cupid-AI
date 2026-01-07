@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import characterService from '../services/characterService';
 import ProfileTab from './characterProfile/ProfileTab';
 import ScheduleTab from './characterProfile/ScheduleTab';
-import PersonalityTab from './characterProfile/PersonalityTab';
+import AttributesTab from './characterProfile/AttributesTab';
 import VoiceTab from './characterProfile/VoiceTab';
 import ImageTab from './characterProfile/ImageTab';
 import OverviewTab from './characterProfile/OverviewTab';
@@ -29,7 +29,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     : [
         { id: 'profile', label: 'Dating Profile' },
         { id: 'schedule', label: 'Schedule' },
-        { id: 'personality', label: 'Personality' },
+        { id: 'attributes', label: 'Attributes' },
         { id: 'image', label: 'Image' },
         { id: 'overview', label: 'Overview' },
       ];
@@ -299,9 +299,9 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     }
   };
 
-  const handleGeneratePersonality = async () => {
+  const handleGenerateAttributes = async () => {
     if (!data.description) {
-      setError('Need a description to generate personality');
+      setError('Need a description to generate attributes');
       return;
     }
 
@@ -309,7 +309,7 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     setError('');
 
     try {
-      const personality = await characterService.generatePersonality(
+      const attributes = await characterService.generateAttributes(
         data.description,
         character.name,
         data.personality
@@ -320,13 +320,14 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         ...character.cardData,
         data: {
           ...character.cardData.data,
-          previousPersonalityTraits: data.personalityTraits, // Save current as previous
-          personalityTraits: personality
+          previousAttributesData: data.attributesData, // Save current as previous
+          attributesData: attributes
         }
       };
 
       await characterService.updateCharacterData(character.id, {
-        cardData: updatedCardData
+        cardData: updatedCardData,
+        attributesData: attributes
       });
 
       // Notify parent of update
@@ -334,10 +335,41 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         onUpdate();
       }
 
-      alert('Personality traits generated successfully!');
+      alert('Character attributes generated successfully!');
     } catch (err) {
-      console.error('Generate personality error:', err);
-      setError(err.response?.data?.error || 'Failed to generate personality');
+      console.error('Generate attributes error:', err);
+      setError(err.response?.data?.error || 'Failed to generate attributes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateAttributes = async (updatedAttributes) => {
+    setLoading(true);
+    setError('');
+
+    try {
+      // Update character in backend
+      const updatedCardData = {
+        ...character.cardData,
+        data: {
+          ...character.cardData.data,
+          attributesData: updatedAttributes
+        }
+      };
+
+      await characterService.updateCharacterData(character.id, {
+        cardData: updatedCardData,
+        attributesData: updatedAttributes
+      });
+
+      // Notify parent of update
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (err) {
+      console.error('Update attributes error:', err);
+      setError(err.response?.data?.error || 'Failed to update attributes');
     } finally {
       setLoading(false);
     }
@@ -524,9 +556,9 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     }
   };
 
-  const handleRevertPersonality = async () => {
-    if (!data.previousPersonalityTraits) {
-      setError('No previous personality found');
+  const handleRevertAttributes = async () => {
+    if (!data.previousAttributesData) {
+      setError('No previous attributes found');
       return;
     }
 
@@ -534,17 +566,18 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
     setError('');
 
     try {
-      // Restore previous personality
+      // Restore previous attributes
       const updatedCardData = {
         ...character.cardData,
         data: {
           ...character.cardData.data,
-          personalityTraits: data.previousPersonalityTraits
+          attributesData: data.previousAttributesData
         }
       };
 
       await characterService.updateCharacterData(character.id, {
-        cardData: updatedCardData
+        cardData: updatedCardData,
+        attributesData: data.previousAttributesData
       });
 
       // Notify parent of update
@@ -552,8 +585,8 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         onUpdate();
       }
     } catch (err) {
-      console.error('Revert personality error:', err);
-      setError(err.response?.data?.error || 'Failed to revert personality');
+      console.error('Revert attributes error:', err);
+      setError(err.response?.data?.error || 'Failed to revert attributes');
     } finally {
       setLoading(false);
     }
@@ -849,12 +882,13 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
               />
             )}
 
-            {activeTab === 'personality' && (
-              <PersonalityTab
+            {activeTab === 'attributes' && (
+              <AttributesTab
                 data={data}
                 loading={loading}
-                onGenerate={handleGeneratePersonality}
-                onRevert={handleRevertPersonality}
+                onGenerate={handleGenerateAttributes}
+                onRevert={handleRevertAttributes}
+                onUpdateAttributes={handleUpdateAttributes}
               />
             )}
 

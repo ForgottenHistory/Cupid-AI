@@ -1,5 +1,6 @@
 import aiService from '../services/aiService.js';
 import personalityService from '../services/personalityService.js';
+import characterAttributesService from '../services/characterAttributesService.js';
 import { buildCleanupDescriptionPrompt, buildDatingProfilePrompt, buildSchedulePrompt } from '../prompts/characterPrompts.js';
 import { parseDatingProfileResponse, parseScheduleFromPlaintext } from '../parsers/characterParsers.js';
 
@@ -127,5 +128,72 @@ export async function generatePersonality(req, res) {
   } catch (error) {
     console.error('Generate personality error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate personality' });
+  }
+}
+
+/**
+ * POST /api/characters/generate-attributes
+ * Generate character attributes based on configurable schema
+ */
+export async function generateAttributes(req, res) {
+  try {
+    const { description, name, personality } = req.body;
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+
+    const characterData = {
+      name: name || 'Character',
+      description: description,
+      personality: personality || ''
+    };
+
+    const attributes = await characterAttributesService.generateAttributes(characterData, req.user.id);
+
+    res.json({ attributes });
+  } catch (error) {
+    console.error('Generate attributes error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate attributes' });
+  }
+}
+
+/**
+ * GET /api/characters/attributes-schema
+ * Get the attribute schema for the current user
+ */
+export async function getAttributesSchema(req, res) {
+  try {
+    const schema = characterAttributesService.loadAttributeSchema(req.user.id);
+    res.json(schema);
+  } catch (error) {
+    console.error('Get attributes schema error:', error);
+    res.status(500).json({ error: error.message || 'Failed to get attributes schema' });
+  }
+}
+
+/**
+ * PUT /api/characters/attributes-schema
+ * Save custom attribute schema for the current user
+ */
+export async function saveAttributesSchema(req, res) {
+  try {
+    const { attributes } = req.body;
+
+    if (!Array.isArray(attributes)) {
+      return res.status(400).json({ error: 'attributes must be an array' });
+    }
+
+    const schema = { attributes };
+    const success = characterAttributesService.saveAttributeSchema(req.user.id, schema);
+
+    if (success) {
+      res.json({ success: true, schema });
+    } else {
+      res.status(500).json({ error: 'Failed to save schema' });
+    }
+  } catch (error) {
+    console.error('Save attributes schema error:', error);
+    res.status(500).json({ error: error.message || 'Failed to save attributes schema' });
   }
 }

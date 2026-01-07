@@ -388,13 +388,7 @@ export function findCandidates() {
 /**
  * Calculate probability of sending proactive message
  */
-export function calculateSendProbability(gapHours, personality) {
+export function calculateSendProbability(gapHours) {
   // Base probability: 5% per hour, capped at 50%
-  let baseProbability = Math.min(gapHours * 5, 50);
-
-  // Personality modifier (extraversion)
-  const extraversion = personality?.extraversion || 50;
-  const personalityModifier = (extraversion - 50) / 2;
-
-  return Math.max(0, Math.min(100, baseProbability + personalityModifier));
+  return Math.min(gapHours * 5, 50);
 }

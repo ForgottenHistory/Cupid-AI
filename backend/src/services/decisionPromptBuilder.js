@@ -137,20 +137,10 @@ ${characterDescription ? `Description: ${characterDescription}` : ''}`
 
 /**
  * Build personality context string
+ * Currently disabled - personality system being redesigned
  */
 export function buildPersonalityContext(characterData) {
-  if (!characterData.personality_data) {
-    return '';
-  }
-
-  try {
-    const personality = JSON.parse(characterData.personality_data);
-    return `\nPersonality Traits:
-- Extraversion: ${personality.extraversion}/100 (${personality.extraversion > 60 ? 'outgoing, expressive' : 'reserved, thoughtful'})
-- Openness: ${personality.openness}/100 (${personality.openness > 60 ? 'experimental, creative' : 'traditional, practical'})`;
-  } catch (e) {
-    return '';
-  }
+  return '';
 }
 
 /**

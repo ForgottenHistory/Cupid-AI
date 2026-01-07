@@ -291,6 +291,14 @@ class CharacterService {
   }
 
   /**
+   * Generate character attributes from description using AI
+   */
+  async generateAttributes(description, name, personality) {
+    const response = await api.post('/characters/generate-attributes', { description, name, personality });
+    return response.data.attributes;
+  }
+
+  /**
    * Get lightweight character list (minimal data for UI lists)
    * Returns only: id, name, imageUrl, thumbnailUrl, isLiked, likedAt, age, bio
    * @param {number} userId - User ID (not used, auth token determines user)

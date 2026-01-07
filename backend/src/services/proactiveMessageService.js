@@ -45,8 +45,8 @@ class ProactiveMessageService {
       return { shouldProceed: true, decision };
     }
 
-    // NORMAL PROACTIVE: Use probability calculation
-    const probability = calculateSendProbability(gapHours, personality);
+    // NORMAL PROACTIVE: Use probability calculation (pure random, no personality weights)
+    const probability = calculateSendProbability(gapHours);
     const roll = Math.random() * 100;
 
     if (debugMode) {

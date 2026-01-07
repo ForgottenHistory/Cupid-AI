@@ -6,6 +6,8 @@ export {
   conversationPromptFields,
   decisionEnginePromptFields,
   characterGenerationPromptFields,
+  characterGenerationPromptFieldsTop,
+  characterGenerationPromptFieldsBottom,
   wizardPromptFields,
   defaultPromptState,
   calculateTokens,
