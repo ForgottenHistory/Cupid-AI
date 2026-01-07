@@ -5,6 +5,64 @@ All notable changes to Cupid AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-01-07
+
+### Added
+
+#### Prompts System
+- **Prompt Presets**: Save, load, and delete prompt configurations as named presets
+- **Current Preset Indicator**: Shows which preset is active with unsaved changes warning
+- **Export/Import**: Download prompts as JSON file or import from file
+- **Character Wizard Prompts**: New configurable prompts for wizard (description, appearance, image tags)
+- **Schedule Day Prompt**: Generate single day schedules with dedicated prompt
+
+#### Chat Features
+- **Horizontal Images as Background**: Display landscape images as chat background instead of sidebar
+- **Library Card from Chat**: Access character's library card directly from chat menu
+- **Character State Modal**: Click state pill in chat to manually edit character state
+
+#### LLM Settings
+- **Reasoning Effort**: Configure reasoning effort for OpenRouter models (low/medium/high)
+- **Retry on Invalid Response**: Toggle automatic retry when AI returns invalid/empty response
+- **Request Timeout**: Configure timeout duration for all LLM types
+- **Use Name Primer**: Toggle character name priming at end of prompts
+
+#### Behavior Settings
+- **Unlimited Proactive Messages**: Set daily limit to 0 for unlimited proactive messages
+- **Dynamic Character States**: States loaded from config file for easy customization
+
+#### Discover Page
+- **Persistent Daily Randomization**: Same random order maintained throughout the day
+- **Swipe Limit UI**: Visual indicator for remaining daily swipes
+
+### Changed
+- Refactored aiService.js into focused single-responsibility services
+- Refactored backend routes (chat.js, users.js) into modular structure
+- Refactored decision engine and proactive message services into smaller modules
+- Refactored ChatHeader component with cleaner organization
+- Character mood & state now included in decision context for smarter AI choices
+- Improved proactive messaging with better decision context
+- Improved character state handling and image tag generation
+- Character wizard now uses configurable prompts instead of hardcoded ones
+
+### Fixed
+- Library card modal not updating after generating content when accessed from chat
+- Schedule parsing broken by chat-specific timestamp stripping
+- Horizontal background controls positioning and visibility state
+- Randomize orientation setting not being applied to generated images
+- Thinking model output leaking into responses (reasoning tags now stripped)
+- Sidebar not updating when character schedule is changed
+- Library sorting for newly imported characters
+- Library sorting by newest/oldest not working correctly
+- Revert button not showing in Overview tab
+- Auto-unmatch setting being ignored (added safeguards)
+- Message counting for character state updates
+- Image message editing now shows image during edit mode
+- Advanced settings panel for NanoGPT provider
+- Standalone timestamps in AI responses now stripped
+
+---
+
 ## [1.2.0] - 2025-12-12
 
 ### Added
