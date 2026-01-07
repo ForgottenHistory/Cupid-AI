@@ -1,11 +1,12 @@
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 import {
   usePrompts,
   PromptSection,
   PresetManager,
   conversationPromptFields,
   decisionEnginePromptFields,
-  characterGenerationPromptFields
+  characterGenerationPromptFields,
+  wizardPromptFields
 } from './prompts/index';
 
 const Prompts = () => {
@@ -28,6 +29,49 @@ const Prompts = () => {
     deletePreset,
     clearCurrentPreset
   } = usePrompts(containerRef);
+
+  const fileInputRef = useRef(null);
+
+  const handleExport = useCallback(() => {
+    const dataStr = JSON.stringify(prompts, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cupid-prompts-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [prompts]);
+
+  const handleImport = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target.result);
+        if (typeof imported !== 'object' || imported === null) {
+          alert('Invalid prompts file format');
+          return;
+        }
+        // Update each prompt key that exists in the imported file
+        Object.keys(imported).forEach(key => {
+          if (typeof imported[key] === 'string') {
+            updatePrompt(key, imported[key]);
+          }
+        });
+        alert('Prompts imported successfully! Remember to save your changes.');
+      } catch (err) {
+        alert('Failed to parse prompts file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so same file can be imported again
+    event.target.value = '';
+  }, [updatePrompt]);
 
   if (loading) {
     return (
@@ -87,6 +131,26 @@ const Prompts = () => {
           >
             Reset to Defaults
           </button>
+          <div className="w-px h-8 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+          <button
+            onClick={handleExport}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition"
+          >
+            Export
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="px-6 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition"
+          >
+            Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImport}
+            className="hidden"
+          />
         </div>
 
         {/* Presets */}
@@ -132,6 +196,19 @@ const Prompts = () => {
           title="Character Generation & Dating Profile"
           description="AI prompts for generating character profiles, schedules, and personality traits. Use placeholder variables like {characterName} and {description} where needed."
           fields={characterGenerationPromptFields}
+          prompts={prompts}
+          updatePrompt={updatePrompt}
+          showTokens
+        />
+
+        {/* Separator */}
+        <div className="my-12 border-t-2 border-purple-200 dark:border-purple-800"></div>
+
+        {/* Character Wizard Prompts */}
+        <PromptSection
+          title="Character Wizard"
+          description="AI prompts used by the Character Wizard to generate new characters. These control name/description generation, appearance suggestions, and profile image tags."
+          fields={wizardPromptFields}
           prompts={prompts}
           updatePrompt={updatePrompt}
           showTokens

@@ -40,9 +40,21 @@ export const conversationPromptFields = [
     rows: 5
   },
   {
+    key: 'proactiveResumePrompt',
+    label: 'Proactive Resume (unused)',
+    description: 'Instructions to continue a previous conversation (currently unused)',
+    rows: 2
+  },
+  {
     key: 'proactiveFreshPrompt',
     label: 'Proactive Fresh Start',
-    description: 'Instructions to start a completely new conversation (only message type used)',
+    description: 'Instructions to start a completely new conversation. Use {openerVariety} placeholder for random opener styles.',
+    rows: 4
+  },
+  {
+    key: 'proactiveCallbackPrompt',
+    label: 'Proactive Callback (unused)',
+    description: 'Instructions to reference an earlier topic (currently unused)',
     rows: 2
   },
   {
@@ -83,8 +95,14 @@ export const characterGenerationPromptFields = [
   },
   {
     key: 'schedulePrompt',
-    label: 'Schedule Generation',
+    label: 'Schedule Generation (Full Week)',
     description: 'AI prompt for generating weekly schedules. Use {characterName} and {description} as placeholders.',
+    rows: 10
+  },
+  {
+    key: 'scheduleDayPrompt',
+    label: 'Schedule Generation (Single Day)',
+    description: 'AI prompt for generating a single day schedule. Use {characterName}, {description}, and {day} as placeholders.',
     rows: 10
   },
   {
@@ -107,6 +125,27 @@ export const characterGenerationPromptFields = [
   }
 ];
 
+export const wizardPromptFields = [
+  {
+    key: 'wizardDescriptionPrompt',
+    label: 'Character Description',
+    description: 'AI prompt for generating character name and description. Use {age}, {archetype}, and {personalityTags} as placeholders.',
+    rows: 12
+  },
+  {
+    key: 'wizardAppearancePrompt',
+    label: 'Character Appearance',
+    description: 'AI prompt for generating character appearance suggestions. Use {age}, {archetype}, and {personalityTags} as placeholders.',
+    rows: 10
+  },
+  {
+    key: 'wizardImageTagsPrompt',
+    label: 'Image Tags',
+    description: 'AI prompt for generating Danbooru image tags for profile pictures. Use {baseAppearanceTags}, {age}, {archetype}, and {personalityTags} as placeholders.',
+    rows: 12
+  }
+];
+
 export const defaultPromptState = {
   systemPrompt: '',
   contextPrompt: '',
@@ -114,14 +153,20 @@ export const defaultPromptState = {
   departingPrompt: '',
   voiceMessagePrompt: '',
   proactiveFirstMessagePrompt: '',
+  proactiveResumePrompt: '',
   proactiveFreshPrompt: '',
+  proactiveCallbackPrompt: '',
   proactiveClosingPrompt: '',
   cleanupDescriptionPrompt: '',
   datingProfilePrompt: '',
   schedulePrompt: '',
+  scheduleDayPrompt: '',
   personalityPrompt: '',
   memoryExtractionPrompt: '',
   compactionPrompt: '',
+  wizardDescriptionPrompt: '',
+  wizardAppearancePrompt: '',
+  wizardImageTagsPrompt: '',
   decisionPrompt: '',
   proactiveDecisionPrompt: ''
 };

@@ -156,6 +156,31 @@ Continue for all 7 days. Make it realistic for this character's lifestyle and pe
 Include ordinary moments and special, interesting moments that can bring engaging conversations.
 IMPORTANT: Write each ACTIVITY as if the character wrote it. They are single. Keep content appropriate and SFW.`,
 
+  scheduleDayPrompt: `Based on the character description below, create a realistic schedule for {characterName} for {day} ONLY.
+
+Status meanings:
+- ONLINE: Free and available to chat
+- AWAY: Busy with activities but might check phone
+- BUSY: At work or important tasks
+- OFFLINE: Sleeping or unavailable
+
+Character Description:
+{description}
+
+Create a schedule for {day} in this simple format (one line per time block):
+
+{day}
+00:00-08:00 OFFLINE Sleep
+08:00-09:00 AWAY Morning routine
+09:00-17:00 BUSY Work
+17:00-19:00 ONLINE
+19:00-21:00 AWAY Gym
+21:00-24:00 ONLINE
+
+Make it realistic for this character's lifestyle and personality. Activities are optional for ONLINE periods.
+Include ordinary moments and special, interesting moments that can bring engaging conversations.
+IMPORTANT: Write each ACTIVITY as if the character wrote it. They are single. Keep content appropriate and SFW.`,
+
   personalityPrompt: `Analyze this character using the Big Five (OCEAN) personality model. Rate each trait on a 0-100 scale.
 
 Character: {characterName}
@@ -340,6 +365,59 @@ Guidelines:
   * Examples: "He's really sweet, but I'm not sure if he's just being polite or actually interested." / "This conversation is so easy and fun - I could talk to him for hours."
 
 Output ONLY the required lines in the exact format shown above, nothing else.`,
+
+  // Character Wizard Prompts
+  wizardDescriptionPrompt: `Create a unique female character for a dating app AI:
+
+- Gender: Female
+- Age: {age}
+- Archetype: {archetype}
+- Personality Traits: {personalityTags}
+
+Generate a fitting name and detailed description. Format your response EXACTLY like this:
+
+NAME: [Full name (first and last) or a nickname]
+
+DESCRIPTION:
+[2-3 paragraphs covering background, occupation, personality traits, interests, hobbies, likes/dislikes, and communication style]
+
+This description will be used to guide the AI's behavior in conversations. Make it detailed and natural.`,
+
+  wizardAppearancePrompt: `Based on this character profile, suggest a cohesive appearance:
+
+- Age: {age}
+- Archetype: {archetype}
+- Personality: {personalityTags}
+
+Choose ONE option from each category that fits the character naturally. Respond EXACTLY in this format:
+
+HAIR_COLOR: [Blonde|Brunette|Black|Red|Auburn|Platinum|Pink|Purple|Blue]
+HAIR_STYLE: [Long Straight|Long Wavy|Long Curly|Medium Length|Bob Cut|Pixie Cut|Ponytail|Braided]
+EYE_COLOR: [Brown|Blue|Green|Hazel|Gray|Amber|Violet]
+BODY_TYPE: [Petite|Slim|Athletic|Curvy|Plus Size]
+STYLE: [Casual|Elegant|Sporty|Gothic|Cute|Professional]`,
+
+  wizardImageTagsPrompt: `You are an expert at creating Danbooru-style image tags for anime character art generation.
+
+Create tags for a dating profile picture with the following character:
+
+APPEARANCE: {baseAppearanceTags}
+AGE: {age}
+ARCHETYPE: {archetype}
+PERSONALITY: {personalityTags}
+
+Add 5-10 enhancement tags to make this a good dating profile picture:
+- ONE facial expression tag (smiling, grin, etc.)
+- ONE pose/body language tag (looking at viewer, waving, etc.)
+- ONE setting tag (outdoors, cafe, park, etc.)
+- ONE lighting tag (warm lighting, soft lighting, etc.)
+- 1-3 personality-driven tags
+
+Keep it concise! Too many tags reduces quality.
+
+Respond with ONLY comma-separated Danbooru tags. Start with the base appearance tags, then add your enhancements.
+
+Example: "1girl, solo, blonde hair, long hair, blue eyes, smiling, looking at viewer, outdoors, park, warm lighting, happy"`,
 
   proactiveDecisionPrompt: `⚠️ DECISION TIME: Should you send a proactive message now?
 

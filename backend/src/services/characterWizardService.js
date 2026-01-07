@@ -2,6 +2,7 @@ import axios from 'axios';
 import db from '../db/database.js';
 import llmSettingsService from './llmSettingsService.js';
 import sdService from './sdService.js';
+import { loadPrompts } from '../routes/prompts.js';
 
 class CharacterWizardService {
   constructor() {
@@ -21,21 +22,12 @@ class CharacterWizardService {
       // Get user's Metadata LLM settings (for character generation)
       const userSettings = llmSettingsService.getMetadataSettings(userId);
 
-      const prompt = `Create a unique female character for a dating app AI:
-
-- Gender: Female
-- Age: ${age}
-- Archetype: ${archetype}
-- Personality Traits: ${personalityTags.join(', ')}
-
-Generate a fitting name and detailed description. Format your response EXACTLY like this:
-
-NAME: [Full name (first and last) or a nickname]
-
-DESCRIPTION:
-[2-3 paragraphs covering background, occupation, personality traits, interests, hobbies, likes/dislikes, and communication style]
-
-This description will be used to guide the AI's behavior in conversations. Make it detailed and natural.`;
+      // Load configurable prompt
+      const prompts = loadPrompts(userId);
+      const prompt = prompts.wizardDescriptionPrompt
+        .replace(/{age}/g, age)
+        .replace(/{archetype}/g, archetype)
+        .replace(/{personalityTags}/g, personalityTags.join(', '));
 
       console.log('🧙 Wizard: Generating character name and description...');
 
@@ -96,19 +88,12 @@ This description will be used to guide the AI's behavior in conversations. Make 
       // Get user's Metadata LLM settings (for character generation)
       const userSettings = llmSettingsService.getMetadataSettings(userId);
 
-      const prompt = `Based on this character profile, suggest a cohesive appearance:
-
-- Age: ${age}
-- Archetype: ${archetype}
-- Personality: ${personalityTags.join(', ')}
-
-Choose ONE option from each category that fits the character naturally. Respond EXACTLY in this format:
-
-HAIR_COLOR: [Blonde|Brunette|Black|Red|Auburn|Platinum|Pink|Purple|Blue]
-HAIR_STYLE: [Long Straight|Long Wavy|Long Curly|Medium Length|Bob Cut|Pixie Cut|Ponytail|Braided]
-EYE_COLOR: [Brown|Blue|Green|Hazel|Gray|Amber|Violet]
-BODY_TYPE: [Petite|Slim|Athletic|Curvy|Plus Size]
-STYLE: [Casual|Elegant|Sporty|Gothic|Cute|Professional]`;
+      // Load configurable prompt
+      const prompts = loadPrompts(userId);
+      const prompt = prompts.wizardAppearancePrompt
+        .replace(/{age}/g, age)
+        .replace(/{archetype}/g, archetype)
+        .replace(/{personalityTags}/g, personalityTags.join(', '));
 
       console.log('🧙 Wizard: Generating appearance suggestions...');
 
@@ -274,27 +259,13 @@ STYLE: [Casual|Elegant|Sporty|Gothic|Cute|Professional]`;
       // Build base appearance tags
       const baseAppearanceTags = this.buildImageTags(appearance);
 
-      const prompt = `You are an expert at creating Danbooru-style image tags for anime character art generation.
-
-Create tags for a dating profile picture with the following character:
-
-APPEARANCE: ${baseAppearanceTags}
-AGE: ${age}
-ARCHETYPE: ${archetype}
-PERSONALITY: ${personalityTags.join(', ')}
-
-Add 5-10 enhancement tags to make this a good dating profile picture:
-- ONE facial expression tag (smiling, grin, etc.)
-- ONE pose/body language tag (looking at viewer, waving, etc.)
-- ONE setting tag (outdoors, cafe, park, etc.)
-- ONE lighting tag (warm lighting, soft lighting, etc.)
-- 1-3 personality-driven tags
-
-Keep it concise! Too many tags reduces quality.
-
-Respond with ONLY comma-separated Danbooru tags. Start with the base appearance tags, then add your enhancements.
-
-Example: "1girl, solo, blonde hair, long hair, blue eyes, smiling, looking at viewer, outdoors, park, warm lighting, happy"`;
+      // Load configurable prompt
+      const prompts = loadPrompts(userId);
+      const prompt = prompts.wizardImageTagsPrompt
+        .replace(/{baseAppearanceTags}/g, baseAppearanceTags)
+        .replace(/{age}/g, age)
+        .replace(/{archetype}/g, archetype)
+        .replace(/{personalityTags}/g, personalityTags.join(', '));
 
       console.log('🎨 Wizard: Generating enhanced image tags with LLM...');
 
