@@ -249,19 +249,22 @@ export const useMessageActions = ({
       );
 
       if (isMountedRef.current && currentCharacterId === characterId) {
-        const newMessages = response.messages;
-
         // Messages are already split on the backend - just display them
         setShowTypingIndicatorInternal(false);
 
+        // Instead of replacing all messages (which would reset pagination),
+        // find only the NEW messages from the response and append them
+        const existingIds = new Set(messagesUpToUser.map(m => m.id));
+        const newAIMessages = response.messages.filter(m => !existingIds.has(m.id));
+
         // Mark all new assistant messages as new for animation
-        newMessages.forEach(msg => {
+        newAIMessages.forEach(msg => {
           if (msg.role === 'assistant') {
             markMessageAsNew(msg.id);
           }
         });
 
-        setMessages(newMessages);
+        setMessages([...messagesUpToUser, ...newAIMessages]);
         setConversation(response.conversation);
         await chatService.markAsRead(currentCharacterId);
       }
