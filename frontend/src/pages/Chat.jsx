@@ -83,6 +83,7 @@ const Chat = () => {
   // Core chat state
   const {
     character,
+    setCharacter,
     conversation,
     setConversation,
     messages,

@@ -16,6 +16,7 @@ import chatService from '../../services/chatService';
 const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onStateUpdate, onCharacterUpdate }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showLibraryCard, setShowLibraryCard] = useState(false);
+  const [modalCharacter, setModalCharacter] = useState(null); // Local copy for the modal
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
 
   // Banner collapsed state (persistent, default collapsed)
@@ -223,7 +224,20 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
 
   // Open library card modal
   const handleOpenLibraryCard = () => {
+    setModalCharacter(character); // Initialize with current character data
     setShowLibraryCard(true);
+  };
+
+  // Handle modal character update (called after generation actions)
+  const handleModalCharacterUpdate = async () => {
+    // Call parent's update callback
+    if (onCharacterUpdate) {
+      await onCharacterUpdate();
+    }
+    // Also update our local modal copy
+    const characterService = (await import('../../services/characterService')).default;
+    const updatedChar = await characterService.getCharacter(character.id);
+    setModalCharacter(updatedChar);
   };
 
   const handleMenuClick = (e) => {
@@ -410,12 +424,15 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
       />
 
       {/* Library Card Modal - rendered via portal to escape stacking context */}
-      {showLibraryCard && createPortal(
+      {showLibraryCard && modalCharacter && createPortal(
         <CharacterProfile
-          character={character}
-          onClose={() => setShowLibraryCard(false)}
+          character={modalCharacter}
+          onClose={() => {
+            setShowLibraryCard(false);
+            setModalCharacter(null);
+          }}
           mode="library"
-          onUpdate={onCharacterUpdate}
+          onUpdate={handleModalCharacterUpdate}
         />,
         document.body
       )}
