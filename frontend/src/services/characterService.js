@@ -274,11 +274,11 @@ class CharacterService {
   /**
    * Generate weekly schedule from description using AI
    */
-  async generateSchedule(description, name, day = null, extraInstructions = null) {
+  async generateSchedule(description, name, day = null, extraInstructions = null, attributes = null) {
     const url = day
       ? `/characters/generate-schedule?day=${day.toUpperCase()}`
       : '/characters/generate-schedule';
-    const response = await api.post(url, { description, name, extraInstructions });
+    const response = await api.post(url, { description, name, extraInstructions, attributes });
     return response.data.schedule;
   }
 

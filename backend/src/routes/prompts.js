@@ -138,7 +138,7 @@ Status meanings:
 
 Character Description:
 {description}
-
+{attributes}
 Create a schedule in this simple format (one line per time block):
 
 MONDAY
@@ -166,7 +166,7 @@ Status meanings:
 
 Character Description:
 {description}
-
+{attributes}
 Create a schedule for {day} in this simple format (one line per time block):
 
 {day}

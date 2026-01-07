@@ -252,7 +252,8 @@ const CharacterProfile = ({ character, onClose, onLike, onPass, onUnlike, onUpda
         data.description,
         character.name,
         day,
-        extraInstructions
+        extraInstructions,
+        data.attributesData
       );
 
       // If generating a specific day, merge with existing schedule

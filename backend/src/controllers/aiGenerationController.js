@@ -70,7 +70,7 @@ export async function generateDatingProfile(req, res) {
  */
 export async function generateSchedule(req, res) {
   try {
-    const { description, name, extraInstructions } = req.body;
+    const { description, name, extraInstructions, attributes } = req.body;
     const { day } = req.query; // Optional: MONDAY, TUESDAY, etc.
 
     if (!description || !description.trim()) {
@@ -83,7 +83,7 @@ export async function generateSchedule(req, res) {
       return res.status(400).json({ error: 'Invalid day. Must be one of: MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY' });
     }
 
-    const prompt = buildSchedulePrompt(description, name, day ? day.toUpperCase() : null, extraInstructions, req.user.id);
+    const prompt = buildSchedulePrompt(description, name, day ? day.toUpperCase() : null, extraInstructions, req.user.id, attributes);
 
     const response = await aiService.createBasicCompletion(prompt, {
       messageType: day ? `schedule-${day.toLowerCase()}` : 'schedule',
