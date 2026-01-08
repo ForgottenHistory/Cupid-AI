@@ -60,3 +60,4 @@ backend/database.db-journal
 CLAUDE.md
 AI-Chat-Template/
 FEATURE_COMPARISON.md
+backend/config/characterAttributes.json

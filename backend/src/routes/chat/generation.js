@@ -522,7 +522,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     }
 
     // Save messages using shared service
-    responseProcessorService.saveMessageParts({
+    const newMessages = responseProcessorService.saveMessageParts({
       conversationId: conversation.id,
       contentParts,
       firstMessageOptions: {
@@ -539,12 +539,9 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     // Update conversation timestamp and increment unread count
     conversationService.incrementUnreadCount(conversation.id);
 
-    // Get updated messages
-    const messages = messageService.getMessages(conversation.id);
-
     res.json({
       conversation,
-      messages,
+      newMessages,
       aiResponse: {
         content: cleanedContent,
         model: aiResponse.model,

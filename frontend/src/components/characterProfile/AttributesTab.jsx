@@ -34,6 +34,12 @@ const AttributesTab = ({ data, loading, onGenerate, onRevert, onUpdateAttributes
     }
   };
 
+  const handleGenerate = async () => {
+    // Reload schema before generating to pick up any config changes
+    await loadSchema();
+    onGenerate();
+  };
+
   const handleStartEdit = (attrId, currentValue) => {
     setEditingId(attrId);
     // For lists, convert array to comma-separated string
@@ -172,7 +178,7 @@ const AttributesTab = ({ data, loading, onGenerate, onRevert, onUpdateAttributes
             </button>
           )}
           <GenerateButton
-            onClick={onGenerate}
+            onClick={handleGenerate}
             loading={loading}
             disabled={!data.description}
             label="Generate Attributes"
