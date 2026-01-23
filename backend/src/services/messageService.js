@@ -524,6 +524,25 @@ class MessageService {
   }
 
   /**
+   * Get all image URLs from assistant messages in a conversation
+   * Used for image rotation display (independent of pagination)
+   * @param {number} conversationId - Conversation ID
+   * @returns {string[]} Array of image URLs
+   */
+  getAllImageUrls(conversationId) {
+    const rows = db.prepare(`
+      SELECT image_url FROM messages
+      WHERE conversation_id = ?
+        AND role = 'assistant'
+        AND message_type = 'image'
+        AND image_url IS NOT NULL
+      ORDER BY created_at ASC, id ASC
+    `).all(conversationId);
+
+    return rows.map(row => row.image_url);
+  }
+
+  /**
    * Delete a message and all messages after it
    */
   deleteFromMessage(messageId, userId) {

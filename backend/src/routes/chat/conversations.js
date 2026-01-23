@@ -36,11 +36,15 @@ router.get('/:characterId', authenticateToken, (req, res) => {
     const conversation = conversationService.getOrCreateConversation(userId, characterId);
     const result = messageService.getMessagesPaginated(conversation.id, limit, offset);
 
+    // Fetch all image URLs for this conversation (for image rotation display)
+    const allImageUrls = messageService.getAllImageUrls(conversation.id);
+
     res.json({
       conversation,
       messages: result.messages,
       total: result.total,
-      hasMore: result.hasMore
+      hasMore: result.hasMore,
+      allImageUrls
     });
   } catch (error) {
     console.error('Get conversation error:', error);

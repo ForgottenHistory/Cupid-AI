@@ -29,6 +29,7 @@ export const useChatWebSocket = ({
   addDisplayTimeout,
   inputRef,
   onCharacterMoodUpdate,
+  setAllImageUrls,
 }) => {
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
   const [unmatchData, setUnmatchData] = useState(null);
@@ -161,6 +162,12 @@ export const useChatWebSocket = ({
             ? newMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
             : newMessages;
         });
+
+        // If this is an image message, add its URL to allImageUrls
+        if (lastMessage.message_type === 'image' && lastMessage.image_url && setAllImageUrls) {
+          setAllImageUrls(prev => [...prev, lastMessage.image_url]);
+        }
+
         setSending(false);
         inputRef.current?.focus();
       }
@@ -383,7 +390,7 @@ export const useChatWebSocket = ({
       socketService.off('character_mood_update', handleCharacterMoodUpdate);
       socketService.off('character_state_update', handleCharacterStateUpdate);
     };
-  }, [user, characterId, setMoodEffect, closeMoodModal, onCharacterMoodUpdate]);
+  }, [user, characterId, setMoodEffect, closeMoodModal, onCharacterMoodUpdate, setAllImageUrls]);
 
   return {
     showTypingIndicator,

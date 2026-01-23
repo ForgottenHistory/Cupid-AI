@@ -23,6 +23,9 @@ export const useChat = (characterId, user) => {
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  // All image URLs from the conversation (for rotation display, independent of pagination)
+  const [allImageUrls, setAllImageUrls] = useState([]);
+
   useEffect(() => {
     isMountedRef.current = true;
     loadCharacterAndChat();
@@ -88,11 +91,12 @@ export const useChat = (characterId, user) => {
       }
 
       // Load conversation and messages (latest 200 by default)
-      const { conversation: conv, messages: msgs, total, hasMore } = await chatService.getConversation(characterId, 200, 0);
+      const { conversation: conv, messages: msgs, total, hasMore, allImageUrls: imageUrls } = await chatService.getConversation(characterId, 200, 0);
       setConversation(conv);
       setMessages(msgs);
       setTotalMessages(total);
       setHasMoreMessages(hasMore);
+      setAllImageUrls(imageUrls || []);
 
       // Mark messages as read
       if (msgs.length > 0) {
@@ -158,5 +162,8 @@ export const useChat = (characterId, user) => {
     hasMoreMessages,
     loadingMore,
     loadMoreMessages,
+    // All image URLs for rotation display
+    allImageUrls,
+    setAllImageUrls,
   };
 };

@@ -98,6 +98,8 @@ const Chat = () => {
     hasMoreMessages,
     loadingMore,
     loadMoreMessages,
+    allImageUrls,
+    setAllImageUrls,
   } = useChat(characterId, user);
 
   // Message display and animation
@@ -157,6 +159,7 @@ const Chat = () => {
     setDisplayingMessages,
     addDisplayTimeout,
     inputRef,
+    setAllImageUrls,
   });
 
   // Initialize character mood from conversation data
@@ -223,11 +226,11 @@ const Chat = () => {
     }
   };
 
-  // Extract received images from character messages (last 10 only)
-  const receivedImages = messages
-    .filter(m => m.role === 'assistant' && m.message_type === 'image' && m.image_url)
+  // All received images from character (from backend, independent of pagination)
+  // Take last 10 for rotation display
+  const receivedImages = (allImageUrls || [])
     .slice(-10)
-    .map(m => `http://localhost:3000${m.image_url}`);
+    .map(url => `http://localhost:3000${url}`);
 
   // Reset states when switching characters
   useEffect(() => {
