@@ -387,10 +387,10 @@ const MessageBubble = ({
           </p>
         )}
 
-        {/* Reaction badge (show on user messages if next message is assistant with reaction) */}
-        {message.role === 'user' && messages[index + 1]?.role === 'assistant' && messages[index + 1]?.reaction && (
+        {/* Reaction badge (show on user messages if early reaction or next message is assistant with reaction) */}
+        {message.role === 'user' && (message.earlyReaction || (messages[index + 1]?.role === 'assistant' && messages[index + 1]?.reaction)) && (
           <div className="absolute -bottom-2 -right-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-full px-1.5 py-0.5 shadow-lg border border-purple-200/50 dark:border-gray-600/50">
-            <Emoji emoji={messages[index + 1].reaction} size="1.15em" />
+            <Emoji emoji={message.earlyReaction || messages[index + 1].reaction} size="1.15em" />
           </div>
         )}
       </div>

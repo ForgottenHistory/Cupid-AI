@@ -168,7 +168,22 @@ export const useChatWebSocket = ({
         // Messages are now split on the backend - just display immediately
         markMessageAsNew(lastMessage.id);
         setMessages(prev => {
-          const newMessages = [...prev, lastMessage];
+          let newMessages = [...prev, lastMessage];
+
+          // If this message has a reaction, clear earlyReaction from the last user message
+          if (lastMessage.reaction) {
+            const lastUserMsgIndex = [...prev].reverse().findIndex(m => m.role === 'user');
+            if (lastUserMsgIndex !== -1) {
+              const actualIndex = prev.length - 1 - lastUserMsgIndex;
+              if (newMessages[actualIndex].earlyReaction) {
+                newMessages[actualIndex] = {
+                  ...newMessages[actualIndex],
+                  earlyReaction: undefined
+                };
+              }
+            }
+          }
+
           // Check if sorting is needed (only if new message is out of order)
           const needsSorting = prev.length > 0 &&
             new Date(lastMessage.created_at) < new Date(prev[prev.length - 1].created_at);
@@ -179,9 +194,9 @@ export const useChatWebSocket = ({
             : newMessages;
         });
 
-        // If this is an image message, add its URL to allImageUrls
+        // If this is an image message, add its data to allImageUrls
         if (lastMessage.message_type === 'image' && lastMessage.image_url && setAllImageUrls) {
-          setAllImageUrls(prev => [...prev, lastMessage.image_url]);
+          setAllImageUrls(prev => [...prev, { url: lastMessage.image_url, prompt: lastMessage.image_prompt }]);
         }
 
         // Only unlock UI when no more messages are coming
@@ -379,6 +394,29 @@ export const useChatWebSocket = ({
       setCharacterState(data.state);
     };
 
+    const handleEarlyReaction = (data) => {
+      // Only update UI if this is the current character
+      if (data.characterId !== currentCharacterIdRef.current) return;
+
+      console.log('😊 Early reaction received:', data.reaction);
+
+      // Find the last user message and add the reaction to it temporarily
+      // The reaction will be properly stored when the assistant message arrives
+      setMessages(prev => {
+        // Find the last user message
+        const lastUserMsgIndex = [...prev].reverse().findIndex(m => m.role === 'user');
+        if (lastUserMsgIndex === -1) return prev;
+
+        const actualIndex = prev.length - 1 - lastUserMsgIndex;
+        const updatedMessages = [...prev];
+        updatedMessages[actualIndex] = {
+          ...updatedMessages[actualIndex],
+          earlyReaction: data.reaction
+        };
+        return updatedMessages;
+      });
+    };
+
     socketService.on('new_message', handleNewMessage);
     socketService.on('character_typing', handleCharacterTyping);
     socketService.on('character_offline', handleCharacterOffline);
@@ -392,6 +430,7 @@ export const useChatWebSocket = ({
     socketService.on('messages_combined', handleMessagesCombined);
     socketService.on('character_mood_update', handleCharacterMoodUpdate);
     socketService.on('character_state_update', handleCharacterStateUpdate);
+    socketService.on('early_reaction', handleEarlyReaction);
 
     // Cleanup
     return () => {
@@ -408,6 +447,7 @@ export const useChatWebSocket = ({
       socketService.off('messages_combined', handleMessagesCombined);
       socketService.off('character_mood_update', handleCharacterMoodUpdate);
       socketService.off('character_state_update', handleCharacterStateUpdate);
+      socketService.off('early_reaction', handleEarlyReaction);
     };
   }, [user, characterId, setMoodEffect, closeMoodModal, onCharacterMoodUpdate, setAllImageUrls]);
 

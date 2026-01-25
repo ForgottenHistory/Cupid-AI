@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useMood } from '../context/MoodContext';
 import chatService from '../services/chatService';
 import characterService from '../services/characterService';
+import { getImageUrl } from '../services/api';
 
 // Custom hooks
 import { useChat } from '../hooks/useChat';
@@ -18,6 +19,7 @@ import ChatInput from '../components/chat/ChatInput';
 import UnmatchModal from '../components/UnmatchModal';
 import ChatBackgroundEffects from '../components/chat/ChatBackgroundEffects';
 import MoodModal from '../components/chat/MoodModal';
+import ImageModal from '../components/ImageModal';
 
 const Chat = () => {
   const { characterId } = useParams();
@@ -63,6 +65,10 @@ const Chat = () => {
 
   // Temporary toggle to hide the background (resets per chat)
   const [backgroundHidden, setBackgroundHidden] = useState(false);
+
+  // Image gallery view state
+  const [showImageGallery, setShowImageGallery] = useState(false);
+  const [galleryModalImage, setGalleryModalImage] = useState(null); // { url, prompt }
 
   // Listen for storage changes (when setting is changed in SDSettingsPage)
   useEffect(() => {
@@ -230,7 +236,7 @@ const Chat = () => {
   // Take last 10 for rotation display
   const receivedImages = (allImageUrls || [])
     .slice(-10)
-    .map(url => `http://localhost:3000${url}`);
+    .map(img => getImageUrl(img.url || img));
 
   // Reset states when switching characters
   useEffect(() => {
@@ -393,7 +399,7 @@ const Chat = () => {
 
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`http://localhost:3000/api/debug/generate-image/${character.id}`, {
+          const response = await fetch(getImageUrl(`/api/debug/generate-image/${character.id}`), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -487,7 +493,7 @@ const Chat = () => {
 
         try {
           const token = localStorage.getItem('token');
-          const response = await fetch(`http://localhost:3000/api/chat/conversations/${characterId}/debug-mood`, {
+          const response = await fetch(getImageUrl(`/api/chat/conversations/${characterId}/debug-mood`), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -812,16 +818,20 @@ const Chat = () => {
               {/* Text */}
               <div className="absolute bottom-5 left-5 right-5">
                 <h2 className="text-xl font-bold text-white drop-shadow-lg">{character.name}</h2>
-                {/* Auto-scroll indicator */}
+                {/* Auto-scroll indicator / Gallery button */}
                 {autoScrollEnabled && receivedImages.length > 0 && (
                   <div className="mt-2 flex items-center gap-2">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/80 backdrop-blur-sm rounded-full text-xs font-medium text-white shadow-lg">
+                    <button
+                      onClick={() => setShowImageGallery(true)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/80 hover:bg-purple-600/90 backdrop-blur-sm rounded-full text-xs font-medium text-white shadow-lg transition-all cursor-pointer"
+                      title="View all images"
+                    >
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
                         <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
                       </svg>
                       <span>{currentImageIndex + 1} / {receivedImages.length}</span>
-                    </div>
+                    </button>
                   </div>
                 )}
               </div>
@@ -847,8 +857,60 @@ const Chat = () => {
           </button>
         )}
 
-        {/* Right Side - Messages */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Right Side - Messages or Image Gallery */}
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          {/* Image Gallery View (absolute overlay) */}
+          {showImageGallery && (
+            <div className="absolute inset-0 z-10 flex flex-col bg-gray-50 dark:bg-gray-900">
+              {/* Gallery Header */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setShowImageGallery(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  title="Back to chat"
+                >
+                  <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <div>
+                  <h2 className="font-semibold text-gray-900 dark:text-white">Images from {character?.name}</h2>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{allImageUrls?.length || 0} images</p>
+                </div>
+              </div>
+
+              {/* Gallery Grid */}
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                {allImageUrls && allImageUrls.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {allImageUrls.map((img, index) => {
+                      const fullUrl = getImageUrl(img.url || img);
+                      const prompt = img.prompt || null;
+                      return (
+                        <div
+                          key={index}
+                          className="aspect-square rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all group"
+                          onClick={() => setGalleryModalImage({ url: fullUrl, prompt })}
+                        >
+                          <img
+                            src={fullUrl}
+                            alt={`Image ${index + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
+                    <p>No images yet</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Normal Chat View (always rendered to preserve scroll position) */}
           <MessageList
             messages={messages}
             character={character}
@@ -941,6 +1003,15 @@ const Chat = () => {
           effect={backgroundEffect}
           characterName={currentCharacterName}
           onClose={() => closeMoodModal(characterId)}
+        />
+      )}
+
+      {/* Gallery Image Modal */}
+      {galleryModalImage && (
+        <ImageModal
+          imageUrl={galleryModalImage.url}
+          imagePrompt={galleryModalImage.prompt}
+          onClose={() => setGalleryModalImage(null)}
         />
       )}
     </div>

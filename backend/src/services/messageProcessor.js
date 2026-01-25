@@ -252,6 +252,17 @@ class MessageProcessor {
 
       console.log('🎯 Decision made:', decision);
 
+      // Emit reaction immediately (before Content LLM generates response)
+      // This gives a realistic feel - character reacts quickly but takes time to type
+      if (decision.reaction) {
+        console.log(`😊 Early reaction: ${decision.reaction}`);
+        io.to(`user:${userId}`).emit('early_reaction', {
+          characterId,
+          conversationId,
+          reaction: decision.reaction
+        });
+      }
+
       // Emit thought if present (every 10th message) - frontend only, not saved to DB
       if (decision.thought) {
         console.log(`💭 Thought generated: ${decision.thought}`);

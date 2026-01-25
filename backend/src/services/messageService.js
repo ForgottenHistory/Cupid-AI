@@ -524,14 +524,14 @@ class MessageService {
   }
 
   /**
-   * Get all image URLs from assistant messages in a conversation
-   * Used for image rotation display (independent of pagination)
+   * Get all image data from assistant messages in a conversation
+   * Used for image rotation display and gallery (independent of pagination)
    * @param {number} conversationId - Conversation ID
-   * @returns {string[]} Array of image URLs
+   * @returns {Object[]} Array of {url, prompt} objects
    */
   getAllImageUrls(conversationId) {
     const rows = db.prepare(`
-      SELECT image_url FROM messages
+      SELECT image_url, image_prompt FROM messages
       WHERE conversation_id = ?
         AND role = 'assistant'
         AND message_type = 'image'
@@ -539,7 +539,10 @@ class MessageService {
       ORDER BY created_at ASC, id ASC
     `).all(conversationId);
 
-    return rows.map(row => row.image_url);
+    return rows.map(row => ({
+      url: row.image_url,
+      prompt: row.image_prompt
+    }));
   }
 
   /**
