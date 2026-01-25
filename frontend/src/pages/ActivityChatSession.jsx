@@ -47,6 +47,7 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     isMatch,
     userFirstChance,
     startSession,
+    endSession,
     handleUserDecision,
     handleMatchAction,
     resetSession,
@@ -282,17 +283,9 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     onBack();
   };
 
-  // Handle reveal and match for blind date
-  const handleRevealAndMatch = async () => {
-    if (isMatch && mode === 'blind') {
-      setShowReveal(true);
-      // Wait for reveal animation then proceed
-      setTimeout(() => {
-        handleMatchAction();
-      }, 2000);
-    } else {
-      handleMatchAction();
-    }
+  // Handle reveal for blind date - just shows the identity, doesn't auto-proceed
+  const handleReveal = () => {
+    setShowReveal(true);
   };
 
   // Combine errors
@@ -501,15 +494,18 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
 
                   {!showReveal ? (
                     <button
-                      onClick={handleRevealAndMatch}
+                      onClick={handleReveal}
                       className="mt-6 px-8 py-4 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold rounded-full hover:from-amber-600 hover:to-rose-600 transition shadow-lg hover:shadow-xl animate-pulse"
                     >
                       Reveal Identity
                     </button>
                   ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-                      Starting chat...
-                    </p>
+                    <button
+                      onClick={handleMatchAction}
+                      className="mt-6 px-8 py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white font-semibold rounded-full hover:from-pink-600 hover:to-purple-700 transition shadow-lg hover:shadow-xl"
+                    >
+                      Start Chatting
+                    </button>
                   )}
                 </>
               ) : (
@@ -648,8 +644,20 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
                 {formatTime(timeRemaining)}
               </div>
             </div>
-            <div className="text-xs text-gray-400 dark:text-gray-500">
-              {mode === 'blind' ? 'Blind Date' : 'Random Chat'}
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-400 dark:text-gray-500">
+                {mode === 'blind' ? 'Blind Date' : 'Random Chat'}
+              </span>
+              <button
+                onClick={endSession}
+                className={`px-3 py-1 text-xs font-medium rounded-full transition ${
+                  mode === 'blind'
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                    : 'bg-purple-500 hover:bg-purple-600 text-white'
+                }`}
+              >
+                End Chat
+              </button>
             </div>
           </div>
           {/* Progress bar */}

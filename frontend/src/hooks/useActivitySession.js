@@ -77,7 +77,7 @@ export const useActivitySession = (user, mode = 'random') => {
     return () => clearInterval(interval);
   }, [character]);
 
-  // Timer effect
+  // Timer effect - just tracks time, doesn't auto-transition
   useEffect(() => {
     if (phase === PHASE.CHATTING && startedAt) {
       timerRef.current = setInterval(() => {
@@ -85,9 +85,10 @@ export const useActivitySession = (user, mode = 'random') => {
         const remaining = Math.max(0, chatDuration - elapsed);
         setTimeRemaining(remaining);
 
+        // Timer reaching 0 doesn't auto-transition anymore
+        // User must click "End Chat" to proceed to decisions
         if (remaining <= 0) {
           clearInterval(timerRef.current);
-          setPhase(PHASE.DECIDING);
         }
       }, 1000);
 
@@ -96,6 +97,16 @@ export const useActivitySession = (user, mode = 'random') => {
       };
     }
   }, [phase, startedAt, chatDuration]);
+
+  /**
+   * End the chat session and proceed to decision phase
+   */
+  const endSession = useCallback(() => {
+    if (phase === PHASE.CHATTING) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setPhase(PHASE.DECIDING);
+    }
+  }, [phase]);
 
   // Track conversation ID in a ref for cleanup
   const conversationIdRef = useRef(null);
@@ -365,6 +376,7 @@ export const useActivitySession = (user, mode = 'random') => {
 
     // Actions
     startSession,
+    endSession,
     handleUserDecision,
     handleMatchAction,
     resetSession,
