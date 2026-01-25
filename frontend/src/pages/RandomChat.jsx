@@ -9,6 +9,7 @@ import { getCurrentStatusFromSchedule } from '../utils/characterHelpers';
 // Reuse chat components
 import MessageList from '../components/chat/MessageList';
 import ChatInput from '../components/chat/ChatInput';
+import ChatHeader from '../components/chat/ChatHeader';
 
 // Chat phases
 const PHASE = {
@@ -39,6 +40,15 @@ const RandomChat = () => {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [showTypingIndicator, setShowTypingIndicator] = useState(false);
+
+  // Edit state
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+
+  // Swipe/regenerate state
+  const [messageSwipes, setMessageSwipes] = useState({}); // { messageId: [content1, content2, ...] }
+  const [messageSwipeIndex, setMessageSwipeIndex] = useState({}); // { messageId: currentIndex }
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Timer state
   const [timeRemaining, setTimeRemaining] = useState(CHAT_DURATION);
@@ -251,7 +261,12 @@ const RandomChat = () => {
   const handleMatchAction = async () => {
     if (isMatch && character) {
       try {
+        // Like the character first
         await characterService.likeCharacter(character.id);
+
+        // Convert random chat session to real conversation
+        await api.post('/random-chat/convert', { sessionId });
+
         navigate(`/chat/${character.id}`);
       } catch (err) {
         console.error('Failed to match:', err);
@@ -273,8 +288,147 @@ const RandomChat = () => {
     setSessionId(null);
     setTimeRemaining(CHAT_DURATION);
     setError(null);
+    setEditingMessageId(null);
+    setEditingText('');
     if (timerRef.current) clearInterval(timerRef.current);
   };
+
+  // Message editing handlers
+  const handleStartEdit = (message) => {
+    setEditingMessageId(message.id);
+    setEditingText(message.content);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEdit = async (messageId) => {
+    if (!editingText.trim()) return;
+
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, content: editingText.trim() } : msg
+    ));
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  // Delete messages from a point onwards (receives index)
+  const handleDeleteFrom = async (index) => {
+    if (index < 0 || index >= messages.length) return;
+    setMessages(prev => prev.slice(0, index));
+  };
+
+  // Swipe between alternate responses
+  const handleSwipe = (messageId, direction) => {
+    const swipes = messageSwipes[messageId];
+    if (!swipes || swipes.length <= 1) return;
+
+    const currentIndex = messageSwipeIndex[messageId] || 0;
+    let newIndex;
+
+    if (direction === 'left') {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : swipes.length - 1;
+    } else {
+      newIndex = currentIndex < swipes.length - 1 ? currentIndex + 1 : 0;
+    }
+
+    setMessageSwipeIndex(prev => ({ ...prev, [messageId]: newIndex }));
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId ? { ...msg, content: swipes[newIndex] } : msg
+    ));
+  };
+
+  // Regenerate last assistant message
+  const handleRegenerate = async (messageId) => {
+    // Find the message and the user message before it
+    const msgIndex = messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    const targetMsg = messages[msgIndex];
+    if (targetMsg.role !== 'assistant') return;
+
+    // Find the last user message before this one
+    let userMessage = null;
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        userMessage = messages[i];
+        break;
+      }
+    }
+
+    if (!userMessage) return;
+
+    setIsRegenerating(true);
+
+    try {
+      const response = await api.post('/random-chat/message', {
+        sessionId,
+        message: userMessage.content,
+        regenerate: true
+      });
+
+      if (response.data.response) {
+        const newContent = response.data.response;
+
+        // Add to swipes for this message
+        const existingSwipes = messageSwipes[messageId] || [targetMsg.content];
+        if (!existingSwipes.includes(newContent)) {
+          const newSwipes = [...existingSwipes, newContent];
+          setMessageSwipes(prev => ({ ...prev, [messageId]: newSwipes }));
+          setMessageSwipeIndex(prev => ({ ...prev, [messageId]: newSwipes.length - 1 }));
+        }
+
+        // Update the message content
+        setMessages(prev => prev.map(msg =>
+          msg.id === messageId ? { ...msg, content: newContent } : msg
+        ));
+      }
+    } catch (err) {
+      console.error('Failed to regenerate:', err);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  // Suggest reply handler for random chat
+  const handleSuggestReply = async (style) => {
+    const response = await api.post('/random-chat/suggest-reply', {
+      sessionId,
+      style
+    });
+    return response.data.suggestion;
+  };
+
+  // Debug: expose function to trigger end mechanic from console
+  useEffect(() => {
+    window.endRandomChat = async (forceMatch = false) => {
+      if (phase === PHASE.CHATTING) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        setTimeRemaining(0);
+
+        if (forceMatch) {
+          // Skip deciding phase, force a match and convert to real chat
+          console.log('🎲 Force matching and converting to real chat...');
+          try {
+            await characterService.likeCharacter(character.id);
+            await api.post('/random-chat/convert', { sessionId, forceMatch: true });
+            console.log('🎲 Converted! Navigating to chat...');
+            navigate(`/chat/${character.id}`);
+          } catch (err) {
+            console.error('🎲 Force match failed:', err);
+          }
+        } else {
+          setPhase(PHASE.DECIDING);
+          console.log('🎲 Random chat ended early via debug');
+        }
+      } else {
+        console.log('🎲 Not in chatting phase, current phase:', phase);
+      }
+    };
+    return () => { delete window.endRandomChat; };
+  }, [phase, character, sessionId, navigate]);
 
   // Render IDLE phase
   if (phase === PHASE.IDLE) {
@@ -447,11 +601,10 @@ const RandomChat = () => {
   // Render CHATTING phase - match Chat.jsx layout exactly
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30 relative">
-      {/* Header with Timer */}
-      <div className="flex-shrink-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-b border-purple-100/50 dark:border-gray-700/50 shadow-sm relative z-10">
-        <div className="px-6 py-3">
-          {/* Timer Bar */}
-          <div className="flex items-center justify-between mb-2">
+      {/* Timer Bar */}
+      <div className="flex-shrink-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-b border-purple-100/50 dark:border-gray-700/50 shadow-sm relative z-20">
+        <div className="px-6 py-2">
+          <div className="flex items-center justify-between mb-1">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">TIME REMAINING</span>
               <div className={`px-3 py-1 rounded-full font-mono text-sm font-bold ${
@@ -480,6 +633,27 @@ const RandomChat = () => {
         </div>
       </div>
 
+      {/* Chat Header */}
+      {character && (
+        <div className="relative z-10">
+          <ChatHeader
+            character={character}
+            characterStatus={characterStatus}
+            characterMood={null}
+            characterState={null}
+            messages={messages}
+            totalMessages={messages.length}
+            hasMoreMessages={false}
+            onBack={() => resetChat()}
+            onUnmatch={() => {}}
+            conversationId={null}
+            onMoodUpdate={() => {}}
+            onStateUpdate={() => {}}
+            onCharacterUpdate={() => {}}
+          />
+        </div>
+      )}
+
       {/* Main Chat Area - Split view like Chat.jsx */}
       <div className="flex-1 flex overflow-hidden gap-4 p-4 relative z-10">
         {/* Left Side - Character Image */}
@@ -492,24 +666,9 @@ const RandomChat = () => {
                 alt={characterName}
                 className="w-full h-full object-cover object-center"
               />
-              {/* Top gradient fade */}
-              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/50 via-black/20 to-transparent"></div>
               {/* Gradient overlays */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-purple-50/20 dark:to-gray-800/30"></div>
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 dark:to-black/30"></div>
-            </div>
-
-            {/* Status badge at top */}
-            <div className="absolute top-4 left-4 right-4 flex items-center gap-2 z-10">
-              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20">
-                <div className={`w-2.5 h-2.5 rounded-full ${getStatusColor(characterStatus.status)} animate-pulse`}></div>
-                <span className="text-sm font-medium text-white capitalize">{characterStatus.status}</span>
-              </div>
-              {characterStatus.activity && (
-                <div className="bg-black/40 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/20 flex-1 min-w-0">
-                  <p className="text-xs text-white/80 truncate">{characterStatus.activity}</p>
-                </div>
-              )}
             </div>
 
             {/* Character name overlay at bottom */}
@@ -521,7 +680,6 @@ const RandomChat = () => {
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-40% via-black/20 to-transparent"></div>
               <div className="absolute bottom-5 left-5 right-5">
                 <h2 className="text-xl font-bold text-white drop-shadow-lg">{characterName}</h2>
-                <p className="text-sm text-white/70 mt-1">Getting to know each other...</p>
               </div>
             </div>
           </div>
@@ -534,13 +692,13 @@ const RandomChat = () => {
             character={character}
             showTypingIndicator={showTypingIndicator}
             newMessageIds={new Set()}
-            editingMessageId={null}
-            editingText=""
-            setEditingText={() => {}}
-            onStartEdit={() => {}}
-            onCancelEdit={() => {}}
-            onSaveEdit={() => {}}
-            onDeleteFrom={() => {}}
+            editingMessageId={editingMessageId}
+            editingText={editingText}
+            setEditingText={setEditingText}
+            onStartEdit={handleStartEdit}
+            onCancelEdit={handleCancelEdit}
+            onSaveEdit={handleSaveEdit}
+            onDeleteFrom={handleDeleteFrom}
             messagesEndRef={messagesEndRef}
             imageModalOpen={false}
             setImageModalOpen={() => {}}
@@ -548,9 +706,11 @@ const RandomChat = () => {
             loadingMore={false}
             onLoadMore={() => {}}
             totalMessages={messages.length}
-            onSwipe={() => {}}
-            onRegenerate={() => {}}
-            isRegenerating={false}
+            onSwipe={handleSwipe}
+            onRegenerate={handleRegenerate}
+            isRegenerating={isRegenerating}
+            messageSwipes={messageSwipes}
+            messageSwipeIndex={messageSwipeIndex}
           />
         </div>
       </div>
@@ -573,6 +733,7 @@ const RandomChat = () => {
           setSelectedImage={() => {}}
           imageDescription=""
           setImageDescription={() => {}}
+          onSuggestReply={handleSuggestReply}
         />
       </div>
     </div>

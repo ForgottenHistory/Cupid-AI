@@ -21,6 +21,7 @@ const ChatInput = ({
   setSelectedImage,
   imageDescription,
   setImageDescription,
+  onSuggestReply,
 }) => {
   const [loadingSuggestion, setLoadingSuggestion] = useState(null);
   const fileInputRef = useRef(null);
@@ -30,9 +31,19 @@ const ChatInput = ({
 
     try {
       setLoadingSuggestion(style);
-      const response = await chatService.suggestReply(characterId, style, character.cardData?.data);
-      setInput(response.suggestion);
-      inputRef.current?.focus();
+      let suggestion;
+      if (onSuggestReply) {
+        // Use custom handler (e.g., for random chat)
+        suggestion = await onSuggestReply(style);
+      } else {
+        // Use default chat service
+        const response = await chatService.suggestReply(characterId, style, character.cardData?.data);
+        suggestion = response.suggestion;
+      }
+      if (suggestion) {
+        setInput(suggestion);
+        inputRef.current?.focus();
+      }
     } catch (error) {
       console.error('Failed to generate suggestion:', error);
     } finally {

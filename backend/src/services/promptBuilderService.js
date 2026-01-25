@@ -10,6 +10,28 @@ const __dirname = path.dirname(__filename);
 
 class PromptBuilderService {
   /**
+   * Replace template variables in text
+   * Supports: {{user}}, {{char}}, and their variations
+   */
+  replaceTemplateVariables(text, userName, charName) {
+    if (!text) return text;
+
+    const userReplacement = userName || 'User';
+    const charReplacement = charName || 'Character';
+
+    return text
+      // User variations (case-insensitive)
+      .replace(/\{\{user\}\}/gi, userReplacement)
+      .replace(/\{\{USER\}\}/g, userReplacement)
+      .replace(/<user>/gi, userReplacement)
+      // Character variations (case-insensitive)
+      .replace(/\{\{char\}\}/gi, charReplacement)
+      .replace(/\{\{CHAR\}\}/g, charReplacement)
+      .replace(/<char>/gi, charReplacement)
+      .replace(/\{\{character\}\}/gi, charReplacement);
+  }
+
+  /**
    * Get a random opener variety and format it as a string
    */
   getRandomOpenerVariety(userId) {
@@ -118,7 +140,10 @@ class PromptBuilderService {
 
     // Handle v2 card format (nested under .data) or flat format
     const name = characterData.data?.name || characterData.name;
-    const description = characterData.data?.description || characterData.description;
+    const rawDescription = characterData.data?.description || characterData.description;
+
+    // Replace template variables in description
+    const description = this.replaceTemplateVariables(rawDescription, userName, name);
 
     if (name) {
       parts.push(`\nYou are ${name}.`);
@@ -132,30 +157,33 @@ class PromptBuilderService {
     const datingProfile = characterData.data?.datingProfile || characterData.datingProfile;
 
     if (datingProfile) {
+      // Helper to replace vars in profile fields
+      const r = (text) => this.replaceTemplateVariables(text, userName, name);
+
       // Handle dating profile object or string
       if (typeof datingProfile === 'object') {
         const profile = datingProfile;
         const profileParts = [];
 
-        if (profile.bio) profileParts.push(`Bio: ${profile.bio}`);
+        if (profile.bio) profileParts.push(`Bio: ${r(profile.bio)}`);
         if (profile.age) profileParts.push(`Age: ${profile.age}`);
-        if (profile.occupation) profileParts.push(`Occupation: ${profile.occupation}`);
+        if (profile.occupation) profileParts.push(`Occupation: ${r(profile.occupation)}`);
         if (profile.height) profileParts.push(`Height: ${profile.height}`);
         if (profile.bodyType) profileParts.push(`Body Type: ${profile.bodyType}`);
         if (profile.measurements) profileParts.push(`Measurements: ${profile.measurements}`);
         if (profile.interests && profile.interests.length > 0) {
-          profileParts.push(`Interests: ${profile.interests.join(', ')}`);
+          profileParts.push(`Interests: ${profile.interests.map(r).join(', ')}`);
         }
         if (profile.funFacts && profile.funFacts.length > 0) {
-          profileParts.push(`Fun Facts: ${profile.funFacts.join(', ')}`);
+          profileParts.push(`Fun Facts: ${profile.funFacts.map(r).join(', ')}`);
         }
-        if (profile.lookingFor) profileParts.push(`Looking For: ${profile.lookingFor}`);
+        if (profile.lookingFor) profileParts.push(`Looking For: ${r(profile.lookingFor)}`);
 
         if (profileParts.length > 0) {
           parts.push(`\nDating Profile:\n${profileParts.join('\n')}`);
         }
       } else {
-        parts.push(`\nDating Profile: ${datingProfile}`);
+        parts.push(`\nDating Profile: ${r(datingProfile)}`);
       }
     }
 
