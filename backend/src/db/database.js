@@ -1151,6 +1151,12 @@ function runMigrations() {
       `);
       console.log('✅ Activities settings columns added');
     }
+    if (!userColumnsForActivities.includes('activities_user_first_chance')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN activities_user_first_chance INTEGER DEFAULT 50;
+      `);
+      console.log('✅ Activities user first chance column added');
+    }
 
     // Migration: Add activity columns to conversations for temporary activity chats
     const convColumnsForActivity = db.pragma('table_info(conversations)').map(col => col.name);

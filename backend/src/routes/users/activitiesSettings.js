@@ -9,6 +9,7 @@ const FIELD_TO_COLUMN = {
   activitiesIncludeAway: 'activities_include_away',
   activitiesIncludeBusy: 'activities_include_busy',
   activitiesChatDuration: 'activities_chat_duration',
+  activitiesUserFirstChance: 'activities_user_first_chance',
 };
 
 const BOOLEAN_FIELDS = ['activitiesIncludeAway', 'activitiesIncludeBusy'];
@@ -16,6 +17,7 @@ const BOOLEAN_FIELDS = ['activitiesIncludeAway', 'activitiesIncludeBusy'];
 // Validation rules
 const VALIDATION = {
   activitiesChatDuration: { min: 1, max: 30, error: 'Chat duration must be 1-30 minutes' },
+  activitiesUserFirstChance: { min: 0, max: 100, error: 'User first chance must be 0-100%' },
 };
 
 // Default values
@@ -23,6 +25,7 @@ const DEFAULTS = {
   activitiesIncludeAway: false,
   activitiesIncludeBusy: false,
   activitiesChatDuration: 10,
+  activitiesUserFirstChance: 50,
 };
 
 /**

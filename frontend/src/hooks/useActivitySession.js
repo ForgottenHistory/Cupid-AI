@@ -52,6 +52,9 @@ export const useActivitySession = (user, mode = 'random') => {
   const proactiveTimeoutRef = useRef(null);
   const immediateTimeoutRef = useRef(null);
 
+  // User first chance setting (0-100%)
+  const [userFirstChance, setUserFirstChance] = useState(50);
+
   // Character status (computed from schedule)
   const [characterStatus, setCharacterStatus] = useState({ status: 'online', activity: null });
 
@@ -131,6 +134,8 @@ export const useActivitySession = (user, mode = 'random') => {
 
       const includeAway = settings?.activitiesIncludeAway || false;
       const includeBusy = settings?.activitiesIncludeBusy || false;
+      const userFirst = settings?.activitiesUserFirstChance ?? 50;
+      setUserFirstChance(userFirst);
 
       // Get random online character (respecting settings)
       const selectedCharacter = await characterService.getRandomOnlineCharacter(user.id, includeAway, includeBusy);
@@ -354,6 +359,9 @@ export const useActivitySession = (user, mode = 'random') => {
     proactiveTriggered,
     waitingForProactive,
     triggerProactiveMessage,
+
+    // Settings
+    userFirstChance,
 
     // Actions
     startSession,

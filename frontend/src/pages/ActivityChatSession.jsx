@@ -45,6 +45,7 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     characterReason,
     decidingCharacter,
     isMatch,
+    userFirstChance,
     startSession,
     handleUserDecision,
     handleMatchAction,
@@ -152,8 +153,8 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     }
     firstMessageSetupRef.current = conversationId;
 
-    // 50% chance character sends first message immediately (1-3 second delay)
-    const characterGoesFirst = Math.random() < 0.5;
+    // userFirstChance is actually "character first chance" (0% = you always first, 100% = character always first)
+    const characterGoesFirst = Math.random() * 100 < userFirstChance;
 
     const sendFirstMessage = async () => {
       // Check if still no messages (use ref for current value)
@@ -187,16 +188,16 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     if (characterGoesFirst) {
       // Character goes first: 1-3 second delay
       const delay = 1000 + Math.random() * 2000;
-      console.log(`🎲 Character goes first - sending message in ${Math.round(delay)}ms`);
+      console.log(`🎲 Character goes first (${userFirstChance}% chance) - sending message in ${Math.round(delay)}ms`);
       setTimeout(sendFirstMessage, delay);
     } else {
       // User goes first: wait 15 seconds, then if no messages, character sends
-      console.log(`🎲 User goes first - character will send if no messages in 15s`);
+      console.log(`🎲 User goes first (${100 - userFirstChance}% chance) - character will send if no messages in 15s`);
       setTimeout(sendFirstMessage, 15000);
     }
     // No cleanup - we want the timeout to fire even if effect re-runs
     // The ref guard prevents duplicate setup, and sendFirstMessage checks for existing messages
-  }, [phase, conversationId, character, mode, setMessages, markMessageAsNew, setError]);
+  }, [phase, conversationId, character, mode, userFirstChance, setMessages, markMessageAsNew, setError]);
 
   // Swipe state (simplified for activities)
   const [messageSwipes] = useState({});

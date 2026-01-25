@@ -9,6 +9,7 @@ const ActivitiesSettingsPage = () => {
     activitiesIncludeAway: false,
     activitiesIncludeBusy: false,
     activitiesChatDuration: 10,
+    activitiesUserFirstChance: 50,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,6 +69,7 @@ const ActivitiesSettingsPage = () => {
       activitiesIncludeAway: false,
       activitiesIncludeBusy: false,
       activitiesChatDuration: 10,
+      activitiesUserFirstChance: 50,
     });
     setSuccess('');
     setError('');
@@ -180,6 +182,28 @@ const ActivitiesSettingsPage = () => {
                 <span>30 min</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">How long each Random Chat or Blind Date session lasts before the decision phase</p>
+            </div>
+
+            {/* Character First Chance */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Character First Message Chance</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.activitiesUserFirstChance}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={settings.activitiesUserFirstChance}
+                onChange={(e) => updateSetting('activitiesUserFirstChance', parseInt(e.target.value))}
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
+              />
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>0% (You always first)</span>
+                <span>100% (Character always first)</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Chance for the character to send the first message. At 0%, you always get to write first. At 100%, the character always starts the conversation.</p>
             </div>
 
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
