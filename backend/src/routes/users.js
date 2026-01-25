@@ -3,6 +3,7 @@ import profileRoutes from './users/profile.js';
 import llmSettingsRoutes from './users/llmSettings.js';
 import sdSettingsRoutes from './users/sdSettings.js';
 import behaviorSettingsRoutes from './users/behaviorSettings.js';
+import activitiesSettingsRoutes from './users/activitiesSettings.js';
 import { loadCharacterStates } from '../services/decisionPromptBuilder.js';
 
 const router = express.Router();
@@ -12,6 +13,7 @@ router.use('/profile', profileRoutes);
 router.use('/', llmSettingsRoutes);  // LLM settings at root level (/llm-settings, /decision-llm-settings, etc.)
 router.use('/sd-settings', sdSettingsRoutes);
 router.use('/behavior-settings', behaviorSettingsRoutes);
+router.use('/activities-settings', activitiesSettingsRoutes);
 
 // Keep account deletion at root level for backwards compatibility
 import { authenticateToken } from '../middleware/auth.js';

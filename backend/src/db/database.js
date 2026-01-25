@@ -1140,6 +1140,17 @@ function runMigrations() {
     if (syncedCount > 0) {
       console.log(`✅ Synced schedule_data for ${syncedCount} character(s)`);
     }
+
+    // Migration: Add activities settings columns
+    const userColumnsForActivities = db.pragma('table_info(users)').map(col => col.name);
+    if (!userColumnsForActivities.includes('activities_include_away')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN activities_include_away INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN activities_include_busy INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN activities_chat_duration INTEGER DEFAULT 10;
+      `);
+      console.log('✅ Activities settings columns added');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

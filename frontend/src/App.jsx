@@ -19,6 +19,7 @@ import CharacterWizard from './pages/CharacterWizard';
 import LLMSettingsPage from './pages/LLMSettingsPage';
 import BehaviorSettingsPage from './pages/BehaviorSettingsPage';
 import SDSettingsPage from './pages/SDSettingsPage';
+import ActivitiesSettingsPage from './pages/ActivitiesSettingsPage';
 import HeroImage from './pages/HeroImage';
 import RandomChat from './pages/RandomChat';
 
@@ -176,6 +177,17 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <RandomChat />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/settings/activities"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <ActivitiesSettingsPage />
                 </MainLayout>
               </ProtectedRoute>
             }
