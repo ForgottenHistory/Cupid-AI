@@ -77,7 +77,7 @@ export const useActivitySession = (user, mode = 'random') => {
     return () => clearInterval(interval);
   }, [character]);
 
-  // Timer effect - just tracks time, doesn't auto-transition
+  // Timer effect - auto-transitions to deciding phase when time runs out
   useEffect(() => {
     if (phase === PHASE.CHATTING && startedAt) {
       timerRef.current = setInterval(() => {
@@ -85,10 +85,10 @@ export const useActivitySession = (user, mode = 'random') => {
         const remaining = Math.max(0, chatDuration - elapsed);
         setTimeRemaining(remaining);
 
-        // Timer reaching 0 doesn't auto-transition anymore
-        // User must click "End Chat" to proceed to decisions
+        // Auto-transition to deciding phase when timer reaches 0
         if (remaining <= 0) {
           clearInterval(timerRef.current);
+          setPhase(PHASE.DECIDING);
         }
       }, 1000);
 
