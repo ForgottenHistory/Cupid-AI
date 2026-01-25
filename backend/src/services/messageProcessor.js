@@ -681,20 +681,25 @@ class MessageProcessor {
         conversationService.incrementUnreadCount(conversationId);
 
         // === DOUBLE TEXT CHANCE (roll before emitting to inform frontend) ===
-        const doubleTextSettings = db.prepare(`
-          SELECT double_text_chance_min, double_text_chance_max
-          FROM users WHERE id = ?
-        `).get(userId);
-
-        const minChance = doubleTextSettings?.double_text_chance_min || 0;
-        const maxChance = doubleTextSettings?.double_text_chance_max || 0;
-
+        // Skip double text if the response already has multiple messages (from newlines)
         let willDoubleText = false;
-        if (maxChance > 0) {
-          const rollChance = minChance + Math.random() * (maxChance - minChance);
-          const roll = Math.random() * 100;
-          willDoubleText = roll < rollChance;
-          console.log(`🎲 Double text roll: ${roll.toFixed(1)}% (need < ${rollChance.toFixed(1)}% from range ${minChance}-${maxChance}%) → ${willDoubleText ? 'YES' : 'NO'}`);
+        if (allSavedMessages.length === 1) {
+          const doubleTextSettings = db.prepare(`
+            SELECT double_text_chance_min, double_text_chance_max
+            FROM users WHERE id = ?
+          `).get(userId);
+
+          const minChance = doubleTextSettings?.double_text_chance_min || 0;
+          const maxChance = doubleTextSettings?.double_text_chance_max || 0;
+
+          if (maxChance > 0) {
+            const rollChance = minChance + Math.random() * (maxChance - minChance);
+            const roll = Math.random() * 100;
+            willDoubleText = roll < rollChance;
+            console.log(`🎲 Double text roll: ${roll.toFixed(1)}% (need < ${rollChance.toFixed(1)}% from range ${minChance}-${maxChance}%) → ${willDoubleText ? 'YES' : 'NO'}`);
+          }
+        } else {
+          console.log(`🎲 Double text skipped: response already has ${allSavedMessages.length} messages`);
         }
 
         console.log(`✅ Sent ${allSavedMessages.length} message(s) to user ${userId} (type: ${messageType})`);
