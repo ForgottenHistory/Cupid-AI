@@ -370,6 +370,15 @@ const RandomChatSession = ({ user, onBack }) => {
             messageSwipes={messageSwipes}
             messageSwipeIndex={messageSwipeIndex}
           />
+
+          {/* Error Display */}
+          {error && (
+            <div className="px-6 py-2">
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm shadow-sm dark:bg-red-900/20 dark:border-red-800 dark:text-red-400">
+                {error}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

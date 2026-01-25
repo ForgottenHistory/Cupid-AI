@@ -235,21 +235,29 @@ export const useActivitySession = (user, mode = 'random') => {
   // Send message
   const handleSend = async (e) => {
     if (e) e.preventDefault();
-    if (!input.trim() || sending || phase !== PHASE.CHATTING) return;
+    if (sending || phase !== PHASE.CHATTING) return;
 
     const userMessage = input.trim();
     setInput('');
     setSending(true);
+    setError(null);
 
-    const userMsgObj = {
-      id: Date.now(),
-      role: 'user',
-      content: userMessage,
-      created_at: new Date().toISOString()
-    };
-    setMessages(prev => [...prev, userMsgObj]);
+    // If there's a user message, add it to the chat
+    if (userMessage) {
+      const userMsgObj = {
+        id: Date.now(),
+        role: 'user',
+        content: userMessage,
+        created_at: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, userMsgObj]);
+    }
 
-    setShowTypingIndicator(true);
+    // Random delay before showing typing indicator (500-2000ms)
+    const typingDelay = Math.random() * 1500 + 500;
+    const typingTimeout = setTimeout(() => {
+      setShowTypingIndicator(true);
+    }, typingDelay);
 
     try {
       const response = await api.post('/random-chat/message', {
@@ -257,6 +265,7 @@ export const useActivitySession = (user, mode = 'random') => {
         message: userMessage
       });
 
+      clearTimeout(typingTimeout);
       setShowTypingIndicator(false);
 
       if (response.data.response) {
@@ -281,7 +290,9 @@ export const useActivitySession = (user, mode = 'random') => {
 
     } catch (err) {
       console.error('Failed to send message:', err);
+      clearTimeout(typingTimeout);
       setShowTypingIndicator(false);
+      setError(err.response?.data?.error || 'Failed to get response. Please try again.');
     } finally {
       setSending(false);
     }
@@ -447,7 +458,7 @@ export const useActivitySession = (user, mode = 'random') => {
 
   // Debug: expose function to trigger end mechanic
   useEffect(() => {
-    window.endSession = async (forceMatch = false) => {
+    const debugEndSession = async (forceMatch = false) => {
       if (phase === PHASE.CHATTING) {
         if (timerRef.current) clearInterval(timerRef.current);
         setTimeRemaining(0);
@@ -470,7 +481,12 @@ export const useActivitySession = (user, mode = 'random') => {
         console.log('Not in chatting phase, current phase:', phase);
       }
     };
-    return () => { delete window.endSession; };
+    window.endSession = debugEndSession;
+    window.endRandomChat = debugEndSession; // Alias for backwards compatibility
+    return () => {
+      delete window.endSession;
+      delete window.endRandomChat;
+    };
   }, [phase, character, sessionId, navigate]);
 
   return {

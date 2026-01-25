@@ -243,8 +243,8 @@ router.post('/message', authenticateToken, async (req, res) => {
     const { sessionId, message, regenerate } = req.body;
     const userId = req.user.id;
 
-    if (!sessionId || !message) {
-      return res.status(400).json({ error: 'Session ID and message are required' });
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
     }
 
     // Get session
@@ -267,13 +267,14 @@ router.post('/message', authenticateToken, async (req, res) => {
       if (session.messages.length > 0 && session.messages[session.messages.length - 1].role === 'assistant') {
         session.messages.pop();
       }
-    } else {
-      // Add user message to session
+    } else if (message && message.trim()) {
+      // Add user message to session only if there's actual content
       session.messages.push({
         role: 'user',
         content: message
       });
     }
+    // Empty message = prompt AI to continue without adding user message
 
     // Get user profile info
     const user = db.prepare('SELECT display_name, bio FROM users WHERE id = ?').get(userId);
