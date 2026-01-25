@@ -191,13 +191,34 @@ const RandomChat = () => {
           });
 
           if (firstMsgResponse.data.response) {
-            const charMsgObj = {
-              id: Date.now(),
-              role: 'assistant',
-              content: firstMsgResponse.data.response,
-              created_at: new Date().toISOString()
-            };
-            setMessages(prev => prev.length === 0 ? [charMsgObj] : prev);
+            // Split response by newlines into separate messages
+            const parts = firstMsgResponse.data.response
+              .split('\n')
+              .map(p => p.trim())
+              .filter(p => p.length > 0);
+
+            if (parts.length > 0) {
+              // Add first message immediately
+              const firstMsgObj = {
+                id: Date.now(),
+                role: 'assistant',
+                content: parts[0],
+                created_at: new Date().toISOString()
+              };
+              setMessages(prev => prev.length === 0 ? [firstMsgObj] : prev);
+
+              // Add subsequent parts with delays
+              for (let i = 1; i < parts.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 800));
+                const partMsgObj = {
+                  id: Date.now() + i,
+                  role: 'assistant',
+                  content: parts[i],
+                  created_at: new Date().toISOString()
+                };
+                setMessages(prev => [...prev, partMsgObj]);
+              }
+            }
           }
         } catch (err) {
           console.error('Failed to generate first message:', err);
@@ -258,13 +279,24 @@ const RandomChat = () => {
       setShowTypingIndicator(false);
 
       if (response.data.response) {
-        const charMsgObj = {
-          id: Date.now() + 1,
-          role: 'assistant',
-          content: response.data.response,
-          created_at: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, charMsgObj]);
+        // Split response by newlines into separate messages
+        const parts = response.data.response
+          .split('\n')
+          .map(p => p.trim())
+          .filter(p => p.length > 0);
+
+        for (let i = 0; i < parts.length; i++) {
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
+          const charMsgObj = {
+            id: Date.now() + i + 1,
+            role: 'assistant',
+            content: parts[i],
+            created_at: new Date().toISOString()
+          };
+          setMessages(prev => [...prev, charMsgObj]);
+        }
       }
 
     } catch (err) {

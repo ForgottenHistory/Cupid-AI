@@ -4,13 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { useMood } from '../context/MoodContext';
 import chatService from '../services/chatService';
 import characterService from '../services/characterService';
-import { getImageUrl } from '../services/api';
 
 // Custom hooks
 import { useChat } from '../hooks/useChat';
 import { useMessageDisplay } from '../hooks/useMessageDisplay';
 import { useChatWebSocket } from '../hooks/useChatWebSocket';
 import { useMessageActions } from '../hooks/useMessageActions';
+import { useCharacterImage } from '../hooks/useCharacterImage';
+import { useChatDebug } from '../hooks/useChatDebug';
 
 // Components
 import ChatHeader from '../components/chat/ChatHeader';
@@ -20,6 +21,9 @@ import UnmatchModal from '../components/UnmatchModal';
 import ChatBackgroundEffects from '../components/chat/ChatBackgroundEffects';
 import MoodModal from '../components/chat/MoodModal';
 import ImageModal from '../components/ImageModal';
+import CharacterImagePanel from '../components/chat/CharacterImagePanel';
+import ChatBackgroundImage from '../components/chat/ChatBackgroundImage';
+import ImageGallery from '../components/chat/ImageGallery';
 
 const Chat = () => {
   const { characterId } = useParams();
@@ -31,54 +35,11 @@ const Chat = () => {
   const [selectedImage, setSelectedImage] = useState(null);
   const [imageDescription, setImageDescription] = useState('');
 
-  // Character image visibility state (persistent, default visible)
-  const [showCharacterImage, setShowCharacterImage] = useState(() => {
-    const saved = localStorage.getItem('chatShowCharacterImage');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-
-  // Persist character image visibility
-  useEffect(() => {
-    localStorage.setItem('chatShowCharacterImage', JSON.stringify(showCharacterImage));
-  }, [showCharacterImage]);
-
   // Image modal state (to hide input when viewing full-screen images)
   const [imageModalOpen, setImageModalOpen] = useState(false);
 
   // Swipe regeneration state
   const [isRegenerating, setIsRegenerating] = useState(false);
-
-  // Auto-scroll mode for character images
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const autoScrollIntervalRef = useRef(null);
-  const hasAutoEnabledRef = useRef(false);
-
-  // Image orientation detection
-  const [isHorizontalImage, setIsHorizontalImage] = useState(false);
-
-  // Setting: show horizontal images as background (from localStorage)
-  const [horizontalAsBackground, setHorizontalAsBackground] = useState(() => {
-    const saved = localStorage.getItem('chatHorizontalAsBackground');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-
-  // Temporary toggle to hide the background (resets per chat)
-  const [backgroundHidden, setBackgroundHidden] = useState(false);
-
-  // Image gallery view state
-  const [showImageGallery, setShowImageGallery] = useState(false);
-  const [galleryModalImage, setGalleryModalImage] = useState(null); // { url, prompt }
-
-  // Listen for storage changes (when setting is changed in SDSettingsPage)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const saved = localStorage.getItem('chatHorizontalAsBackground');
-      setHorizontalAsBackground(saved !== null ? JSON.parse(saved) : true);
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
 
   // Mood context (persistent per character)
   const { setMoodEffect, clearMoodEffect, closeMoodModal, getMoodForCharacter } = useMood();
@@ -107,6 +68,24 @@ const Chat = () => {
     allImageUrls,
     setAllImageUrls,
   } = useChat(characterId, user);
+
+  // Character image display state
+  const {
+    showCharacterImage,
+    setShowCharacterImage,
+    autoScrollEnabled,
+    setAutoScrollEnabled,
+    currentImageIndex,
+    backgroundHidden,
+    setBackgroundHidden,
+    showAsBackground,
+    currentDisplayImage,
+    receivedImages,
+    showImageGallery,
+    setShowImageGallery,
+    galleryModalImage,
+    setGalleryModalImage,
+  } = useCharacterImage(characterId, character, allImageUrls);
 
   // Message display and animation
   const {
@@ -168,6 +147,16 @@ const Chat = () => {
     setAllImageUrls,
   });
 
+  // Debug functions (attach to window)
+  useChatDebug({
+    character,
+    characterId,
+    conversation,
+    setUnmatchData,
+    setMoodEffect,
+    clearMoodEffect,
+  });
+
   // Initialize character mood from conversation data
   useEffect(() => {
     if (conversation?.character_mood) {
@@ -189,9 +178,9 @@ const Chat = () => {
   // Debug: Log when thought changes
   useEffect(() => {
     if (currentThought) {
-      console.log('💭 [UI] Displaying thought:', currentThought);
+      console.log('[Chat] Displaying thought:', currentThought);
     } else {
-      console.log('💭 [UI] Thought cleared');
+      console.log('[Chat] Thought cleared');
     }
   }, [currentThought]);
 
@@ -200,7 +189,6 @@ const Chat = () => {
     try {
       const response = await chatService.swipeMessage(messageId, swipeIndex);
       if (response.success && response.message) {
-        // Update message in local state
         setMessages(prev => prev.map(msg =>
           msg.id === messageId ? { ...msg, ...response.message } : msg
         ));
@@ -219,7 +207,6 @@ const Chat = () => {
     try {
       const response = await chatService.regenerateMessage(messageId, character);
       if (response.success && response.message) {
-        // Update message in local state with new content and swipes
         setMessages(prev => prev.map(msg =>
           msg.id === messageId ? { ...msg, ...response.message } : msg
         ));
@@ -232,104 +219,20 @@ const Chat = () => {
     }
   };
 
-  // All received images from character (from backend, independent of pagination)
-  // Take last 10 for rotation display
-  const receivedImages = (allImageUrls || [])
-    .slice(-10)
-    .map(img => getImageUrl(img.url || img));
-
   // Reset states when switching characters
   useEffect(() => {
     setSending(false);
     setDisplayingMessages(false);
-    // Don't reset showTypingIndicator - let WebSocket hook manage it based on actual state
     setShowTypingIndicatorInternal(false);
     clearDisplayTimeouts();
-    // Note: input text is managed by useMessageActions hook (per-chat caching)
-    // Reset image upload state
     setSelectedImage(null);
     setImageDescription('');
-    // Reset auto-scroll state and flag
-    setAutoScrollEnabled(false);
-    // Randomize initial image index
-    setCurrentImageIndex(receivedImages.length > 0 ? Math.floor(Math.random() * receivedImages.length) : 0);
-    hasAutoEnabledRef.current = false;
-    // Reset background hidden state
-    setBackgroundHidden(false);
-  }, [characterId, receivedImages.length]);
-
-  // Auto-scroll timer for cycling through received images
-  useEffect(() => {
-    // Clear any existing interval
-    if (autoScrollIntervalRef.current) {
-      clearInterval(autoScrollIntervalRef.current);
-      autoScrollIntervalRef.current = null;
-    }
-
-    // Only start interval if auto-scroll is enabled and there are images to scroll through
-    if (autoScrollEnabled && receivedImages.length > 0) {
-      console.log(`🔄 Auto-scroll enabled with ${receivedImages.length} images`);
-
-      // Cycle every 60 seconds with random selection
-      autoScrollIntervalRef.current = setInterval(() => {
-        setCurrentImageIndex(() => {
-          // Pick random index
-          return Math.floor(Math.random() * receivedImages.length);
-        });
-      }, 60000);
-    }
-
-    // Cleanup on unmount or when dependencies change
-    return () => {
-      if (autoScrollIntervalRef.current) {
-        clearInterval(autoScrollIntervalRef.current);
-        autoScrollIntervalRef.current = null;
-      }
-    };
-  }, [autoScrollEnabled, receivedImages.length]);
-
-  // Randomize image index when toggling auto-scroll or when images change
-  useEffect(() => {
-    if (!autoScrollEnabled && receivedImages.length > 0) {
-      setCurrentImageIndex(Math.floor(Math.random() * receivedImages.length));
-    }
-  }, [autoScrollEnabled, receivedImages.length]);
-
-  // Auto-enable auto-scroll when images are available (only once per character)
-  useEffect(() => {
-    if (receivedImages.length > 0 && !autoScrollEnabled && !hasAutoEnabledRef.current) {
-      setAutoScrollEnabled(true);
-      hasAutoEnabledRef.current = true;
-      console.log(`🔄 Auto-enabled image scroll (${receivedImages.length} images available)`);
-    }
-  }, [receivedImages.length, autoScrollEnabled]);
-
-  // Detect image orientation when current image changes
-  useEffect(() => {
-    const currentImageUrl = autoScrollEnabled && receivedImages.length > 0
-      ? receivedImages[currentImageIndex]
-      : character?.imageUrl;
-
-    if (!currentImageUrl) {
-      setIsHorizontalImage(false);
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => {
-      const isHorizontal = img.width > img.height;
-      setIsHorizontalImage(isHorizontal);
-    };
-    img.onerror = () => {
-      setIsHorizontalImage(false);
-    };
-    img.src = currentImageUrl;
-  }, [autoScrollEnabled, receivedImages, currentImageIndex, character?.imageUrl]);
+  }, [characterId]);
 
   // Check for 30-minute time gap when chat first loads and restore mood effects
   useEffect(() => {
     if (messages.length > 0 && !loading && character) {
-      console.log(`🔍 Checking mood restoration for ${character.name} (${characterId})`);
+      console.log(`[Chat] Checking mood restoration for ${character.name} (${characterId})`);
 
       // Find last non-system message (user or assistant)
       const lastNonSystemMsg = [...messages].reverse().find(m => m.role !== 'system');
@@ -340,8 +243,8 @@ const Chat = () => {
         const gapMinutes = (nowTime - lastMsgTime) / (1000 * 60);
 
         if (gapMinutes >= 30) {
-          console.log(`⏰ Conversation idle (${gapMinutes.toFixed(1)} min) - clearing instantly`);
-          clearMoodEffect(characterId, true); // instant clear
+          console.log(`[Chat] Conversation idle (${gapMinutes.toFixed(1)} min) - clearing instantly`);
+          clearMoodEffect(characterId, true);
           return;
         }
       }
@@ -359,172 +262,20 @@ const Chat = () => {
         const elapsed = Date.now() - moodTime;
         const thirtyMinutes = 30 * 60 * 1000;
 
-        // Only restore if mood is less than 30 minutes old
         if (elapsed < thirtyMinutes) {
           const remaining = thirtyMinutes - elapsed;
-          console.log(`🔄 Restoring ${mood} for ${character.name} (${(remaining / 60000).toFixed(1)} min remaining, no modal)`);
-          setMoodEffect(characterId, mood, character.name, remaining, false); // false = don't show modal
+          console.log(`[Chat] Restoring ${mood} for ${character.name} (${(remaining / 60000).toFixed(1)} min remaining, no modal)`);
+          setMoodEffect(characterId, mood, character.name, remaining, false);
         } else {
-          console.log(`⏰ Mood expired (${(elapsed / 60000).toFixed(1)} min old) - clearing instantly`);
-          clearMoodEffect(characterId, true); // instant clear
+          console.log(`[Chat] Mood expired (${(elapsed / 60000).toFixed(1)} min old) - clearing instantly`);
+          clearMoodEffect(characterId, true);
         }
       } else {
-        console.log(`📭 No mood message found for ${character.name} - clearing instantly`);
-        clearMoodEffect(characterId, true); // instant clear
+        console.log(`[Chat] No mood message found for ${character.name} - clearing instantly`);
+        clearMoodEffect(characterId, true);
       }
     }
-    // Only run when characterId changes or loading finishes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [characterId, loading]);
-
-  // Debug function for testing unmatch modal
-  useEffect(() => {
-    if (character) {
-      // Expose conversation ID for debug functions
-      window.__currentConversationId = conversation?.id || null;
-
-      window.debugUnmatch = () => {
-        console.log('🐛 Debug: Triggering unmatch modal');
-        setUnmatchData({
-          characterId: character.id,
-          characterName: character.name,
-          reason: 'Debug test unmatch'
-        });
-      };
-
-      // Debug function for generating character image
-      window.debugGenerateImage = async (contextTags = 'smiling, casual clothes, outdoors, daytime') => {
-        console.log('🐛 Debug: Generating image for', character.name);
-        console.log('🎨 Context tags:', contextTags);
-
-        try {
-          const token = localStorage.getItem('token');
-          const response = await fetch(getImageUrl(`/api/debug/generate-image/${character.id}`), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ contextTags })
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            console.error('❌ Image generation failed:', error);
-            alert(`Failed to generate image: ${error.error}`);
-            return;
-          }
-
-          const result = await response.json();
-          console.log('✅ Image generated!');
-          console.log('📝 Full prompt:', result.prompt);
-
-          // Download image
-          try {
-            const link = document.createElement('a');
-            link.href = result.image;
-            link.download = `${character.name.replace(/[^a-z0-9]/gi, '_')}_${Date.now()}.png`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            console.log('💾 Image downloaded!');
-            alert(`Image generated and downloaded!\n\nPrompt: ${result.prompt}`);
-          } catch (downloadError) {
-            console.error('Download failed, showing image in console instead:', downloadError);
-            console.log('🖼️ Image data:', result.image);
-
-            // Try to open in new window as fallback
-            try {
-              const newWindow = window.open('', '_blank');
-              if (newWindow) {
-                newWindow.document.write(`
-                  <html>
-                    <head><title>${character.name} - Generated Image</title></head>
-                    <body style="margin: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh;">
-                      <img src="${result.image}" style="max-width: 90vw; max-height: 80vh; object-fit: contain;" />
-                      <div style="color: white; text-align: center; padding: 20px; font-family: monospace; font-size: 12px; max-width: 90vw; word-wrap: break-word;">
-                        <p><strong>Prompt:</strong> ${result.prompt}</p>
-                        <p style="margin-top: 10px;"><em>Right-click image to save</em></p>
-                      </div>
-                    </body>
-                  </html>
-                `);
-                newWindow.document.close();
-              } else {
-                alert('Image generated! Check console for image data (copy the data URI to browser to view)');
-              }
-            } catch (windowError) {
-              alert('Image generated! Check console - copy the image data URI to your browser to view it.');
-            }
-          }
-        } catch (error) {
-          console.error('❌ Debug image generation error:', error);
-          alert(`Error: ${error.message}`);
-        }
-      };
-
-      // Debug function for testing chat background effects (frontend only)
-      window.debugChatBackground = (effect = 'hearts') => {
-        const validEffects = ['none', 'hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
-        if (!validEffects.includes(effect)) {
-          console.log(`❌ Invalid effect. Valid options: ${validEffects.join(', ')}`);
-          return;
-        }
-        console.log(`🎨 Setting chat background effect: ${effect} for character ${characterId}`);
-
-        if (effect !== 'none') {
-          // Pass auto-clear timeout to context (30 minutes)
-          setMoodEffect(characterId, effect, character?.name || 'Character', 30 * 60 * 1000);
-        } else {
-          clearMoodEffect(characterId);
-        }
-      };
-
-      // Debug function for full mood system (backend + frontend)
-      window.debugMood = async (mood = 'hearts') => {
-        const validMoods = ['hearts', 'stars', 'laugh', 'sparkles', 'fire', 'roses'];
-        if (!validMoods.includes(mood)) {
-          console.log(`❌ Invalid mood. Valid options: ${validMoods.join(', ')}`);
-          return;
-        }
-
-        console.log(`🎨 Triggering full mood system: ${mood} for character ${characterId}`);
-
-        try {
-          const token = localStorage.getItem('token');
-          const response = await fetch(getImageUrl(`/api/chat/conversations/${characterId}/debug-mood`), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ mood, characterName: character?.name })
-          });
-
-          if (!response.ok) {
-            const error = await response.json();
-            console.error('❌ Mood trigger failed:', error);
-            return;
-          }
-
-          const result = await response.json();
-          console.log('✅ Mood triggered successfully!');
-          console.log('📝 System message:', result.systemMessage);
-        } catch (error) {
-          console.error('❌ Debug mood error:', error);
-        }
-      };
-    }
-    return () => {
-      delete window.debugUnmatch;
-      delete window.debugGenerateImage;
-      delete window.debugChatBackground;
-      delete window.debugMood;
-      delete window.__currentConversationId;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [character, conversation]);
 
   // Handle unmatch
   const handleUnmatch = async () => {
@@ -533,13 +284,10 @@ const Chat = () => {
     }
 
     try {
-      // Delete conversation and messages
       if (conversation?.id) {
         await chatService.deleteConversation(conversation.id);
       }
-      // Unlike character
       await characterService.unlikeCharacter(characterId);
-      // Notify other components to refresh
       window.dispatchEvent(new Event('characterUpdated'));
       navigate('/');
     } catch (err) {
@@ -603,84 +351,22 @@ const Chat = () => {
     }
   };
 
-  // Get current display image URL
-  const currentDisplayImage = autoScrollEnabled && receivedImages.length > 0
-    ? receivedImages[currentImageIndex]
-    : character?.imageUrl;
-
-  // Show horizontal image as background only if setting is enabled
-  const showAsBackground = isHorizontalImage && horizontalAsBackground;
-
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30 relative">
       {/* Horizontal Image Background */}
-      {showAsBackground && currentDisplayImage && !backgroundHidden && (
-        <div className="absolute inset-0 z-0">
-          <img
-            src={currentDisplayImage}
-            alt=""
-            className="w-full h-full object-cover transition-opacity duration-500"
-            style={{
-              filter: 'brightness(0.4) blur(1px)',
-              imageRendering: 'auto',
-              transform: 'translateZ(0)',
-            }}
-          />
-          {/* Gradient overlay for readability */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-black/50"></div>
-        </div>
-      )}
+      <ChatBackgroundImage
+        showAsBackground={showAsBackground}
+        currentDisplayImage={currentDisplayImage}
+        backgroundHidden={backgroundHidden}
+        setBackgroundHidden={setBackgroundHidden}
+        autoScrollEnabled={autoScrollEnabled}
+        setAutoScrollEnabled={setAutoScrollEnabled}
+        receivedImages={receivedImages}
+        currentImageIndex={currentImageIndex}
+        character={character}
+      />
 
-      {/* Floating controls for horizontal background - outside z-0 container so they're clickable */}
-      {showAsBackground && currentDisplayImage && !backgroundHidden && (
-        <div className="absolute bottom-36 right-8 flex flex-col gap-2 z-20">
-          {/* Auto-scroll Toggle */}
-          {receivedImages.length > 0 && (
-            <button
-              onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
-              className={`p-2.5 backdrop-blur-md rounded-lg transition-all shadow-lg border border-white/20 ${
-                autoScrollEnabled
-                  ? 'bg-purple-500/80 hover:bg-purple-600/80'
-                  : 'bg-black/40 hover:bg-black/60'
-              }`}
-              title={autoScrollEnabled ? `Auto-scroll ON (${currentImageIndex + 1}/${receivedImages.length})` : `Enable auto-scroll (${receivedImages.length} images)`}
-            >
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {autoScrollEnabled ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                )}
-              </svg>
-            </button>
-          )}
-          {/* Hide Background Button */}
-          <button
-            onClick={() => setBackgroundHidden(true)}
-            className="p-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-lg transition-all shadow-lg border border-white/20"
-            title="Hide background image"
-          >
-            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Show Background Button (when horizontal image is hidden) */}
-      {showAsBackground && character && backgroundHidden && (
-        <button
-          onClick={() => setBackgroundHidden(false)}
-          className="absolute bottom-36 right-8 z-20 p-2.5 bg-white/90 dark:bg-gray-800/90 hover:bg-purple-100 dark:hover:bg-gray-700 backdrop-blur-md rounded-lg transition-all shadow-lg border border-purple-200/50 dark:border-gray-600/50"
-          title="Show background image"
-        >
-          <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-        </button>
-      )}
-
-      {/* Mood Background Overlay - Only render when visible to avoid flash */}
+      {/* Mood Background Overlay */}
       {backgroundEffect !== 'none' && backgroundVisible && (
         <div
           className={`absolute inset-0 ${getMoodBackgroundGradient()} opacity-40 dark:opacity-20`}
@@ -691,7 +377,7 @@ const Chat = () => {
       {/* Background Effects */}
       <ChatBackgroundEffects effect={backgroundEffect} visible={backgroundVisible} />
 
-      {/* Chat Header - Always visible */}
+      {/* Chat Header */}
       {character && (
         <div className="relative z-10">
           <ChatHeader
@@ -717,200 +403,34 @@ const Chat = () => {
 
       {/* Main Chat Area - Split view */}
       <div className="flex-1 flex overflow-hidden gap-4 p-4 relative z-10">
-        {/* Left Side - Character Image (with smooth transitions) */}
+        {/* Left Side - Character Image Panel */}
         {character && (
-          <div
-            className={`relative overflow-hidden rounded-2xl shadow-2xl flex-shrink-0 border border-purple-200/30 dark:border-gray-600/30 group transition-all duration-300 ease-in-out ${
-              showCharacterImage ? 'w-[320px] opacity-100' : 'w-0 opacity-0 border-0'
-            }`}
-          >
-            {/* Image with gradient overlays for depth - Use base image when showing horizontal as background */}
-            <div className="absolute inset-0">
-              <img
-                src={showAsBackground ? character.imageUrl : (autoScrollEnabled && receivedImages.length > 0 ? receivedImages[currentImageIndex] : character.imageUrl)}
-                alt={character.name}
-                className="w-full h-full object-cover object-center transition-opacity duration-500"
-                style={{
-                  imageRendering: 'auto',
-                  transform: 'translateZ(0)',
-                  backfaceVisibility: 'hidden'
-                }}
-              />
-              {/* Top gradient fade */}
-              <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-black/50 via-black/20 to-transparent"></div>
-              {/* Gradient overlays for sleek blending */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-purple-50/20 dark:to-gray-800/30"></div>
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/10 dark:to-black/30"></div>
-              {/* Subtle vignette effect */}
-              <div className="absolute inset-0 shadow-inner" style={{
-                boxShadow: 'inset 0 0 100px rgba(0,0,0,0.1)'
-              }}></div>
-            </div>
-
-            {/* Thought Display - Top Left */}
-            {currentThought && (
-              <div className="absolute top-4 left-4 max-w-[240px] animate-fade-in">
-                <div className="bg-black/60 backdrop-blur-md rounded-lg px-3 py-2 shadow-xl border border-white/10">
-                  <div className="flex items-start gap-2">
-                    <span className="text-base opacity-60">💭</span>
-                    <p className="text-xs text-white/90 leading-relaxed italic">
-                      {currentThought}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Control Buttons - Top Right */}
-            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-              {/* Auto-scroll Toggle Button */}
-              {receivedImages.length > 0 && (
-                <button
-                  onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
-                  className={`p-2 backdrop-blur-sm rounded-lg transition-all shadow-lg ${
-                    autoScrollEnabled
-                      ? 'bg-purple-500/80 hover:bg-purple-600/80'
-                      : 'bg-black/40 hover:bg-black/60'
-                  }`}
-                  title={autoScrollEnabled ? `Auto-scroll ON (${receivedImages.length} images)` : `Enable auto-scroll (${receivedImages.length} images)`}
-                >
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    {autoScrollEnabled ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    )}
-                  </svg>
-                </button>
-              )}
-
-              {/* Hide Image Button */}
-              <button
-                onClick={() => setShowCharacterImage(false)}
-                className="p-2 bg-black/40 hover:bg-black/60 backdrop-blur-sm rounded-lg transition-all shadow-lg"
-                title="Hide character image"
-              >
-                <svg
-                  className="w-5 h-5 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Character name overlay at bottom - multiple layers for smooth blur fade */}
-            <div className="absolute bottom-0 left-0 right-0 h-32">
-              {/* Blur layer with very gradual fade */}
-              <div className="absolute inset-0 backdrop-blur-sm" style={{
-                maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 100%)',
-                WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.5) 40%, rgba(0,0,0,0) 100%)'
-              }}></div>
-              {/* Dark gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-40% via-black/20 to-transparent"></div>
-              {/* Text */}
-              <div className="absolute bottom-5 left-5 right-5">
-                <h2 className="text-xl font-bold text-white drop-shadow-lg">{character.name}</h2>
-                {/* Auto-scroll indicator / Gallery button */}
-                {autoScrollEnabled && receivedImages.length > 0 && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <button
-                      onClick={() => setShowImageGallery(true)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/80 hover:bg-purple-600/90 backdrop-blur-sm rounded-full text-xs font-medium text-white shadow-lg transition-all cursor-pointer"
-                      title="View all images"
-                    >
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
-                        <path fillRule="evenodd" d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" clipRule="evenodd" />
-                      </svg>
-                      <span>{currentImageIndex + 1} / {receivedImages.length}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Show Image Button (when hidden) */}
-        {character && !showCharacterImage && (
-          <button
-            onClick={() => setShowCharacterImage(true)}
-            className="w-12 flex-shrink-0 bg-white dark:bg-gray-800 border border-purple-200/30 dark:border-gray-600/30 rounded-xl shadow-lg hover:bg-purple-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center animate-fade-in"
-            title="Show character image"
-          >
-            <svg
-              className="w-6 h-6 text-purple-600 dark:text-purple-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
-          </button>
+          <CharacterImagePanel
+            character={character}
+            currentThought={currentThought}
+            showCharacterImage={showCharacterImage}
+            setShowCharacterImage={setShowCharacterImage}
+            autoScrollEnabled={autoScrollEnabled}
+            setAutoScrollEnabled={setAutoScrollEnabled}
+            currentImageIndex={currentImageIndex}
+            receivedImages={receivedImages}
+            showAsBackground={showAsBackground}
+            onOpenGallery={() => setShowImageGallery(true)}
+          />
         )}
 
         {/* Right Side - Messages or Image Gallery */}
         <div className="flex-1 flex flex-col min-w-0 relative">
-          {/* Image Gallery View (absolute overlay) */}
-          {showImageGallery && (
-            <div className="absolute inset-0 z-10 flex flex-col bg-gray-50 dark:bg-gray-900">
-              {/* Gallery Header */}
-              <div className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <button
-                  onClick={() => setShowImageGallery(false)}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Back to chat"
-                >
-                  <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                <div>
-                  <h2 className="font-semibold text-gray-900 dark:text-white">Images from {character?.name}</h2>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{allImageUrls?.length || 0} images</p>
-                </div>
-              </div>
+          {/* Image Gallery View */}
+          <ImageGallery
+            isOpen={showImageGallery}
+            onClose={() => setShowImageGallery(false)}
+            character={character}
+            allImageUrls={allImageUrls}
+            onSelectImage={setGalleryModalImage}
+          />
 
-              {/* Gallery Grid */}
-              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {allImageUrls && allImageUrls.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {allImageUrls.map((img, index) => {
-                      const fullUrl = getImageUrl(img.url || img);
-                      const prompt = img.prompt || null;
-                      return (
-                        <div
-                          key={index}
-                          className="aspect-square rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700 cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all group"
-                          onClick={() => setGalleryModalImage({ url: fullUrl, prompt })}
-                        >
-                          <img
-                            src={fullUrl}
-                            alt={`Image ${index + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex-1 flex items-center justify-center text-gray-500 dark:text-gray-400">
-                    <p>No images yet</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Normal Chat View (always rendered to preserve scroll position) */}
+          {/* Message List */}
           <MessageList
             messages={messages}
             character={character}
@@ -963,7 +483,7 @@ const Chat = () => {
         </div>
       )}
 
-      {/* Input - Hidden when image modal is open */}
+      {/* Input */}
       {!imageModalOpen && (
         <div className="relative z-10">
           <ChatInput
