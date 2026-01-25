@@ -104,6 +104,10 @@ router.get('/list', authenticateToken, (req, res) => {
       whereClause += ' AND is_liked = 1';
     } else if (filter === 'swipeable') {
       whereClause += ' AND is_liked = 0';
+    } else if (filter === 'noSchedule') {
+      whereClause += " AND (schedule_data IS NULL OR schedule_data = '')";
+    } else if (filter === 'noDatingProfile') {
+      whereClause += " AND (card_data IS NULL OR card_data = '' OR card_data NOT LIKE '%\"datingProfile\"%')";
     }
 
     if (search) {
@@ -252,10 +256,23 @@ router.get('/stats', authenticateToken, (req, res) => {
     const total = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ?').get(userId).count;
     const liked = db.prepare('SELECT COUNT(*) as count FROM characters WHERE user_id = ? AND is_liked = 1').get(userId).count;
 
+    // Count characters missing schedule
+    const noSchedule = db.prepare(
+      "SELECT COUNT(*) as count FROM characters WHERE user_id = ? AND (schedule_data IS NULL OR schedule_data = '')"
+    ).get(userId).count;
+
+    // Count characters missing dating profile
+    // Use LIKE to check if datingProfile key exists in card_data JSON string
+    const noDatingProfile = db.prepare(
+      "SELECT COUNT(*) as count FROM characters WHERE user_id = ? AND (card_data IS NULL OR card_data = '' OR card_data NOT LIKE '%\"datingProfile\"%')"
+    ).get(userId).count;
+
     res.json({
       total,
       liked,
-      swipeable: total - liked
+      swipeable: total - liked,
+      noSchedule,
+      noDatingProfile
     });
   } catch (error) {
     console.error('Failed to get character stats:', error);

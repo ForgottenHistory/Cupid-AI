@@ -13,7 +13,7 @@ const Library = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // 'all', 'liked', 'unviewed'
-  const [stats, setStats] = useState({ total: 0, liked: 0, remaining: 0 });
+  const [stats, setStats] = useState({ total: 0, liked: 0, remaining: 0, noSchedule: 0, noDatingProfile: 0 });
   const [uploadResults, setUploadResults] = useState(null);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,7 +65,12 @@ const Library = () => {
     setLoading(true);
     try {
       // Map frontend filter to backend filter
-      const backendFilter = filter === 'unviewed' ? 'swipeable' : filter;
+      const filterMap = {
+        'unviewed': 'swipeable',
+        'noSchedule': 'noSchedule',
+        'noDatingProfile': 'noDatingProfile'
+      };
+      const backendFilter = filterMap[filter] || filter;
 
       // For random sort, fetch all and shuffle client-side (can't paginate random)
       if (sortOrder === 'random') {
@@ -121,7 +126,12 @@ const Library = () => {
       // Manually reload since state update is async and useEffect may not trigger
       setLoading(true);
       try {
-        const backendFilter = filter === 'unviewed' ? 'swipeable' : filter;
+        const filterMap = {
+          'unviewed': 'swipeable',
+          'noSchedule': 'noSchedule',
+          'noDatingProfile': 'noDatingProfile'
+        };
+        const backendFilter = filterMap[filter] || filter;
         const { characters: pageChars, total } = await characterService.getCharacterList(
           user.id,
           backendFilter,
@@ -230,41 +240,67 @@ const Library = () => {
           </div>
         </div>
 
-        {/* Filter, Search, and Pagination */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'all'
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
-              }`}
-            >
-              All ({stats.total})
-            </button>
-            <button
-              onClick={() => setFilter('liked')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'liked'
-                  ? 'bg-green-500 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
-              }`}
-            >
-              Liked ({stats.liked})
-            </button>
-            <button
-              onClick={() => setFilter('unviewed')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'unviewed'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
-              }`}
-            >
-              To Swipe ({stats.remaining})
-            </button>
-          </div>
+        {/* Filters Row */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-sm text-gray-500 dark:text-gray-400 mr-1">Status:</span>
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              filter === 'all'
+                ? 'bg-purple-500 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            All ({stats.total})
+          </button>
+          <button
+            onClick={() => setFilter('liked')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              filter === 'liked'
+                ? 'bg-green-500 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            Liked ({stats.liked})
+          </button>
+          <button
+            onClick={() => setFilter('unviewed')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              filter === 'unviewed'
+                ? 'bg-blue-500 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            To Swipe ({stats.remaining})
+          </button>
 
+          <div className="w-px h-5 bg-gray-300 dark:bg-gray-600 mx-2" />
+
+          <span className="text-sm text-gray-500 dark:text-gray-400 mr-1">Missing:</span>
+          <button
+            onClick={() => setFilter('noSchedule')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              filter === 'noSchedule'
+                ? 'bg-orange-500 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            Schedule ({stats.noSchedule})
+          </button>
+          <button
+            onClick={() => setFilter('noDatingProfile')}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              filter === 'noDatingProfile'
+                ? 'bg-orange-500 text-white'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+            }`}
+          >
+            Dating Profile ({stats.noDatingProfile})
+          </button>
+        </div>
+
+        {/* Search, Sort, View, and Pagination Row */}
+        <div className="flex items-center gap-4 mb-6">
           {/* Search Bar */}
           <div className="flex-1 max-w-md">
             <div className="relative">
@@ -424,6 +460,10 @@ const Library = () => {
                 ? 'No characters uploaded yet. Upload some character cards to get started!'
                 : filter === 'liked'
                 ? 'No liked characters yet. Go swipe some!'
+                : filter === 'noSchedule'
+                ? 'All characters have schedules!'
+                : filter === 'noDatingProfile'
+                ? 'All characters have dating profiles!'
                 : 'All characters have been swiped!'
             }
           />

@@ -235,6 +235,8 @@ class CharacterService {
       total: response.data.total,
       liked: response.data.liked,
       remaining: response.data.swipeable,
+      noSchedule: response.data.noSchedule,
+      noDatingProfile: response.data.noDatingProfile,
     };
   }
 
