@@ -127,6 +127,85 @@ router.post('/start', authenticateToken, async (req, res) => {
 });
 
 /**
+ * POST /api/random-chat/first-message
+ * Generate a proactive first message from the character
+ */
+router.post('/first-message', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    const userId = req.user.id;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+
+    // Get session
+    const session = sessions.get(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found or expired' });
+    }
+
+    if (session.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Don't generate if there are already messages
+    if (session.messages.length > 0) {
+      return res.status(400).json({ error: 'Conversation already started' });
+    }
+
+    // Get user profile info
+    const user = db.prepare('SELECT display_name, bio FROM users WHERE id = ?').get(userId);
+    const userName = user?.display_name || 'User';
+    const userBio = user?.bio || null;
+
+    // Build context for first message
+    const randomChatContext = buildRandomChatContext(session);
+    const firstMessagePrompt = `${randomChatContext}
+
+FIRST MESSAGE: You're starting this random chat! Send an engaging, friendly opening message.
+- Be natural and show your personality
+- Keep it short and inviting (1-2 sentences)
+- Give them something to respond to
+- Don't be too formal or generic`;
+
+    const aiMessages = [
+      { role: 'system', content: firstMessagePrompt }
+    ];
+
+    // Generate AI response
+    const aiResponse = await aiService.createChatCompletion({
+      messages: aiMessages,
+      characterData: session.characterData.cardData,
+      userId: userId,
+      userName: userName,
+      userBio: userBio,
+      maxTokens: 200
+    });
+
+    // Clean response
+    let responseContent = aiResponse.content || '';
+    responseContent = responseContent.replace(/—\s*(.)/g, (_, char) => '. ' + char.toUpperCase());
+
+    // Add assistant message to session
+    session.messages.push({
+      role: 'assistant',
+      content: responseContent
+    });
+
+    console.log(`💬 Random chat first message from ${session.characterData.name}: "${responseContent.substring(0, 50)}..."`);
+
+    res.json({
+      response: responseContent
+    });
+
+  } catch (error) {
+    console.error('Random chat first message error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate first message' });
+  }
+});
+
+/**
  * POST /api/random-chat/message
  * Send a message in random chat
  */

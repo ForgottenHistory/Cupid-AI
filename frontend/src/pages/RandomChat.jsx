@@ -179,7 +179,48 @@ const RandomChat = () => {
       startTimeRef.current = Date.now();
       setPhase(PHASE.CHATTING);
 
-      setTimeout(() => inputRef.current?.focus(), 100);
+      // 50% chance character sends first message immediately
+      const characterGoesFirst = Math.random() < 0.5;
+      const newSessionId = response.data.sessionId;
+
+      const generateFirstMessage = async () => {
+        setShowTypingIndicator(true);
+        try {
+          const firstMsgResponse = await api.post('/random-chat/first-message', {
+            sessionId: newSessionId
+          });
+
+          if (firstMsgResponse.data.response) {
+            const charMsgObj = {
+              id: Date.now(),
+              role: 'assistant',
+              content: firstMsgResponse.data.response,
+              created_at: new Date().toISOString()
+            };
+            setMessages(prev => prev.length === 0 ? [charMsgObj] : prev);
+          }
+        } catch (err) {
+          console.error('Failed to generate first message:', err);
+        } finally {
+          setShowTypingIndicator(false);
+          inputRef.current?.focus();
+        }
+      };
+
+      if (characterGoesFirst) {
+        setTimeout(generateFirstMessage, 1000 + Math.random() * 2000); // 1-3 second delay
+      } else {
+        setTimeout(() => inputRef.current?.focus(), 100);
+        // If no messages after 15 seconds, character breaks the ice
+        setTimeout(() => {
+          setMessages(prev => {
+            if (prev.length === 0) {
+              generateFirstMessage();
+            }
+            return prev;
+          });
+        }, 15000);
+      }
 
     } catch (err) {
       console.error('Failed to start random chat:', err);
