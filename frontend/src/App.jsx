@@ -171,7 +171,7 @@ function App() {
           />
 
           <Route
-            path="/random"
+            path="/activities"
             element={
               <ProtectedRoute>
                 <MainLayout>

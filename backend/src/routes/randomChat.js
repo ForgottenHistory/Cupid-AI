@@ -64,10 +64,21 @@ You're in a random/blind chat feature. You don't know this person yet and they d
 - Don't be too eager or too distant - feel them out
 - This is separate from any existing matches you might have`;
 
+// Blind date context template - user can't see name or image
+const BLIND_DATE_CONTEXT_TEMPLATE = `BLIND DATE CONTEXT:
+You're in a blind date chat. The other person cannot see your name or picture - only your first initial.
+- This is a first meeting - you're both strangers
+- This is a 10-minute chat. You have {{TIME_REMAINING}} left before you both decide if you want to match.
+- They only know you as "{{FIRST_INITIAL}}" - your identity is hidden
+- Don't explicitly state your full name unless directly asked
+- Be natural and let your personality shine through your words
+- If they match with you, your identity will be revealed
+- This is separate from any existing matches you might have`;
+
 /**
- * Build random chat context with time remaining
+ * Build chat context with time remaining
  */
-function buildRandomChatContext(session) {
+function buildChatContext(session) {
   const elapsed = Date.now() - session.createdAt;
   const remaining = Math.max(0, 10 * 60 * 1000 - elapsed);
   const minutes = Math.floor(remaining / 60000);
@@ -77,7 +88,23 @@ function buildRandomChatContext(session) {
     ? `${minutes} minute${minutes !== 1 ? 's' : ''}`
     : `${seconds} seconds`;
 
+  const characterName = session.characterData?.cardData?.data?.name ||
+                        session.characterData?.cardData?.name ||
+                        session.characterData?.name || 'Character';
+  const firstInitial = characterName.charAt(0).toUpperCase() + '.';
+
+  if (session.mode === 'blind') {
+    return BLIND_DATE_CONTEXT_TEMPLATE
+      .replace('{{TIME_REMAINING}}', timeRemaining)
+      .replace('{{FIRST_INITIAL}}', firstInitial);
+  }
+
   return RANDOM_CHAT_CONTEXT_TEMPLATE.replace('{{TIME_REMAINING}}', timeRemaining);
+}
+
+// Keep old function name for compatibility
+function buildRandomChatContext(session) {
+  return buildChatContext(session);
 }
 
 /**
@@ -86,7 +113,7 @@ function buildRandomChatContext(session) {
  */
 router.post('/start', authenticateToken, async (req, res) => {
   try {
-    const { characterId } = req.body;
+    const { characterId, mode = 'random' } = req.body;
     const userId = req.user.id;
 
     if (!characterId) {
@@ -108,12 +135,14 @@ router.post('/start', authenticateToken, async (req, res) => {
       characterData,
       messages: [],
       createdAt: Date.now(),
-      decided: false
+      decided: false,
+      mode: mode // 'random' or 'blind'
     };
 
     sessions.set(sessionId, session);
 
-    console.log(`🎲 Random chat started: ${sessionId} with ${characterData.name}`);
+    const modeLabel = mode === 'blind' ? 'Blind date' : 'Random chat';
+    console.log(`🎲 ${modeLabel} started: ${sessionId} with ${characterData.name}`);
 
     res.json({
       sessionId,
@@ -387,15 +416,16 @@ router.post('/decide', authenticateToken, async (req, res) => {
     session.userDecision = userDecision;
 
     // Generate character's decision based on conversation
-    const characterDecision = await generateCharacterDecision(session, userId);
-    session.characterDecision = characterDecision;
+    const result = await generateCharacterDecision(session, userId);
+    session.characterDecision = result.decision;
 
-    console.log(`🎲 Random chat decision: User=${userDecision}, Character=${characterDecision}`);
+    console.log(`🎲 Random chat decision: User=${userDecision}, Character=${result.decision}`);
 
     res.json({
       userDecision,
-      characterDecision,
-      isMatch: userDecision === 'yes' && characterDecision === 'yes'
+      characterDecision: result.decision,
+      characterReason: result.reason,
+      isMatch: userDecision === 'yes' && result.decision === 'yes'
     });
 
   } catch (error) {
@@ -521,11 +551,13 @@ Consider:
 
 Be honest based on your personality. Not every conversation leads to a match - it's okay to say no if there wasn't a spark.
 
-Respond with ONLY "yes" or "no" - nothing else.`;
+Respond in this exact YAML format:
+decision: yes or no
+reason: brief explanation (1 sentence)`;
 
   try {
     const response = await aiService.createBasicCompletion(decisionPrompt, {
-      max_tokens: 10,
+      max_tokens: 100,
       userId: userId,
       llmType: 'decision',
       messageType: 'random-chat-decision',
@@ -533,22 +565,36 @@ Respond with ONLY "yes" or "no" - nothing else.`;
       userName: userName
     });
 
-    const decision = response.content.toLowerCase().trim();
+    const content = response.content.trim();
+
+    // Parse YAML-style response
+    const decisionMatch = content.match(/decision:\s*(yes|no)/i);
+    const reasonMatch = content.match(/reason:\s*(.+)/i);
+
+    const decision = decisionMatch ? decisionMatch[1].toLowerCase() : null;
+    const reason = reasonMatch ? reasonMatch[1].trim() : null;
+
+    if (reason) {
+      console.log(`🎲 ${characterData.name}'s reason: ${reason}`);
+    }
 
     // Parse the decision
-    if (decision.includes('yes')) {
-      return 'yes';
-    } else if (decision.includes('no')) {
-      return 'no';
+    if (decision === 'yes') {
+      return { decision: 'yes', reason };
+    } else if (decision === 'no') {
+      return { decision: 'no', reason };
     } else {
-      // Default to based on conversation length - if they talked a lot, more likely yes
-      return messages.length >= 6 ? 'yes' : 'no';
+      // Fallback: check if content contains yes/no
+      if (content.toLowerCase().includes('yes')) return { decision: 'yes', reason };
+      if (content.toLowerCase().includes('no')) return { decision: 'no', reason };
+      // Default to based on conversation length
+      return { decision: messages.length >= 6 ? 'yes' : 'no', reason: null };
     }
 
   } catch (error) {
     console.error('Failed to generate character decision:', error);
     // Fallback: if conversation was substantial, say yes
-    return messages.length >= 6 ? 'yes' : 'no';
+    return { decision: messages.length >= 6 ? 'yes' : 'no', reason: null };
   }
 }
 
