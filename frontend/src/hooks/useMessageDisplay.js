@@ -30,23 +30,15 @@ export const useMessageDisplay = (messages, messagesEndRef, showTypingIndicator)
       previousFirstMessageId === null ||
       (currentFirstMessageId === previousFirstMessageId && currentMessageCount > previousMessageCount);
 
-/*     console.log('📜 Scroll check:', {
-      shouldScroll,
-      prevFirstId: previousFirstMessageId,
-      currFirstId: currentFirstMessageId,
-      prevCount: previousMessageCount,
-      currCount: currentMessageCount,
-      reason: previousFirstMessageId === null ? 'initial load' :
-              currentFirstMessageId !== previousFirstMessageId ? 'first message changed (prepended)' :
-              currentMessageCount > previousMessageCount ? 'new message added' :
-              currentMessageCount < previousMessageCount ? 'messages deleted' :
-              'no change or re-sort'
-    }); */
-
     // Update the refs for next comparison
     previousFirstMessageIdRef.current = currentFirstMessageId;
     previousMessageCountRef.current = currentMessageCount;
-  }, [messages, showTypingIndicator]);
+
+    // Actually scroll if we should
+    if (shouldScroll && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, showTypingIndicator, messagesEndRef]);
 
   // Remove message IDs from newMessageIds after animation completes
   useEffect(() => {
