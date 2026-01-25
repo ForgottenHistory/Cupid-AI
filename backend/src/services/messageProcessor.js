@@ -680,6 +680,25 @@ class MessageProcessor {
         // Update conversation timestamp and increment unread count
         conversationService.incrementUnreadCount(conversationId);
 
+        // === DOUBLE TEXT CHANCE (roll before emitting to inform frontend) ===
+        const doubleTextSettings = db.prepare(`
+          SELECT double_text_chance_min, double_text_chance_max
+          FROM users WHERE id = ?
+        `).get(userId);
+
+        const minChance = doubleTextSettings?.double_text_chance_min || 0;
+        const maxChance = doubleTextSettings?.double_text_chance_max || 0;
+
+        let willDoubleText = false;
+        if (maxChance > 0) {
+          const rollChance = minChance + Math.random() * (maxChance - minChance);
+          const roll = Math.random() * 100;
+          willDoubleText = roll < rollChance;
+          console.log(`🎲 Double text roll: ${roll.toFixed(1)}% (need < ${rollChance.toFixed(1)}% from range ${minChance}-${maxChance}%) → ${willDoubleText ? 'YES' : 'NO'}`);
+        }
+
+        console.log(`✅ Sent ${allSavedMessages.length} message(s) to user ${userId} (type: ${messageType})`);
+
         // Emit all messages to frontend via WebSocket with small delays between them
         for (let i = 0; i < allSavedMessages.length; i++) {
           const msg = allSavedMessages[i];
@@ -690,10 +709,13 @@ class MessageProcessor {
             await sleep(delay);
           }
 
+          const isLastMessage = i === allSavedMessages.length - 1;
+
           io.to(`user:${userId}`).emit('new_message', {
             characterId,
             conversationId,
             message: msg,
+            moreMessagesComing: isLastMessage ? willDoubleText : true, // Keep typing if more messages or double text coming
             aiResponse: {
               content: msg.content,
               model: aiResponse.model,
@@ -701,12 +723,105 @@ class MessageProcessor {
               messageType: msg.message_type,
               audioUrl: msg.audio_url,
               imageUrl: msg.image_url,
-              reasoning: msg.reasoning // include reasoning if available
+              reasoning: msg.reasoning
             }
           });
         }
 
-        console.log(`✅ Sent ${allSavedMessages.length} message(s) to user ${userId} (type: ${messageType})`);
+        // === DOUBLE TEXT GENERATION ===
+        if (willDoubleText) {
+          console.log(`💬 Double text triggered! Generating follow-up message...`);
+
+          // Add a delay before the follow-up (1-3 seconds)
+          const followUpDelay = Math.floor(Math.random() * 2000) + 1000;
+          await sleep(followUpDelay);
+
+          // Emit typing indicator for follow-up
+          io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
+
+          try {
+            // Get updated conversation history (includes the message we just sent)
+            const updatedMessages = messageService.getConversationHistory(conversationId);
+            const updatedConversation = conversationService.getConversationById(conversationId);
+
+            // Generate follow-up response
+            const followUpResult = await responseProcessorService.processWithRetry({
+              generateFn: () => aiService.createChatCompletion({
+                messages: updatedMessages,
+                characterData: characterData,
+                characterId: characterId,
+                userId: userId,
+                currentStatus: currentStatusInfo,
+                userBio: userBio,
+                schedule: schedule,
+                isDeparting: false, // Don't depart on follow-up
+                decision: { ...decision, shouldSendImage: false, shouldSendVoice: false }, // Text-only follow-up
+                matchedDate: matchedDate,
+                characterMood: updatedConversation?.character_mood || null,
+                characterState: updatedConversation?.character_state || null
+              }),
+              conversationId,
+              aiMessages: updatedMessages,
+              userId,
+              characterName: characterData.data?.name || characterData.name || 'Character'
+            });
+
+            if (followUpResult.contentParts && followUpResult.contentParts.length > 0) {
+              // Save and emit follow-up messages
+              for (let i = 0; i < followUpResult.contentParts.length; i++) {
+                const part = followUpResult.contentParts[i];
+
+                if (i > 0) {
+                  const partDelay = Math.floor(Math.random() * 1000) + 500;
+                  await sleep(partDelay);
+                }
+
+                const followUpMessage = messageService.saveMessage(
+                  conversationId,
+                  'assistant',
+                  part,
+                  null, // no reaction on follow-up
+                  'text',
+                  null, // no audio
+                  null, // no image
+                  null, // no image tags
+                  false, // not proactive
+                  null, // no image prompt
+                  i === 0 ? followUpResult.aiResponse?.reasoning : null // reasoning only on first
+                );
+
+                conversationService.incrementUnreadCount(conversationId);
+
+                const isLastFollowUp = i === followUpResult.contentParts.length - 1;
+
+                io.to(`user:${userId}`).emit('new_message', {
+                  characterId,
+                  conversationId,
+                  message: followUpMessage,
+                  moreMessagesComing: !isLastFollowUp, // Only clear typing on last follow-up message
+                  aiResponse: {
+                    content: followUpMessage.content,
+                    model: followUpResult.aiResponse?.model,
+                    reaction: null,
+                    messageType: 'text',
+                    reasoning: followUpMessage.reasoning
+                  }
+                });
+              }
+
+              console.log(`✅ Double text sent: ${followUpResult.contentParts.length} follow-up message(s)`);
+            }
+          } catch (doubleTextError) {
+            console.error('❌ Double text generation failed:', doubleTextError.message);
+            // Clear typing indicator since we won't be sending more messages
+            io.to(`user:${userId}`).emit('new_message', {
+              characterId,
+              conversationId,
+              moreMessagesComing: false,
+              clearTypingOnly: true
+            });
+          }
+        }
       }
     } catch (error) {
       console.error('Process AI response async error:', error);

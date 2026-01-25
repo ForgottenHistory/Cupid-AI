@@ -43,14 +43,6 @@ const MessageList = ({
     const previousLength = scrollPositionRef.current.messagesLength;
     const lengthIncreased = messages.length > previousLength;
 
-    console.log('📜 MessageList scroll check:', {
-      isLoadingMore: isLoadingMoreRef.current,
-      previousLength,
-      currentLength: messages.length,
-      lengthIncreased,
-      willAdjust: isLoadingMoreRef.current && previousLength > 0 && lengthIncreased
-    });
-
     if (isLoadingMoreRef.current && previousLength > 0 && lengthIncreased) {
       // Messages were added - restore scroll position adjusted for new content
       const oldScrollHeight = scrollPositionRef.current.scrollHeight;

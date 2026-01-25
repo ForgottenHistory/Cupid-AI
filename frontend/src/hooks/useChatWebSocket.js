@@ -111,10 +111,23 @@ export const useChatWebSocket = ({
 
     // Listen for new messages
     const handleNewMessage = (data) => {
-      // Clear typing state globally for ANY character (not just current one)
-      socketService.clearTyping(data.characterId);
-
       console.log('📨 Received new message via WebSocket:', data);
+
+      // Handle clearTypingOnly messages (e.g., after double text error)
+      if (data.clearTypingOnly) {
+        socketService.clearTyping(data.characterId);
+        if (data.characterId === currentCharacterIdRef.current) {
+          clearTypingIndicator();
+          setSending(false);
+          inputRef.current?.focus();
+        }
+        return;
+      }
+
+      // Only clear typing if no more messages are coming
+      if (!data.moreMessagesComing) {
+        socketService.clearTyping(data.characterId);
+      }
 
       // If message is from a DIFFERENT character, refresh sidebar immediately
       // Use ref to get the CURRENT characterId, not the one from when handler was created
@@ -125,7 +138,10 @@ export const useChatWebSocket = ({
       }
 
       // If we're here, this is the current character
-      clearTypingIndicator();
+      // Only clear typing indicator if no more messages coming
+      if (!data.moreMessagesComing) {
+        clearTypingIndicator();
+      }
       const lastMessage = data.message;
 
       // Check for 30-minute time gap and clear mood effects if needed
@@ -168,8 +184,11 @@ export const useChatWebSocket = ({
           setAllImageUrls(prev => [...prev, lastMessage.image_url]);
         }
 
-        setSending(false);
-        inputRef.current?.focus();
+        // Only unlock UI when no more messages are coming
+        if (!data.moreMessagesComing) {
+          setSending(false);
+          inputRef.current?.focus();
+        }
       }
 
       // Mark messages as read since user is actively viewing this chat

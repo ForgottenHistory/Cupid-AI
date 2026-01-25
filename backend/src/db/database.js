@@ -1063,6 +1063,15 @@ function runMigrations() {
       console.log('✅ use_name_primer column added');
     }
 
+    // Migration: Add double text chance settings
+    if (!userColumnsForSchedule.includes('double_text_chance_min')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN double_text_chance_min INTEGER DEFAULT 0;
+        ALTER TABLE users ADD COLUMN double_text_chance_max INTEGER DEFAULT 0;
+      `);
+      console.log('✅ double_text_chance_min/max columns added');
+    }
+
     // Fix users with invalid created_at (epoch 0 or NULL)
     const usersWithBadCreatedAt = db.prepare(`
       SELECT id FROM users

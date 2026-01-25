@@ -313,7 +313,6 @@ const Chat = () => {
     img.onload = () => {
       const isHorizontal = img.width > img.height;
       setIsHorizontalImage(isHorizontal);
-      console.log(`📐 Image orientation: ${isHorizontal ? 'horizontal' : 'vertical'} (${img.width}x${img.height})`);
     };
     img.onerror = () => {
       setIsHorizontalImage(false);

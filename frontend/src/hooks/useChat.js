@@ -43,10 +43,6 @@ export const useChat = (characterId, user) => {
       try {
         const status = await characterService.getCharacterStatus(characterId, character.cardData.data.schedule);
         if (isMountedRef.current) {
-          // Only log if status actually changed
-          if (status.status !== characterStatus.status || status.activity !== characterStatus.activity) {
-            console.log(`📊 Status updated: ${status.status}${status.activity ? ` - ${status.activity}` : ''}`);
-          }
           setCharacterStatus(status);
         }
       } catch (err) {

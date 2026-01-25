@@ -13,6 +13,8 @@ const BehaviorSettingsPage = () => {
     proactiveBusyChance: 10,
     proactiveCheckIntervalMin: 5,
     proactiveCheckIntervalMax: 15,
+    doubleTextChanceMin: 0,
+    doubleTextChanceMax: 0,
     maxConsecutiveProactive: 4,
     proactiveCooldownMultiplier: 2.0,
     pacingStyle: 'balanced',
@@ -95,6 +97,8 @@ const BehaviorSettingsPage = () => {
       proactiveBusyChance: 10,
       proactiveCheckIntervalMin: 5,
       proactiveCheckIntervalMax: 15,
+      doubleTextChanceMin: 0,
+      doubleTextChanceMax: 0,
       maxConsecutiveProactive: 4,
       proactiveCooldownMultiplier: 2.0,
       pacingStyle: 'balanced',
@@ -262,6 +266,65 @@ const BehaviorSettingsPage = () => {
                 <span>5 hours</span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400">Random interval between min and max for each proactive message check</p>
+            </div>
+
+            {/* Double Text Chance */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-gray-900 dark:text-gray-100">Double Text Chance</label>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                  {settings.doubleTextChanceMin === 0 && settings.doubleTextChanceMax === 0
+                    ? 'Disabled'
+                    : `${settings.doubleTextChanceMin}% - ${settings.doubleTextChanceMax}%`}
+                </span>
+              </div>
+              <div className="relative h-2">
+                {/* Track background */}
+                <div className="absolute w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg" />
+                {/* Active range highlight */}
+                <div
+                  className="absolute h-2 bg-purple-500 rounded-lg"
+                  style={{
+                    left: `${settings.doubleTextChanceMin}%`,
+                    right: `${100 - settings.doubleTextChanceMax}%`
+                  }}
+                />
+                {/* Min slider */}
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={settings.doubleTextChanceMin}
+                  onChange={(e) => {
+                    const newMin = parseInt(e.target.value);
+                    if (newMin <= settings.doubleTextChanceMax) {
+                      updateSetting('doubleTextChanceMin', newMin);
+                    }
+                  }}
+                  className="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-600 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
+                />
+                {/* Max slider */}
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={settings.doubleTextChanceMax}
+                  onChange={(e) => {
+                    const newMax = parseInt(e.target.value);
+                    if (newMax >= settings.doubleTextChanceMin) {
+                      updateSetting('doubleTextChanceMax', newMax);
+                    }
+                  }}
+                  className="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-600 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
+                />
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>0%</span>
+                <span>100%</span>
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Chance the character sends a follow-up message after their response. Set both to 0 to disable.</p>
             </div>
 
             {/* Proactive Online Chance */}

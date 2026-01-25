@@ -30,7 +30,7 @@ export const useMessageDisplay = (messages, messagesEndRef, showTypingIndicator)
       previousFirstMessageId === null ||
       (currentFirstMessageId === previousFirstMessageId && currentMessageCount > previousMessageCount);
 
-    console.log('📜 Scroll check:', {
+/*     console.log('📜 Scroll check:', {
       shouldScroll,
       prevFirstId: previousFirstMessageId,
       currFirstId: currentFirstMessageId,
@@ -41,12 +41,7 @@ export const useMessageDisplay = (messages, messagesEndRef, showTypingIndicator)
               currentMessageCount > previousMessageCount ? 'new message added' :
               currentMessageCount < previousMessageCount ? 'messages deleted' :
               'no change or re-sort'
-    });
-
-    if (shouldScroll) {
-      console.log('⬇️ Scrolling to bottom');
-      scrollToBottom();
-    }
+    }); */
 
     // Update the refs for next comparison
     previousFirstMessageIdRef.current = currentFirstMessageId;
