@@ -6,9 +6,10 @@ import chatService from '../services/chatService';
  * Hook for managing core chat state and data loading
  * @param {string} characterId - The character ID from URL params
  * @param {Object} user - Current user object
+ * @param {number|null} existingConversationId - Optional existing conversation ID (for activity sessions)
  * @returns {Object} Chat state and functions
  */
-export const useChat = (characterId, user) => {
+export const useChat = (characterId, user, existingConversationId = null) => {
   const [character, setCharacter] = useState(null);
   const [conversation, setConversation] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -33,7 +34,7 @@ export const useChat = (characterId, user) => {
     return () => {
       isMountedRef.current = false;
     };
-  }, [characterId, user?.id]);
+  }, [characterId, user?.id, existingConversationId]);
 
   // Poll character status every 10 seconds for real-time updates
   useEffect(() => {
@@ -87,15 +88,23 @@ export const useChat = (characterId, user) => {
       }
 
       // Load conversation and messages (latest 200 by default)
-      const { conversation: conv, messages: msgs, total, hasMore, allImageUrls: imageUrls } = await chatService.getConversation(characterId, 200, 0);
+      // Use existing conversation ID if provided (for activity sessions), otherwise get/create by characterId
+      let convData;
+      if (existingConversationId) {
+        convData = await chatService.getConversationById(existingConversationId, 200, 0);
+      } else {
+        convData = await chatService.getConversation(characterId, 200, 0);
+      }
+
+      const { conversation: conv, messages: msgs, total, hasMore, allImageUrls: imageUrls } = convData;
       setConversation(conv);
       setMessages(msgs);
       setTotalMessages(total);
       setHasMoreMessages(hasMore);
       setAllImageUrls(imageUrls || []);
 
-      // Mark messages as read
-      if (msgs.length > 0) {
+      // Mark messages as read (skip for activity sessions - they're temporary)
+      if (msgs.length > 0 && !existingConversationId) {
         await chatService.markAsRead(characterId);
         // Notify sidebar to refresh
         window.dispatchEvent(new Event('characterUpdated'));

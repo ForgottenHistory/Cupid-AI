@@ -96,11 +96,60 @@ class MessageProcessor {
 
       const matchedDate = conversation?.created_at;
 
+      // Check if this is an activity conversation (has activity_mode set)
+      const isActivityConversation = !!conversation?.activity_mode;
+      const activityMode = conversation?.activity_mode; // 'random' or 'blind'
+      const activityStartedAt = conversation?.activity_started_at;
+
       // Get conversation history (includes any TIME GAP markers we just inserted)
       const aiMessages = messageService.getConversationHistory(conversationId);
       const userMessage = aiMessages[aiMessages.length - 1]?.content || '';
 
+      // For activity conversations, inject context as first system message
+      if (isActivityConversation && activityStartedAt) {
+        // Get user's chat duration setting
+        const userSettings = db.prepare('SELECT activities_chat_duration FROM users WHERE id = ?').get(userId);
+        const chatDurationMs = (userSettings?.activities_chat_duration || 10) * 60 * 1000;
+
+        const elapsed = Date.now() - new Date(activityStartedAt).getTime();
+        const remaining = Math.max(0, chatDurationMs - elapsed);
+        const minutes = Math.floor(remaining / 60000);
+        const seconds = Math.floor((remaining % 60000) / 1000);
+        const timeRemaining = minutes > 0
+          ? `${minutes} minute${minutes !== 1 ? 's' : ''}`
+          : `${seconds} seconds`;
+
+        const characterName = characterData.data?.name || characterData.name || 'Character';
+        const firstInitial = characterName.charAt(0).toUpperCase() + '.';
+
+        let activityContext;
+        if (activityMode === 'blind') {
+          activityContext = `BLIND DATE CONTEXT:
+You're in a blind date chat. The other person cannot see your name or picture - only your first initial.
+- This is a first meeting - you're both strangers
+- This is a timed chat. You have ${timeRemaining} left before you both decide if you want to match.
+- They only know you as "${firstInitial}" - your identity is hidden
+- Don't explicitly state your full name unless directly asked
+- Be natural and let your personality shine through your words
+- If they match with you, your identity will be revealed
+- This is separate from any existing matches you might have`;
+        } else {
+          activityContext = `RANDOM CHAT CONTEXT:
+You're in a random chat feature. You don't know this person yet and they don't know you.
+- This is a first meeting - you're both strangers
+- This is a timed chat. You have ${timeRemaining} left before you both decide if you want to match.
+- Be natural and show your personality, but remember they're a stranger
+- Don't be too eager or too distant - feel them out
+- This is separate from any existing matches you might have`;
+        }
+
+        // Prepend activity context as first message
+        aiMessages.unshift({ role: 'system', content: activityContext });
+        console.log(`🎲 Activity context injected (${activityMode}, ${timeRemaining} remaining)`);
+      }
+
       // === ENGAGEMENT WINDOW SYSTEM ===
+      // Skip for activity conversations - they always respond immediately
 
       // Step 1: Get character's current status from schedule
       const schedule = characterData.schedule;
@@ -136,70 +185,81 @@ class MessageProcessor {
       const imageTags = backendCharacter?.image_tags || null;
       const contextualTags = backendCharacter?.contextual_tags || null;
 
-      // Step 3: Get or create engagement state
-      const engagementState = engagementService.getEngagementState(userId, characterId);
-
-      // If engagement state couldn't be created, fall back to simple delay
-      if (!engagementState) {
-        console.warn('⚠️  Could not create engagement state, using simple delay');
-
-        if (currentStatus === 'offline') {
-          console.log('💤 Character is offline - no response');
-          io.to(`user:${userId}`).emit('character_offline', { characterId });
-          return;
-        }
-
-        // Fast ~1s response
-        const simpleDelay = Math.floor(Math.random() * 1500) + 500; // 0.5-2s
-        await sleep(simpleDelay);
-      } else {
-        // Normal engagement flow
-
-        // Check if character is on cooldown (can't respond until status changes)
-        if (engagementService.isOnCooldown(engagementState, currentStatus)) {
-          console.log(`⏸️  Character ${characterId} is on cooldown (waiting for status change)`);
-          io.to(`user:${userId}`).emit('character_offline', { characterId });
-          return;
-        }
-
-        // If status changed from departed status, clear cooldown
-        if (engagementState.departed_status && engagementState.departed_status !== currentStatus) {
-          engagementService.clearCooldown(userId, characterId);
-        }
-
-        engagementService.updateCurrentStatus(userId, characterId, currentStatus);
-
-        // Calculate response delay (fast ~1s response)
-        let delay = engagementService.calculateResponseDelay(currentStatus);
-
-        // If disengaged, start engagement (70% chance to engage immediately)
-        if (engagementState.engagement_state === 'disengaged') {
-          if (Math.random() < 0.7) {
-            engagementService.startEngagement(userId, characterId);
-            console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (engaged)`);
-          } else {
-            console.log(`⏱️  Character chose not to engage (30% chance)`);
-            io.to(`user:${userId}`).emit('no_response', { characterId });
-            return; // Don't respond
-          }
-        } else {
-          console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
-        }
-
-        // Wait for the delay before starting to generate
-        await sleep(delay);
-      }
-
-      // Now emit typing indicator right before we start generating
-      io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
-
-      // Check if engagement duration has expired (only if engaged)
+      // Variables for engagement system (may be skipped for activities)
+      let engagementState = null;
       let isDeparting = false;
-      if (engagementState && engagementState.engagement_state === 'engaged') {
-        const durationCheck = engagementService.checkEngagementDuration(engagementState, currentStatus);
-        if (durationCheck.expired) {
-          isDeparting = true;
-          console.log(`👋 Engagement duration expired (${(durationCheck.duration / 60000).toFixed(1)} min) - character will depart`);
+
+      if (isActivityConversation) {
+        // Activity conversations: skip engagement, minimal delay, always respond
+        console.log(`🎲 Activity conversation - skipping engagement system`);
+        const minDelay = Math.floor(Math.random() * 1000) + 500; // 0.5-1.5s
+        await sleep(minDelay);
+        io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
+      } else {
+        // Regular conversations: full engagement system
+        engagementState = engagementService.getEngagementState(userId, characterId);
+
+        // If engagement state couldn't be created, fall back to simple delay
+        if (!engagementState) {
+          console.warn('⚠️  Could not create engagement state, using simple delay');
+
+          if (currentStatus === 'offline') {
+            console.log('💤 Character is offline - no response');
+            io.to(`user:${userId}`).emit('character_offline', { characterId });
+            return;
+          }
+
+          // Fast ~1s response
+          const simpleDelay = Math.floor(Math.random() * 1500) + 500; // 0.5-2s
+          await sleep(simpleDelay);
+        } else {
+          // Normal engagement flow
+
+          // Check if character is on cooldown (can't respond until status changes)
+          if (engagementService.isOnCooldown(engagementState, currentStatus)) {
+            console.log(`⏸️  Character ${characterId} is on cooldown (waiting for status change)`);
+            io.to(`user:${userId}`).emit('character_offline', { characterId });
+            return;
+          }
+
+          // If status changed from departed status, clear cooldown
+          if (engagementState.departed_status && engagementState.departed_status !== currentStatus) {
+            engagementService.clearCooldown(userId, characterId);
+          }
+
+          engagementService.updateCurrentStatus(userId, characterId, currentStatus);
+
+          // Calculate response delay (fast ~1s response)
+          let delay = engagementService.calculateResponseDelay(currentStatus);
+
+          // If disengaged, start engagement (70% chance to engage immediately)
+          if (engagementState.engagement_state === 'disengaged') {
+            if (Math.random() < 0.7) {
+              engagementService.startEngagement(userId, characterId);
+              console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (engaged)`);
+            } else {
+              console.log(`⏱️  Character chose not to engage (30% chance)`);
+              io.to(`user:${userId}`).emit('no_response', { characterId });
+              return; // Don't respond
+            }
+          } else {
+            console.log(`⏱️  Response delay: ${(delay / 1000).toFixed(1)}s (${engagementState.engagement_state})`);
+          }
+
+          // Wait for the delay before starting to generate
+          await sleep(delay);
+        }
+
+        // Now emit typing indicator right before we start generating
+        io.to(`user:${userId}`).emit('character_typing', { characterId, conversationId });
+
+        // Check if engagement duration has expired (only if engaged)
+        if (engagementState && engagementState.engagement_state === 'engaged') {
+          const durationCheck = engagementService.checkEngagementDuration(engagementState, currentStatus);
+          if (durationCheck.expired) {
+            isDeparting = true;
+            console.log(`👋 Engagement duration expired (${(durationCheck.duration / 60000).toFixed(1)} min) - character will depart`);
+          }
         }
       }
 

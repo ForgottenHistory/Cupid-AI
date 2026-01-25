@@ -22,6 +22,47 @@ router.get('/', authenticateToken, (req, res) => {
 });
 
 /**
+ * GET /api/chat/conversations/by-id/:conversationId
+ * Get a conversation by its ID (used for activity sessions)
+ * Query params: limit (default 200), offset (default 0)
+ */
+router.get('/by-id/:conversationId', authenticateToken, (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const userId = req.user.id;
+    const limit = parseInt(req.query.limit) || 200;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const conversation = conversationService.getConversationById(parseInt(conversationId));
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Verify ownership
+    if (conversation.user_id !== userId) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    const result = messageService.getMessagesPaginated(conversation.id, limit, offset);
+
+    // Fetch all image URLs for this conversation (for image rotation display)
+    const allImageUrls = messageService.getAllImageUrls(conversation.id);
+
+    res.json({
+      conversation,
+      messages: result.messages,
+      total: result.total,
+      hasMore: result.hasMore,
+      allImageUrls
+    });
+  } catch (error) {
+    console.error('Get conversation by ID error:', error);
+    res.status(500).json({ error: 'Failed to get conversation' });
+  }
+});
+
+/**
  * GET /api/chat/conversations/:characterId
  * Get or create a conversation with a character
  * Query params: limit (default 200), offset (default 0)

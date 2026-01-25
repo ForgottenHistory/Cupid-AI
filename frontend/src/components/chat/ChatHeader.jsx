@@ -13,7 +13,7 @@ import chatService from '../../services/chatService';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onStateUpdate, onCharacterUpdate }) => {
+const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onStateUpdate, onCharacterUpdate, disableSchedule = false }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showLibraryCard, setShowLibraryCard] = useState(false);
   const [modalCharacter, setModalCharacter] = useState(null); // Local copy for the modal
@@ -336,6 +336,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
                 onMoodClick={() => setShowMoodModal(true)}
                 onStateClick={() => setShowStateModal(true)}
                 compact={true}
+                disabled={disableSchedule}
               />
             </div>
           </div>
@@ -374,6 +375,7 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
                   onMoodClick={() => setShowMoodModal(true)}
                   onStateClick={() => setShowStateModal(true)}
                   compact={false}
+                  disabled={disableSchedule}
                 />
               </div>
             </div>

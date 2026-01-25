@@ -22,7 +22,8 @@ const CharacterStatusBar = ({
   showState,
   onMoodClick,
   onStateClick,
-  compact = false
+  compact = false,
+  disabled = false
 }) => {
   const [showSchedule, setShowSchedule] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0 });
@@ -58,6 +59,7 @@ const CharacterStatusBar = ({
 
   const handleScheduleClick = (e) => {
     e.stopPropagation();
+    if (disabled) return;
     if (!showSchedule) {
       const rect = e.currentTarget.getBoundingClientRect();
       setDropdownPosition({ x: rect.left, y: rect.bottom + 8 });
@@ -66,8 +68,8 @@ const CharacterStatusBar = ({
   };
 
   const statusButtonClass = compact
-    ? "text-xs font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 hover:bg-black/30 transition-all cursor-pointer flex items-center gap-1"
-    : "text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20 hover:bg-black/30 transition-all cursor-pointer flex items-center gap-1";
+    ? `text-xs font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/20 transition-all flex items-center gap-1 ${disabled ? 'cursor-default' : 'hover:bg-black/30 cursor-pointer'}`
+    : `text-sm font-semibold drop-shadow-lg capitalize bg-black/20 backdrop-blur-sm px-3 py-1 rounded-full border border-white/20 transition-all flex items-center gap-1 ${disabled ? 'cursor-default' : 'hover:bg-black/30 cursor-pointer'}`;
 
   return (
     <div className="flex items-center gap-2">
@@ -80,7 +82,7 @@ const CharacterStatusBar = ({
           {characterStatus.status}
           {characterStatus.activity && ` • ${characterStatus.activity}`}
           {characterStatus.nextChange && ` • ${formatEndTime(characterStatus.nextChange)}`}
-          {upcomingActivities.length > 0 && (
+          {!disabled && upcomingActivities.length > 0 && (
             <svg className="w-3 h-3 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
             </svg>

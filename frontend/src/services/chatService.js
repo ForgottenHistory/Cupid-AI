@@ -20,6 +20,16 @@ class ChatService {
   }
 
   /**
+   * Get conversation by ID (for activity sessions that already have a conversation)
+   */
+  async getConversationById(conversationId, limit = 200, offset = 0) {
+    const response = await api.get(`/chat/conversations/by-id/${conversationId}`, {
+      params: { limit, offset }
+    });
+    return response.data;
+  }
+
+  /**
    * Send message and get AI response
    */
   async sendMessage(characterId, message, characterData, imageUrl = null, imageDescription = null) {
@@ -33,11 +43,20 @@ class ChatService {
   }
 
   /**
-   * Generate AI first message for new match
+   * Generate AI first message for new match or activity session
+   * @param {string} characterId - Character ID
+   * @param {Object} characterData - Character card data
+   * @param {Object} options - Optional parameters
+   * @param {number} options.conversationId - Existing conversation ID (for activities)
+   * @param {string} options.activityMode - Activity mode ('random' or 'blind')
+   * @param {boolean} options.isSuperLike - Whether this is a super like
    */
-  async generateFirstMessage(characterId, characterData) {
+  async generateFirstMessage(characterId, characterData, options = {}) {
     const response = await api.post(`/chat/conversations/${characterId}/first-message`, {
       characterData,
+      conversationId: options.conversationId,
+      activityMode: options.activityMode,
+      isSuperLike: options.isSuperLike,
     });
     return response.data;
   }

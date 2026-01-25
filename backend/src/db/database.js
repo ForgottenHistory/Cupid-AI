@@ -1151,6 +1151,17 @@ function runMigrations() {
       `);
       console.log('✅ Activities settings columns added');
     }
+
+    // Migration: Add activity columns to conversations for temporary activity chats
+    const convColumnsForActivity = db.pragma('table_info(conversations)').map(col => col.name);
+    if (!convColumnsForActivity.includes('activity_expires_at')) {
+      db.exec(`
+        ALTER TABLE conversations ADD COLUMN activity_expires_at TIMESTAMP;
+        ALTER TABLE conversations ADD COLUMN activity_mode TEXT;
+        ALTER TABLE conversations ADD COLUMN activity_started_at TIMESTAMP;
+      `);
+      console.log('✅ Activity conversation columns added');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

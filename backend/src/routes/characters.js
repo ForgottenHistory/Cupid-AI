@@ -89,6 +89,50 @@ router.get('/', authenticateToken, (req, res) => {
   }
 });
 
+// GET /api/characters/activity-eligible - Get characters eligible for Activities
+// Returns UNmatched characters (not liked) that don't have a permanent conversation
+router.get('/activity-eligible', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get characters that are NOT liked (unmatched) and don't have a permanent conversation
+    const query = `
+      SELECT c.id, c.name, c.card_data, c.image_url, c.thumbnail_url,
+             c.schedule_data, c.personality_data
+      FROM characters c
+      WHERE c.user_id = ?
+        AND c.is_liked = 0
+        AND NOT EXISTS (
+          SELECT 1 FROM conversations conv
+          WHERE conv.user_id = c.user_id
+            AND conv.character_id = c.id
+            AND conv.activity_expires_at IS NULL
+        )
+    `;
+
+    const characters = db.prepare(query).all(userId);
+
+    // Format response
+    const formatted = characters.map(char => ({
+      id: char.id,
+      name: char.name,
+      cardData: JSON.parse(char.card_data || '{}'),
+      imageUrl: char.image_url,
+      thumbnailUrl: char.thumbnail_url,
+      scheduleData: char.schedule_data ? JSON.parse(char.schedule_data) : null,
+      personalityData: char.personality_data ? JSON.parse(char.personality_data) : null,
+    }));
+
+    res.json({
+      characters: formatted,
+      total: formatted.length
+    });
+  } catch (error) {
+    console.error('Failed to get activity-eligible characters:', error);
+    res.status(500).json({ error: 'Failed to get activity-eligible characters' });
+  }
+});
+
 // GET /api/characters/list - Lightweight list for UI (minimal data)
 // Supports pagination with offset/limit params and sorting
 router.get('/list', authenticateToken, (req, res) => {

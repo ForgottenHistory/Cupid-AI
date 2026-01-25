@@ -20,32 +20,47 @@ const router = express.Router();
 
 /**
  * POST /api/chat/conversations/:characterId/first-message
- * Generate AI first message for a new match
+ * Generate AI first message for a new match or activity session
  */
 router.post('/conversations/:characterId/first-message', authenticateToken, async (req, res) => {
   try {
     const { characterId } = req.params;
-    const { characterData, isSuperLike } = req.body;
+    const { characterData, isSuperLike, conversationId: existingConversationId, activityMode } = req.body;
     const userId = req.user.id;
 
     if (!characterData) {
       return res.status(400).json({ error: 'Character data is required' });
     }
 
-    // Get or create conversation
-    const conversation = conversationService.getOrCreateConversation(
-      userId,
-      characterId,
-      characterData.name || 'Character'
-    );
+    // Use existing conversation if provided (for activity sessions), otherwise get/create
+    let conversation;
+    if (existingConversationId) {
+      conversation = conversationService.getConversationById(existingConversationId);
+      if (!conversation || conversation.user_id !== userId) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+    } else {
+      conversation = conversationService.getOrCreateConversation(
+        userId,
+        characterId,
+        characterData.name || 'Character'
+      );
+    }
 
     // Get character's current status and user bio
     const currentStatusInfo = getCurrentStatusFromSchedule(characterData.schedule);
     const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
     const userBio = user?.bio || null;
 
-    // Generate AI first message with dating app context
-    const prompt = `You just matched with someone on a dating app! Send them a fun, flirty, and engaging first message. Make it natural and conversational - like you're genuinely excited about the match. Keep it short (1-2 sentences). Use your personality and interests to make it unique and memorable. Don't be too formal or generic.`;
+    // Generate appropriate prompt based on context
+    let prompt;
+    if (activityMode === 'blind') {
+      prompt = `You're starting a blind date chat! The other person can only see your first initial - your identity is hidden. Send them an intriguing first message that makes them curious about you. Be mysterious but friendly. Keep it short (1-2 sentences). Don't reveal your name.`;
+    } else if (activityMode === 'random') {
+      prompt = `You're starting a random chat with a stranger! You don't know them yet. Send a friendly, casual first message to break the ice. Be natural and show your personality. Keep it short (1-2 sentences). This is a timed chat so make a good first impression!`;
+    } else {
+      prompt = `You just matched with someone on a dating app! Send them a fun, flirty, and engaging first message. Make it natural and conversational - like you're genuinely excited about the match. Keep it short (1-2 sentences). Use your personality and interests to make it unique and memorable. Don't be too formal or generic.`;
+    }
 
     const messages = [
       {

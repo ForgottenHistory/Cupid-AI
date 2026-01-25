@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import RandomChatSession from './RandomChatSession';
-import BlindDateSession from './BlindDateSession';
+import ActivityChatSession from './ActivityChatSession';
 
 // Activity modes
 const MODE = {
@@ -23,11 +22,11 @@ const RandomChat = () => {
 
   // Render activity session based on mode
   if (mode === MODE.RANDOM_CHAT) {
-    return <RandomChatSession user={user} onBack={handleBackToHub} />;
+    return <ActivityChatSession user={user} mode="random" onBack={handleBackToHub} />;
   }
 
   if (mode === MODE.BLIND_DATE) {
-    return <BlindDateSession user={user} onBack={handleBackToHub} />;
+    return <ActivityChatSession user={user} mode="blind" onBack={handleBackToHub} />;
   }
 
   // Render hub

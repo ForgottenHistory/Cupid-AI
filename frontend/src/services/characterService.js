@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { characterImageParser } from '../utils/characterImageParser';
+import { getCurrentStatusFromSchedule } from '../utils/characterHelpers';
 import api from './api';
 
 // Thumbnail cache to avoid duplicate API calls
@@ -350,6 +351,47 @@ class CharacterService {
   async getCharacterEngagement(characterId) {
     const response = await api.get(`/characters/${characterId}/engagement`);
     return response.data;
+  }
+
+  /**
+   * Get a random online character from activity-eligible characters
+   * Used for Activities (Random Chat, Blind Date)
+   * Only returns characters that are liked but not yet matched (no permanent conversation)
+   */
+  async getRandomOnlineCharacter(userId, includeAway = false, includeBusy = false) {
+    try {
+      // Get activity-eligible characters (liked but not matched)
+      const response = await api.get('/characters/activity-eligible');
+      const characters = response.data.characters;
+
+      if (!characters || characters.length === 0) {
+        return null;
+      }
+
+      // Filter to characters with schedules who are currently online (or away/busy based on settings)
+      const availableCharacters = characters.filter(char => {
+        const schedule = char.cardData?.data?.schedule || char.scheduleData;
+        if (!schedule) return false;
+
+        const status = getCurrentStatusFromSchedule(schedule);
+        if (status.status === 'online') return true;
+        if (status.status === 'away' && includeAway) return true;
+        if (status.status === 'busy' && includeBusy) return true;
+        return false;
+      });
+
+      if (availableCharacters.length === 0) {
+        return null;
+      }
+
+      // Pick random character and get full data
+      const randomIndex = Math.floor(Math.random() * availableCharacters.length);
+      const selectedCharacter = availableCharacters[randomIndex];
+      return await this.getCharacter(selectedCharacter.id);
+    } catch (error) {
+      console.error('Failed to get random online character:', error);
+      return null;
+    }
   }
 
   /**
