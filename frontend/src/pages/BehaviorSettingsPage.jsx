@@ -11,7 +11,8 @@ const BehaviorSettingsPage = () => {
     proactiveOnlineChance: 100,
     proactiveAwayChance: 50,
     proactiveBusyChance: 10,
-    proactiveCheckInterval: 5,
+    proactiveCheckIntervalMin: 5,
+    proactiveCheckIntervalMax: 15,
     maxConsecutiveProactive: 4,
     proactiveCooldownMultiplier: 2.0,
     pacingStyle: 'balanced',
@@ -92,7 +93,8 @@ const BehaviorSettingsPage = () => {
       proactiveOnlineChance: 100,
       proactiveAwayChance: 50,
       proactiveBusyChance: 10,
-      proactiveCheckInterval: 5,
+      proactiveCheckIntervalMin: 5,
+      proactiveCheckIntervalMax: 15,
       maxConsecutiveProactive: 4,
       proactiveCooldownMultiplier: 2.0,
       pacingStyle: 'balanced',
@@ -174,7 +176,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.proactiveMessageHours}
                 onChange={(e) => updateSetting('proactiveMessageHours', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>1h</span>
@@ -198,7 +200,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.dailyProactiveLimit}
                 onChange={(e) => updateSetting('dailyProactiveLimit', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Unlimited</span>
@@ -207,26 +209,59 @@ const BehaviorSettingsPage = () => {
               <p className="text-sm text-gray-600 dark:text-gray-400">Maximum proactive messages across all characters per day (0 = unlimited)</p>
             </div>
 
-            {/* Proactive Check Interval */}
+            {/* Proactive Check Interval Range */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="font-semibold text-gray-900 dark:text-gray-100">Proactive Check Interval</label>
-                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveCheckInterval} minutes</span>
+                <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{settings.proactiveCheckIntervalMin} - {settings.proactiveCheckIntervalMax} minutes</span>
               </div>
-              <input
-                type="range"
-                min="5"
-                max="300"
-                step="5"
-                value={settings.proactiveCheckInterval}
-                onChange={(e) => updateSetting('proactiveCheckInterval', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
-              />
+              <div className="relative h-2">
+                {/* Track background */}
+                <div className="absolute w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg" />
+                {/* Active range highlight */}
+                <div
+                  className="absolute h-2 bg-purple-500 rounded-lg"
+                  style={{
+                    left: `${((settings.proactiveCheckIntervalMin - 5) / 295) * 100}%`,
+                    right: `${100 - ((settings.proactiveCheckIntervalMax - 5) / 295) * 100}%`
+                  }}
+                />
+                {/* Min slider */}
+                <input
+                  type="range"
+                  min="5"
+                  max="300"
+                  step="5"
+                  value={settings.proactiveCheckIntervalMin}
+                  onChange={(e) => {
+                    const newMin = parseInt(e.target.value);
+                    if (newMin <= settings.proactiveCheckIntervalMax) {
+                      updateSetting('proactiveCheckIntervalMin', newMin);
+                    }
+                  }}
+                  className="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-600 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
+                />
+                {/* Max slider */}
+                <input
+                  type="range"
+                  min="5"
+                  max="300"
+                  step="5"
+                  value={settings.proactiveCheckIntervalMax}
+                  onChange={(e) => {
+                    const newMax = parseInt(e.target.value);
+                    if (newMax >= settings.proactiveCheckIntervalMin) {
+                      updateSetting('proactiveCheckIntervalMax', newMax);
+                    }
+                  }}
+                  className="absolute w-full h-2 appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-600 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-600 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
+                />
+              </div>
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>5 min</span>
                 <span>5 hours</span>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">How often the system checks if characters should send proactive messages</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Random interval between min and max for each proactive message check</p>
             </div>
 
             {/* Proactive Online Chance */}
@@ -242,7 +277,7 @@ const BehaviorSettingsPage = () => {
                 step="5"
                 value={settings.proactiveOnlineChance}
                 onChange={(e) => updateSetting('proactiveOnlineChance', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-green-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Never</span>
@@ -264,7 +299,7 @@ const BehaviorSettingsPage = () => {
                 step="5"
                 value={settings.proactiveAwayChance}
                 onChange={(e) => updateSetting('proactiveAwayChance', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Never</span>
@@ -286,7 +321,7 @@ const BehaviorSettingsPage = () => {
                 step="5"
                 value={settings.proactiveBusyChance}
                 onChange={(e) => updateSetting('proactiveBusyChance', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Never</span>
@@ -310,7 +345,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.maxConsecutiveProactive}
                 onChange={(e) => updateSetting('maxConsecutiveProactive', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Unlimited</span>
@@ -332,7 +367,7 @@ const BehaviorSettingsPage = () => {
                 step="0.1"
                 value={settings.proactiveCooldownMultiplier}
                 onChange={(e) => updateSetting('proactiveCooldownMultiplier', parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>1.0x (slow)</span>
@@ -473,7 +508,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.thoughtFrequency}
                 onChange={(e) => updateSetting('thoughtFrequency', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Disabled</span>
@@ -575,7 +610,7 @@ const BehaviorSettingsPage = () => {
                 step="5"
                 value={settings.compactThresholdPercent}
                 onChange={(e) => updateSetting('compactThresholdPercent', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>50%</span>
@@ -597,7 +632,7 @@ const BehaviorSettingsPage = () => {
                 step="5"
                 value={settings.compactTargetPercent}
                 onChange={(e) => updateSetting('compactTargetPercent', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>30%</span>
@@ -619,7 +654,7 @@ const BehaviorSettingsPage = () => {
                 step="5"
                 value={settings.keepUncompactedMessages}
                 onChange={(e) => updateSetting('keepUncompactedMessages', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>10</span>
@@ -649,7 +684,7 @@ const BehaviorSettingsPage = () => {
                 step="5"
                 value={settings.maxMemories}
                 onChange={(e) => updateSetting('maxMemories', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Disabled</span>
@@ -673,7 +708,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.memoryDegradationPoints}
                 onChange={(e) => updateSetting('memoryDegradationPoints', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Disabled</span>
@@ -720,7 +755,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.autoUnmatchInactiveDays}
                 onChange={(e) => updateSetting('autoUnmatchInactiveDays', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-red-500"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Disabled</span>
@@ -761,7 +796,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.dailySwipeLimit}
                 onChange={(e) => updateSetting('dailySwipeLimit', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Unlimited</span>
@@ -785,7 +820,7 @@ const BehaviorSettingsPage = () => {
                 step="1"
                 value={settings.maxMatches}
                 onChange={(e) => updateSetting('maxMatches', parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-purple-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-purple-500 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:border-0"
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
                 <span>Unlimited</span>

@@ -540,12 +540,23 @@ function runMigrations() {
     }
 
     // Migration: Add proactive check interval columns to users table
-    if (!userColumnNames.includes('proactive_check_interval')) {
+    if (!userColumnNames.includes('proactive_check_interval_min')) {
       db.exec(`
-        ALTER TABLE users ADD COLUMN proactive_check_interval INTEGER DEFAULT 5;
+        ALTER TABLE users ADD COLUMN proactive_check_interval_min INTEGER DEFAULT 5;
+        ALTER TABLE users ADD COLUMN proactive_check_interval_max INTEGER DEFAULT 15;
         ALTER TABLE users ADD COLUMN last_proactive_check_at TIMESTAMP;
       `);
       console.log('✅ Proactive check interval columns added to users table');
+    }
+
+    // Migration: Migrate old proactive_check_interval to new min/max columns
+    if (userColumnNames.includes('proactive_check_interval') && !userColumnNames.includes('proactive_check_interval_min')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN proactive_check_interval_min INTEGER DEFAULT 5;
+        ALTER TABLE users ADD COLUMN proactive_check_interval_max INTEGER DEFAULT 15;
+        UPDATE users SET proactive_check_interval_min = proactive_check_interval, proactive_check_interval_max = proactive_check_interval;
+      `);
+      console.log('✅ Migrated proactive_check_interval to min/max columns');
     }
 
     // Migration: Add AI provider columns to users table
@@ -968,7 +979,8 @@ function runMigrations() {
           pacing_style TEXT DEFAULT 'balanced',
           proactive_away_chance INTEGER DEFAULT 50,
           proactive_busy_chance INTEGER DEFAULT 10,
-          proactive_check_interval INTEGER DEFAULT 5,
+          proactive_check_interval_min INTEGER DEFAULT 5,
+          proactive_check_interval_max INTEGER DEFAULT 15,
           last_proactive_check_at TIMESTAMP,
           max_consecutive_proactive INTEGER DEFAULT 4,
           proactive_cooldown_multiplier REAL DEFAULT 2.0,

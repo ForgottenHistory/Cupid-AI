@@ -15,9 +15,14 @@ function getCharacterName(character) {
 
 /**
  * Check if user should be checked for proactive messages
+ * Uses a random interval between min and max for each check
  */
 function shouldCheckUser(user) {
-  const checkInterval = user.proactive_check_interval || 5;
+  const minInterval = user.proactive_check_interval_min || 5;
+  const maxInterval = user.proactive_check_interval_max || 15;
+  // Pick a random interval between min and max
+  const checkInterval = minInterval + Math.random() * (maxInterval - minInterval);
+
   if (user.last_proactive_check_at) {
     const lastCheckTime = new Date(user.last_proactive_check_at);
     const now = new Date();
@@ -251,11 +256,11 @@ export function findCandidates() {
   const users = db.prepare(`
     SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit,
            proactive_online_chance, proactive_away_chance, proactive_busy_chance,
-           proactive_messages_today, last_proactive_date, proactive_check_interval,
-           last_proactive_check_at, left_on_read_messages_today, last_left_on_read_date,
-           daily_left_on_read_limit, left_on_read_trigger_min, left_on_read_trigger_max,
-           left_on_read_character_cooldown, max_consecutive_proactive, proactive_cooldown_multiplier,
-           auto_unmatch_after_proactive
+           proactive_messages_today, last_proactive_date, proactive_check_interval_min,
+           proactive_check_interval_max, last_proactive_check_at, left_on_read_messages_today,
+           last_left_on_read_date, daily_left_on_read_limit, left_on_read_trigger_min,
+           left_on_read_trigger_max, left_on_read_character_cooldown, max_consecutive_proactive,
+           proactive_cooldown_multiplier, auto_unmatch_after_proactive
     FROM users
   `).all();
 
