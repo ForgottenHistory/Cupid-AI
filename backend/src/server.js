@@ -23,6 +23,7 @@ import syncRoutes from './routes/sync.js';
 import tagLibraryRoutes from './routes/tagLibrary.js';
 import promptsRoutes from './routes/prompts.js';
 import imageTagPromptsRoutes from './routes/imageTagPrompts.js';
+import randomChatRoutes from './routes/randomChat.js';
 
 // Import services
 import proactiveMessageService from './services/proactiveMessageService.js';
@@ -109,6 +110,7 @@ app.use('/api/sync', syncRoutes);
 app.use('/api/tag-library', tagLibraryRoutes);
 app.use('/api/prompts', promptsRoutes);
 app.use('/api/image-tag-prompts', imageTagPromptsRoutes);
+app.use('/api/random-chat', randomChatRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

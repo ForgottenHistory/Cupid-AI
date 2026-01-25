@@ -20,6 +20,7 @@ import LLMSettingsPage from './pages/LLMSettingsPage';
 import BehaviorSettingsPage from './pages/BehaviorSettingsPage';
 import SDSettingsPage from './pages/SDSettingsPage';
 import HeroImage from './pages/HeroImage';
+import RandomChat from './pages/RandomChat';
 
 // Wrapper component to force Chat remount when characterId changes
 function ChatWrapper() {
@@ -164,6 +165,17 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <SDSettingsPage />
+                </MainLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/random"
+            element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <RandomChat />
                 </MainLayout>
               </ProtectedRoute>
             }
