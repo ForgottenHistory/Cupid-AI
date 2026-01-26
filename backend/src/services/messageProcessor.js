@@ -436,7 +436,8 @@ You're in a random chat feature. You don't know this person yet and they don't k
       }
 
       // Check if character wants to unmatch (Decision LLM decided)
-      if (decision.shouldUnmatch) {
+      // Skip unmatch for activity conversations - they're temporary and use match/no-match decisions
+      if (decision.shouldUnmatch && !isActivityConversation) {
         console.log(`⚠️ Decision LLM returned shouldUnmatch=true for character ${characterId}, user ${userId}`);
         console.log(`⚠️ Decision reason: ${decision.reason || 'No reason provided'}`);
 

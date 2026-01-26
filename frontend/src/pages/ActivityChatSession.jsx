@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useMood } from '../context/MoodContext';
 import { getImageUrl } from '../services/api';
 import chatService from '../services/chatService';
 import characterService from '../services/characterService';
@@ -14,6 +15,7 @@ import { useMessageActions } from '../hooks/useMessageActions';
 import MessageList from '../components/chat/MessageList';
 import ChatInput from '../components/chat/ChatInput';
 import ChatHeader from '../components/chat/ChatHeader';
+import ChatBackgroundEffects from '../components/chat/ChatBackgroundEffects';
 
 // Activity session hook
 import { useActivitySession, PHASE } from '../hooks/useActivitySession';
@@ -55,6 +57,10 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
 
   // Only use chat hooks when we have a conversation
   const characterId = character?.id;
+
+  // Mood context for background effects
+  const { getMoodForCharacter } = useMood();
+  const { effect: backgroundEffect, visible: backgroundVisible } = getMoodForCharacter(characterId);
 
   // Core chat state - this fetches messages from the real conversation
   const chatState = useChat(characterId, user, conversationId);
@@ -140,6 +146,8 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
   const firstMessageSetupRef = useRef(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  const userFirstChanceRef = useRef(userFirstChance);
+  userFirstChanceRef.current = userFirstChance;
   const [waitingForFirstMessage, setWaitingForFirstMessage] = useState(false);
 
   // First message logic - simple and direct, not using the hook's proactive system
@@ -155,7 +163,9 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     firstMessageSetupRef.current = conversationId;
 
     // userFirstChance is actually "character first chance" (0% = you always first, 100% = character always first)
-    const characterGoesFirst = Math.random() * 100 < userFirstChance;
+    // Use ref to get the latest value, not the stale closure value
+    const currentUserFirstChance = userFirstChanceRef.current;
+    const characterGoesFirst = Math.random() * 100 < currentUserFirstChance;
 
     const sendFirstMessage = async () => {
       // Check if still no messages (use ref for current value)
@@ -189,16 +199,16 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     if (characterGoesFirst) {
       // Character goes first: 1-3 second delay
       const delay = 1000 + Math.random() * 2000;
-      console.log(`🎲 Character goes first (${userFirstChance}% chance) - sending message in ${Math.round(delay)}ms`);
+      console.log(`🎲 Character goes first (${currentUserFirstChance}% chance) - sending message in ${Math.round(delay)}ms`);
       setTimeout(sendFirstMessage, delay);
     } else {
       // User goes first: wait 15 seconds, then if no messages, character sends
-      console.log(`🎲 User goes first (${100 - userFirstChance}% chance) - character will send if no messages in 15s`);
+      console.log(`🎲 User goes first (${100 - currentUserFirstChance}% chance) - character will send if no messages in 15s`);
       setTimeout(sendFirstMessage, 15000);
     }
     // No cleanup - we want the timeout to fire even if effect re-runs
     // The ref guard prevents duplicate setup, and sendFirstMessage checks for existing messages
-  }, [phase, conversationId, character, mode, userFirstChance, setMessages, markMessageAsNew, setError]);
+  }, [phase, conversationId, character, mode, setMessages, markMessageAsNew, setError]);
 
   // Swipe state (simplified for activities)
   const [messageSwipes] = useState({});
@@ -628,6 +638,11 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
   // Render CHATTING phase - using real chat components
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-purple-50/30 to-pink-50/30 dark:from-gray-800/30 dark:to-gray-900/30 relative">
+      {/* Background Effects (disabled in blind date mode) */}
+      {mode !== 'blind' && backgroundEffect !== 'none' && backgroundVisible && (
+        <ChatBackgroundEffects effect={backgroundEffect} visible={backgroundVisible} />
+      )}
+
       {/* Timer Bar */}
       <div className="flex-shrink-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-md border-b border-purple-100/50 dark:border-gray-700/50 shadow-sm relative z-20">
         <div className="px-6 py-2">
@@ -672,8 +687,8 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
         </div>
       </div>
 
-      {/* Chat Header */}
-      {displayCharacter && (
+      {/* Chat Header (hidden in blind date mode) */}
+      {displayCharacter && mode !== 'blind' && (
         <div className="relative z-10">
           <ChatHeader
             character={{
