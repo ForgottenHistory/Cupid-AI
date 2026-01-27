@@ -336,7 +336,8 @@ You're in a random chat feature. You don't know this person yet and they don't k
       }
 
       // Insert background effect system message if mood is set (not 'none')
-      if (decision.mood && decision.mood !== 'none') {
+      // Skip for activity conversations - they don't support background switching
+      if (decision.mood && decision.mood !== 'none' && !isActivityConversation) {
         const characterName = characterData.name || 'Character';
         const systemMessage = `[${characterName} switched background to ${decision.mood.toUpperCase()}]`;
 

@@ -111,10 +111,12 @@ class AIService {
     content = this.stripAndValidateContent(content, rawContent, { isChat: true });
 
     // Strip any leading "Name: " pattern (AI priming artifact)
-    content = content.replace(/^[A-Za-z\s'-]+:\s*/, '');
+    // Must start with capital letter to avoid stripping smileys like ":)" from "hey there :)"
+    content = content.replace(/^[A-Z][A-Za-z\s'-]*:\s*/, '');
 
     // Strip "\nName: ..." pattern and everything after
-    content = content.replace(/\n[A-Za-z\s'-]+:\s*[\s\S]*$/, '').trim();
+    // Must start with capital letter to avoid false matches
+    content = content.replace(/\n[A-Z][A-Za-z\s'-]*:\s*[\s\S]*$/, '').trim();
 
     // Strip any text in square brackets
     content = content.replace(/^\[.*?\]\s*$/gm, '').replace(/\[.*?\]/g, '').trim();
