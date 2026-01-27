@@ -116,8 +116,14 @@ export async function performDailyAutoMatch(req, res) {
 
     console.log(`📅 Daily auto-match check for user ${userId}`);
 
-    // Check if user has already auto-matched today
-    const user = db.prepare('SELECT last_auto_match_date, max_matches FROM users WHERE id = ?').get(userId);
+    // Check if daily auto-match is enabled for this user
+    const user = db.prepare('SELECT last_auto_match_date, max_matches, daily_auto_match_enabled FROM users WHERE id = ?').get(userId);
+
+    if (!user.daily_auto_match_enabled) {
+      console.log('  ⏭️ Daily auto-match disabled');
+      return res.json({ autoMatched: false, reason: 'Daily auto-match is disabled' });
+    }
+
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
     console.log(`  📆 Last auto-match: ${user.last_auto_match_date}, Today: ${today}`);
