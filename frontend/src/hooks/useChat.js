@@ -65,8 +65,15 @@ export const useChat = (characterId, user, existingConversationId = null) => {
     setError('');
 
     try {
-      // Load character from backend
-      const char = await characterService.getCharacter(characterId);
+      // Load character and conversation in parallel
+      const convPromise = existingConversationId
+        ? chatService.getConversationById(existingConversationId, 200, 0)
+        : chatService.getConversation(characterId, 200, 0);
+
+      const [char, convData] = await Promise.all([
+        characterService.getCharacter(characterId),
+        convPromise
+      ]);
 
       if (!char) {
         setError('Character not found');
@@ -75,25 +82,15 @@ export const useChat = (characterId, user, existingConversationId = null) => {
 
       setCharacter(char);
 
-      // Fetch character status if schedule exists
+      // Set character status from schedule (no API call needed, computed locally)
       if (char.cardData?.data?.schedule) {
         try {
           const status = await characterService.getCharacterStatus(characterId, char.cardData.data.schedule);
           setCharacterStatus(status);
         } catch (err) {
           console.error('Failed to fetch status:', err);
-          // Default to online if status fetch fails
           setCharacterStatus({ status: 'online', activity: null });
         }
-      }
-
-      // Load conversation and messages (latest 200 by default)
-      // Use existing conversation ID if provided (for activity sessions), otherwise get/create by characterId
-      let convData;
-      if (existingConversationId) {
-        convData = await chatService.getConversationById(existingConversationId, 200, 0);
-      } else {
-        convData = await chatService.getConversation(characterId, 200, 0);
       }
 
       const { conversation: conv, messages: msgs, total, hasMore, allImageUrls: imageUrls } = convData;
@@ -105,9 +102,9 @@ export const useChat = (characterId, user, existingConversationId = null) => {
 
       // Mark messages as read (skip for activity sessions - they're temporary)
       if (msgs.length > 0 && !existingConversationId) {
-        await chatService.markAsRead(characterId);
-        // Notify sidebar to refresh
-        window.dispatchEvent(new Event('characterUpdated'));
+        chatService.markAsRead(characterId);
+        // Notify sidebar to update unread count only (not full reload)
+        window.dispatchEvent(new CustomEvent('conversationRead', { detail: { characterId } }));
       }
 
       // Scroll to bottom after messages are loaded

@@ -21,9 +21,10 @@ router.put('/:messageId', authenticateToken, (req, res) => {
 
     messageService.editMessage(messageId, userId, content);
 
-    // Update conversation timestamp
+    // Update conversation timestamp and refresh cached last_message
     const message = messageService.getMessageWithUser(messageId);
     conversationService.updateTimestamp(message.conversation_id);
+    conversationService.refreshLastMessage(message.conversation_id);
 
     res.json({ success: true });
   } catch (error) {
@@ -100,8 +101,9 @@ router.delete('/:messageId/delete-from', authenticateToken, (req, res) => {
 
     const conversationId = messageService.deleteFromMessage(messageId, userId);
 
-    // Update conversation timestamp
+    // Update conversation timestamp and refresh cached last_message
     conversationService.updateTimestamp(conversationId);
+    conversationService.refreshLastMessage(conversationId);
 
     res.json({ success: true });
   } catch (error) {

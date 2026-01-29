@@ -114,15 +114,26 @@ const MainLayout = ({ children }) => {
     };
   }, [user?.id, matches]);
 
+  // Load everything once on mount
   useEffect(() => {
     loadMatches();
     loadStats();
     loadConversations();
     loadThumbnails();
-  }, [user?.id, location.pathname]);
+  }, [user?.id]);
+
+  // Only reload conversations on navigation (for unread count updates)
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    loadConversations();
+  }, [location.pathname]);
 
   useEffect(() => {
-    // Listen for character updates
+    // Listen for character updates (like/unlike/delete - actual data changes)
     const handleCharacterUpdate = () => {
       loadMatches();
       loadStats();
@@ -131,8 +142,20 @@ const MainLayout = ({ children }) => {
       loadThumbnails();
     };
 
+    // Listen for conversation read events (just update unread count in-place)
+    const handleConversationRead = (e) => {
+      const { characterId } = e.detail;
+      setConversations(prev => prev.map(conv =>
+        conv.character_id === characterId ? { ...conv, unread_count: 0 } : conv
+      ));
+    };
+
     window.addEventListener('characterUpdated', handleCharacterUpdate);
-    return () => window.removeEventListener('characterUpdated', handleCharacterUpdate);
+    window.addEventListener('conversationRead', handleConversationRead);
+    return () => {
+      window.removeEventListener('characterUpdated', handleCharacterUpdate);
+      window.removeEventListener('conversationRead', handleConversationRead);
+    };
   }, [user?.id]);
 
   useEffect(() => {

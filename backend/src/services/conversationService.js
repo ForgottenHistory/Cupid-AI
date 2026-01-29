@@ -16,8 +16,8 @@ class ConversationService {
         c.character_mood,
         c.created_at,
         c.updated_at,
-        (SELECT content FROM messages WHERE conversation_id = c.id AND role != 'system' ORDER BY created_at DESC LIMIT 1) as last_message,
-        (SELECT created_at FROM messages WHERE conversation_id = c.id AND role != 'system' ORDER BY created_at DESC LIMIT 1) as last_message_at
+        c.last_message,
+        c.last_message_at
       FROM conversations c
       INNER JOIN characters ch ON ch.id = c.character_id AND ch.user_id = c.user_id
       WHERE c.user_id = ?
@@ -138,6 +138,18 @@ class ConversationService {
       SET updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `).run(conversationId);
+  }
+
+  /**
+   * Refresh cached last_message from messages table (call after message deletion/edits)
+   */
+  refreshLastMessage(conversationId) {
+    db.prepare(`
+      UPDATE conversations SET
+        last_message = (SELECT content FROM messages WHERE conversation_id = ? AND role != 'system' ORDER BY created_at DESC, id DESC LIMIT 1),
+        last_message_at = (SELECT created_at FROM messages WHERE conversation_id = ? AND role != 'system' ORDER BY created_at DESC, id DESC LIMIT 1)
+      WHERE id = ?
+    `).run(conversationId, conversationId, conversationId);
   }
 
   /**

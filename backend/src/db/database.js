@@ -1168,6 +1168,21 @@ function runMigrations() {
       `);
       console.log('✅ Activity conversation columns added');
     }
+
+    // Migration: Add cached last_message columns to conversations table (eliminates N+1 subqueries)
+    if (!convColumnsForActivity.includes('last_message')) {
+      db.exec(`
+        ALTER TABLE conversations ADD COLUMN last_message TEXT;
+        ALTER TABLE conversations ADD COLUMN last_message_at TIMESTAMP;
+      `);
+      // Backfill from existing messages
+      db.exec(`
+        UPDATE conversations SET
+          last_message = (SELECT content FROM messages WHERE conversation_id = conversations.id AND role != 'system' ORDER BY created_at DESC, id DESC LIMIT 1),
+          last_message_at = (SELECT created_at FROM messages WHERE conversation_id = conversations.id AND role != 'system' ORDER BY created_at DESC, id DESC LIMIT 1)
+      `);
+      console.log('✅ last_message columns added and backfilled on conversations table');
+    }
   } catch (error) {
     console.error('Migration error:', error);
   }

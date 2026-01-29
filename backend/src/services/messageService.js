@@ -168,6 +168,14 @@ class MessageService {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(conversationId, role, content, reaction, messageType, audioUrl, imageUrl, imageTags, isProactive ? 1 : 0, imagePrompt, reasoning);
 
+    // Update cached last_message on conversations table (skip system messages)
+    if (role !== 'system') {
+      db.prepare(`
+        UPDATE conversations SET last_message = ?, last_message_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `).run(content, conversationId);
+    }
+
     return this.getMessage(result.lastInsertRowid);
   }
 
