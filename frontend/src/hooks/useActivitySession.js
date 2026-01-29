@@ -220,6 +220,9 @@ export const useActivitySession = (user, mode = 'random') => {
       // Confirm the match - converts temp conversation to permanent
       await api.post('/random-chat/confirm', { conversationId });
 
+      // Notify sidebar to show the new match
+      window.dispatchEvent(new Event('characterUpdated'));
+
       // Navigate to the real chat
       navigate(`/chat/${character.id}`);
 
@@ -321,6 +324,7 @@ export const useActivitySession = (user, mode = 'random') => {
           try {
             await characterService.likeCharacter(character.id);
             await api.post('/random-chat/confirm', { conversationId });
+            window.dispatchEvent(new Event('characterUpdated'));
             console.log('Converted! Navigating to chat...');
             navigate(`/chat/${character.id}`);
           } catch (err) {
