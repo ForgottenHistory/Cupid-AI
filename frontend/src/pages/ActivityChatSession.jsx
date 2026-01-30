@@ -568,9 +568,22 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
             /* No Match */
             <>
               {mode === 'blind' ? (
-                /* Blind Date No Match - don't reveal identity */
-                <div className="w-32 h-32 rounded-full mx-auto mb-6 opacity-50 grayscale bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
-                  <span className="text-5xl font-bold text-white/50">{firstInitial}</span>
+                /* Blind Date No Match - reveal identity */
+                <div className="relative mb-6">
+                  <div className="w-32 h-32 mx-auto relative">
+                    {/* Actual image underneath (greyed out) */}
+                    {getCharacterImageUrl() && (
+                      <img
+                        src={getCharacterImageUrl()}
+                        alt={characterName}
+                        className={`w-32 h-32 rounded-full object-cover ring-4 ring-gray-400 shadow-xl grayscale transition-opacity duration-1000 ${showReveal ? 'opacity-50' : 'opacity-0'}`}
+                      />
+                    )}
+                    {/* Mystery overlay on top that fades out */}
+                    <div className={`absolute inset-0 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center ring-4 ring-gray-500 shadow-xl transition-opacity duration-1000 z-10 ${showReveal ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                      <span className="text-5xl font-bold text-white/50">{firstInitial}</span>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 /* Random Chat No Match - show image greyed out */
@@ -588,11 +601,15 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-2">
                 {mode === 'blind' ? (
-                  <>
-                    {userDecision === 'no' && characterDecision === 'no' && "Neither of you wanted to match. Their identity remains a mystery!"}
-                    {userDecision === 'yes' && characterDecision === 'no' && `${firstInitial} wasn't feeling it. Their identity remains a mystery.`}
-                    {userDecision === 'no' && characterDecision === 'yes' && `${firstInitial} wanted to match, but you passed. Their identity remains a mystery.`}
-                  </>
+                  showReveal ? (
+                    <>
+                      {userDecision === 'no' && characterDecision === 'no' && <>Neither of you wanted to match. It was <span className="font-bold text-amber-500">{characterName}</span>!</>}
+                      {userDecision === 'yes' && characterDecision === 'no' && <>It was <span className="font-bold text-amber-500">{characterName}</span> — they weren't feeling it this time.</>}
+                      {userDecision === 'no' && characterDecision === 'yes' && <>It was <span className="font-bold text-amber-500">{characterName}</span> — they wanted to match, but you passed.</>}
+                    </>
+                  ) : (
+                    'Tap to reveal who it was!'
+                  )
                 ) : (
                   <>
                     {userDecision === 'no' && characterDecision === 'no' && "Neither of you wanted to match. That's okay!"}
@@ -601,14 +618,24 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
                   </>
                 )}
               </p>
-              {characterReason && (
+              {characterReason && (mode !== 'blind' || showReveal) && (
                 <p className="text-sm text-gray-500 dark:text-gray-400 italic mb-2">
                   "{characterReason}"
                 </p>
               )}
-              <p className="text-gray-500 dark:text-gray-500 text-sm mb-8">
-                Try again with someone new!
-              </p>
+
+              {mode === 'blind' && !showReveal ? (
+                <button
+                  onClick={handleReveal}
+                  className="mt-6 mb-8 px-8 py-4 bg-gradient-to-r from-amber-500 to-rose-500 text-white font-semibold rounded-full hover:from-amber-600 hover:to-rose-600 transition shadow-lg hover:shadow-xl animate-pulse"
+                >
+                  Reveal Identity
+                </button>
+              ) : (
+                <p className="text-gray-500 dark:text-gray-500 text-sm mb-8">
+                  Try again with someone new!
+                </p>
+              )}
 
               <div className="flex gap-4 justify-center">
                 <button
