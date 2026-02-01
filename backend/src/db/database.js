@@ -1141,6 +1141,18 @@ function runMigrations() {
       console.log(`✅ Synced schedule_data for ${syncedCount} character(s)`);
     }
 
+    // Migration: Add random model pool columns for all LLM types
+    const userColumnsForRandom = db.pragma('table_info(users)').map(col => col.name);
+    if (!userColumnsForRandom.includes('llm_random_models')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN llm_random_models TEXT;
+        ALTER TABLE users ADD COLUMN decision_llm_random_models TEXT;
+        ALTER TABLE users ADD COLUMN imagetag_llm_random_models TEXT;
+        ALTER TABLE users ADD COLUMN metadata_llm_random_models TEXT;
+      `);
+      console.log('✅ random_models columns added for all LLM types');
+    }
+
     // Migration: Add activities settings columns
     const userColumnsForActivities = db.pragma('table_info(users)').map(col => col.name);
     if (!userColumnsForActivities.includes('activities_include_away')) {

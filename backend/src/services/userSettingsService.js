@@ -15,7 +15,8 @@ const LLM_VALIDATION_RULES = {
   repetitionPenalty: { validate: (v) => v >= 0 && v <= 2, error: 'Repetition penalty must be between 0 and 2' },
   minP: { validate: (v) => v >= 0 && v <= 1, error: 'Min P must be between 0 and 1' },
   requestTimeout: { validate: (v) => v >= 10 && v <= 600, error: 'Request timeout must be between 10 and 600 seconds' },
-  reasoningEffort: { validate: (v) => v === null || v === '' || ['low', 'medium', 'high'].includes(v), error: 'Reasoning effort must be low, medium, high, or empty' }
+  reasoningEffort: { validate: (v) => v === null || v === '' || ['low', 'medium', 'high'].includes(v), error: 'Reasoning effort must be low, medium, high, or empty' },
+  randomModels: { validate: (v) => v === null || v === undefined || (Array.isArray(v) && v.every(m => typeof m === 'string')), error: 'Random models must be null or an array of model ID strings' }
 };
 
 /**
@@ -34,7 +35,8 @@ const FIELD_TO_DB_SUFFIX = {
   repetitionPenalty: 'repetition_penalty',
   minP: 'min_p',
   requestTimeout: 'request_timeout',
-  reasoningEffort: 'reasoning_effort'
+  reasoningEffort: 'reasoning_effort',
+  randomModels: 'random_models'
 };
 
 /**
@@ -43,19 +45,19 @@ const FIELD_TO_DB_SUFFIX = {
 const LLM_TYPES = {
   content: {
     prefix: 'llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort', 'randomModels']
   },
   decision: {
     prefix: 'decision_llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort', 'randomModels']
   },
   imagetag: {
     prefix: 'imagetag_llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort', 'randomModels']
   },
   metadata: {
     prefix: 'metadata_llm',
-    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort']
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort', 'randomModels']
   }
 };
 
@@ -95,6 +97,17 @@ class UserSettingsService {
     // Default provider to openrouter if not set
     if (result.provider === null || result.provider === undefined) {
       result.provider = 'openrouter';
+    }
+
+    // Parse randomModels from JSON string
+    if (result.randomModels) {
+      try {
+        result.randomModels = JSON.parse(result.randomModels);
+      } catch {
+        result.randomModels = [];
+      }
+    } else {
+      result.randomModels = [];
     }
 
     return result;
@@ -137,8 +150,13 @@ class UserSettingsService {
 
     for (const field of config.fields) {
       if (settings[field] !== undefined) {
+        let value = settings[field];
+        // Serialize randomModels array to JSON string for DB storage
+        if (field === 'randomModels' && Array.isArray(value)) {
+          value = JSON.stringify(value);
+        }
         updates.push(`${this.getColumnName(config.prefix, field)} = ?`);
-        values.push(settings[field]);
+        values.push(value);
       }
     }
 

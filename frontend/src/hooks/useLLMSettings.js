@@ -100,6 +100,7 @@ function getDefaultSettings(type) {
       minP: 0.0,
       requestTimeout: 120,
       reasoningEffort: null,
+      randomModels: [],
     };
   } else if (type === 'decision') {
     return {
@@ -116,6 +117,7 @@ function getDefaultSettings(type) {
       minP: 0.0,
       requestTimeout: 120,
       reasoningEffort: null,
+      randomModels: [],
     };
   } else if (type === 'imagetag') {
     return {
@@ -131,6 +133,7 @@ function getDefaultSettings(type) {
       minP: 0.0,
       requestTimeout: 120,
       reasoningEffort: null,
+      randomModels: [],
     };
   } else if (type === 'metadata') {
     return {
@@ -147,6 +150,7 @@ function getDefaultSettings(type) {
       minP: 0.0,
       requestTimeout: 120,
       reasoningEffort: null,
+      randomModels: [],
     };
   }
 }

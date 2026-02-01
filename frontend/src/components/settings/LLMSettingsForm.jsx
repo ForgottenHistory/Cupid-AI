@@ -1,4 +1,5 @@
 import ModelSelector from './ModelSelector';
+import RandomModelPool from './RandomModelPool';
 import SliderParameter from './SliderParameter';
 import AdvancedSettings from './AdvancedSettings';
 
@@ -71,7 +72,10 @@ const LLMSettingsForm = ({
           </label>
           <select
             value={settings.provider || 'openrouter'}
-            onChange={(e) => updateSetting('provider', e.target.value)}
+            onChange={(e) => {
+              updateSetting('provider', e.target.value);
+              updateSetting('randomModels', []);
+            }}
             className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 focus:border-transparent transition text-gray-900 dark:text-gray-100"
           >
             <option value="openrouter">OpenRouter</option>
@@ -89,6 +93,14 @@ const LLMSettingsForm = ({
           selectedModel={settings.model}
           provider={settings.provider || 'openrouter'}
           onChange={(value) => updateSetting('model', value)}
+        />
+
+        {/* Random Model Pool */}
+        <RandomModelPool
+          key={`random-${type}-${settings.provider || 'openrouter'}`}
+          randomModels={settings.randomModels || []}
+          provider={settings.provider || 'openrouter'}
+          onChange={(value) => updateSetting('randomModels', value)}
         />
 
         {/* Temperature */}
