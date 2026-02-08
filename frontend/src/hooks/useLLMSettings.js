@@ -58,7 +58,7 @@ export const useLLMSettings = (type) => {
   };
 
   const updateSetting = (field, value) => {
-    setSettings({ ...settings, [field]: value });
+    setSettings(prev => ({ ...prev, [field]: value }));
     setError('');
     setSuccess('');
   };
