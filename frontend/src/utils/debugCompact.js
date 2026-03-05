@@ -451,6 +451,44 @@ export async function importCharacters() {
   });
 }
 
+/**
+ * Debug function to trigger a proactive message for the current chat's character
+ * Call from browser console: window.triggerProactive()
+ *
+ * @param {string} characterId - Optional character ID (auto-detects from URL if not provided)
+ */
+export async function triggerProactive(characterId) {
+  try {
+    if (!characterId) {
+      // Extract character ID from URL: /chat/:characterId
+      const match = window.location.pathname.match(/\/chat\/([^/]+)/);
+      if (match) {
+        characterId = match[1];
+      } else {
+        console.error('❌ Not in a chat. Navigate to a character chat first, or provide a character ID: triggerProactive("character-id")');
+        return;
+      }
+    }
+
+    console.log(`💬 Triggering proactive message for character ${characterId}...`);
+
+    const response = await api.post(`/debug/trigger-proactive/${characterId}`);
+
+    if (response.data.success) {
+      console.log('✅ Proactive message triggered! Check the chat for the response.');
+    } else {
+      console.warn('⚠️ Proactive message was not sent:', response.data.message);
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('❌ Trigger proactive failed:', error);
+    if (error.response?.data?.error) {
+      console.error('   Error:', error.response.data.error);
+    }
+  }
+}
+
 // Expose to window for console access
 if (typeof window !== 'undefined') {
   window.testCompact = testCompact;
@@ -459,4 +497,5 @@ if (typeof window !== 'undefined') {
   window.testMemoryExtraction = testMemoryExtraction;
   window.testCompactUI = testCompactUI;
   window.importCharacters = importCharacters;
+  window.triggerProactive = triggerProactive;
 }

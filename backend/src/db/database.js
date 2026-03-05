@@ -1195,6 +1195,28 @@ function runMigrations() {
       `);
       console.log('✅ last_message columns added and backfilled on conversations table');
     }
+    // Migration: Add Proactive LLM settings
+    const userColumnsForProactiveLLM = db.pragma('table_info(users)').map(col => col.name);
+    if (!userColumnsForProactiveLLM.includes('proactive_llm_model')) {
+      db.exec(`
+        ALTER TABLE users ADD COLUMN proactive_llm_provider TEXT DEFAULT 'openrouter';
+        ALTER TABLE users ADD COLUMN proactive_llm_model TEXT DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN proactive_llm_temperature REAL DEFAULT 0.8;
+        ALTER TABLE users ADD COLUMN proactive_llm_max_tokens INTEGER DEFAULT 600;
+        ALTER TABLE users ADD COLUMN proactive_llm_top_p REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN proactive_llm_frequency_penalty REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN proactive_llm_presence_penalty REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN proactive_llm_context_window INTEGER DEFAULT 16000;
+        ALTER TABLE users ADD COLUMN proactive_llm_top_k INTEGER DEFAULT -1;
+        ALTER TABLE users ADD COLUMN proactive_llm_repetition_penalty REAL DEFAULT 1.0;
+        ALTER TABLE users ADD COLUMN proactive_llm_min_p REAL DEFAULT 0.0;
+        ALTER TABLE users ADD COLUMN proactive_llm_request_timeout INTEGER DEFAULT 120;
+        ALTER TABLE users ADD COLUMN proactive_llm_reasoning_effort TEXT DEFAULT NULL;
+        ALTER TABLE users ADD COLUMN proactive_llm_random_models TEXT;
+      `);
+      console.log('✅ Proactive LLM settings columns added');
+    }
+
   } catch (error) {
     console.error('Migration error:', error);
   }

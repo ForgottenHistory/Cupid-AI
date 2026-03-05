@@ -58,6 +58,10 @@ const LLM_TYPES = {
   metadata: {
     prefix: 'metadata_llm',
     fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort', 'randomModels']
+  },
+  proactive: {
+    prefix: 'proactive_llm',
+    fields: ['provider', 'model', 'temperature', 'maxTokens', 'topP', 'frequencyPenalty', 'presencePenalty', 'contextWindow', 'topK', 'repetitionPenalty', 'minP', 'requestTimeout', 'reasoningEffort', 'randomModels']
   }
 };
 

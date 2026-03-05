@@ -299,6 +299,75 @@ class LLMSettingsService {
       reasoning_effort: null
     };
   }
+
+  /**
+   * Get user's Proactive LLM settings from database
+   * Falls back to Content LLM settings if no proactive model is configured
+   */
+  getProactiveSettings(userId) {
+    if (!userId) {
+      return this.getUserSettings(userId);
+    }
+
+    try {
+      const settings = db.prepare(`
+        SELECT proactive_llm_provider, proactive_llm_model, proactive_llm_temperature, proactive_llm_max_tokens, proactive_llm_top_p,
+               proactive_llm_frequency_penalty, proactive_llm_presence_penalty, proactive_llm_context_window,
+               proactive_llm_top_k, proactive_llm_repetition_penalty, proactive_llm_min_p, proactive_llm_request_timeout,
+               proactive_llm_reasoning_effort, proactive_llm_random_models
+        FROM users WHERE id = ?
+      `).get(userId);
+
+      if (!settings || !settings.proactive_llm_model) {
+        // No proactive model configured - fall back to Content LLM
+        return this.getUserSettings(userId);
+      }
+
+      const primaryModel = settings.proactive_llm_model;
+      const { randomModels, model } = this._resolveRandomModel(settings.proactive_llm_random_models, primaryModel);
+
+      return {
+        provider: settings.proactive_llm_provider || 'openrouter',
+        model,
+        temperature: settings.proactive_llm_temperature ?? 0.8,
+        max_tokens: settings.proactive_llm_max_tokens ?? 600,
+        top_p: settings.proactive_llm_top_p ?? 1.0,
+        frequency_penalty: settings.proactive_llm_frequency_penalty ?? 0.0,
+        presence_penalty: settings.proactive_llm_presence_penalty ?? 0.0,
+        context_window: settings.proactive_llm_context_window ?? 16000,
+        top_k: settings.proactive_llm_top_k ?? -1,
+        repetition_penalty: settings.proactive_llm_repetition_penalty ?? 1.0,
+        min_p: settings.proactive_llm_min_p ?? 0.0,
+        request_timeout: settings.proactive_llm_request_timeout ?? 120,
+        reasoning_effort: settings.proactive_llm_reasoning_effort || null,
+        randomModels
+      };
+    } catch (error) {
+      console.error('Error fetching user Proactive LLM settings:', error);
+      return this.getUserSettings(userId);
+    }
+  }
+
+  /**
+   * Get default proactive LLM settings
+   */
+  getDefaultProactiveSettings() {
+    return {
+      provider: 'openrouter',
+      model: null,
+      temperature: 0.8,
+      max_tokens: 600,
+      top_p: 1.0,
+      frequency_penalty: 0.0,
+      presence_penalty: 0.0,
+      context_window: 16000,
+      top_k: -1,
+      repetition_penalty: 1.0,
+      min_p: 0.0,
+      request_timeout: 120,
+      reasoning_effort: null
+    };
+  }
 }
 
 export default new LLMSettingsService();

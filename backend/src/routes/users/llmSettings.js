@@ -56,6 +56,7 @@ createLLMSettingsRoutes('content', '/llm-settings');
 createLLMSettingsRoutes('decision', '/decision-llm-settings');
 createLLMSettingsRoutes('imagetag', '/imagetag-llm-settings');
 createLLMSettingsRoutes('metadata', '/metadata-llm-settings');
+createLLMSettingsRoutes('proactive', '/proactive-llm-settings');
 
 /**
  * GET /api/users/model-parameters/:modelId

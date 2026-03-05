@@ -6,22 +6,16 @@ import LLMSettingsForm from '../components/settings/LLMSettingsForm';
 const LLMSettingsPage = () => {
   const navigate = useNavigate();
   const containerRef = useRef(null);
-  const [activeTab, setActiveTab] = useState('content'); // 'content', 'decision', 'imagetag', or 'metadata'
+  const [activeTab, setActiveTab] = useState('content');
 
-  // Hook for Content LLM settings
   const contentLLM = useLLMSettings('content');
-
-  // Hook for Decision LLM settings
   const decisionLLM = useLLMSettings('decision');
-
-  // Hook for Image Tag LLM settings
   const imagetagLLM = useLLMSettings('imagetag');
-
-  // Hook for Metadata LLM settings
+  const proactiveLLM = useLLMSettings('proactive');
   const metadataLLM = useLLMSettings('metadata');
 
-  // Get current tab's settings
-  const currentSettings = activeTab === 'content' ? contentLLM : activeTab === 'decision' ? decisionLLM : activeTab === 'imagetag' ? imagetagLLM : metadataLLM;
+  const llmByTab = { content: contentLLM, decision: decisionLLM, imagetag: imagetagLLM, proactive: proactiveLLM, metadata: metadataLLM };
+  const currentSettings = llmByTab[activeTab];
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -34,7 +28,7 @@ const LLMSettingsPage = () => {
 
   return (
     <div ref={containerRef} className="h-full overflow-y-auto custom-scrollbar">
-      <div className="max-w-4xl mx-auto px-8 py-8">
+      <div className="max-w-6xl mx-auto px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
@@ -81,6 +75,16 @@ const LLMSettingsPage = () => {
             }`}
           >
             Image Tag LLM
+          </button>
+          <button
+            onClick={() => setActiveTab('proactive')}
+            className={`flex-1 px-6 py-3 font-semibold transition ${
+              activeTab === 'proactive'
+                ? 'text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400 bg-white dark:bg-gray-800'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+          >
+            Proactive LLM
           </button>
           <button
             onClick={() => setActiveTab('metadata')}

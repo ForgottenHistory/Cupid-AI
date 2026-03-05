@@ -131,7 +131,7 @@ class AIService {
   async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null, characterMood = null, characterState = null }) {
     try {
       const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName, userId);
-      const userSettings = llmSettingsService.getUserSettings(userId);
+      const userSettings = isProactive ? llmSettingsService.getProactiveSettings(userId) : llmSettingsService.getUserSettings(userId);
 
       // Get settings
       const behaviorSettings = db.prepare('SELECT include_full_schedule, use_name_primer FROM users WHERE id = ?').get(userId);

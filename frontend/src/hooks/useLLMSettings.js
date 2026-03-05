@@ -24,6 +24,7 @@ export const useLLMSettings = (type) => {
       const endpoint = type === 'content' ? '/users/llm-settings'
         : type === 'decision' ? '/users/decision-llm-settings'
         : type === 'imagetag' ? '/users/imagetag-llm-settings'
+        : type === 'proactive' ? '/users/proactive-llm-settings'
         : '/users/metadata-llm-settings';
       const response = await api.get(endpoint);
       setSettings(response.data);
@@ -43,6 +44,7 @@ export const useLLMSettings = (type) => {
       const endpoint = type === 'content' ? '/users/llm-settings'
         : type === 'decision' ? '/users/decision-llm-settings'
         : type === 'imagetag' ? '/users/imagetag-llm-settings'
+        : type === 'proactive' ? '/users/proactive-llm-settings'
         : '/users/metadata-llm-settings';
       await api.put(endpoint, settings);
       setSuccess('Settings saved successfully!');
@@ -128,6 +130,23 @@ function getDefaultSettings(type) {
       topP: 1.0,
       frequencyPenalty: 0.0,
       presencePenalty: 0.0,
+      topK: -1,
+      repetitionPenalty: 1.0,
+      minP: 0.0,
+      requestTimeout: 120,
+      reasoningEffort: null,
+      randomModels: [],
+    };
+  } else if (type === 'proactive') {
+    return {
+      provider: 'openrouter',
+      model: '',
+      temperature: 0.8,
+      maxTokens: 600,
+      topP: 1.0,
+      frequencyPenalty: 0.0,
+      presencePenalty: 0.0,
+      contextWindow: 16000,
       topK: -1,
       repetitionPenalty: 1.0,
       minP: 0.0,

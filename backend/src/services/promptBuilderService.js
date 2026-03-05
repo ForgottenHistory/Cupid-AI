@@ -435,6 +435,19 @@ class PromptBuilderService {
       return parts.join('');
     }
 
+    // Strong separator to break LLM's recency bias on conversation history above
+    parts.push(`\n\n════════════════════════════════════════
+NEW MESSAGE TASK - READ CAREFULLY
+════════════════════════════════════════
+You are writing a NEW opener message after a long silence. The conversation history above is BACKGROUND ONLY.
+
+CRITICAL RULES FOR THIS MESSAGE:
+1. Do NOT continue, respond to, or pick up from the last message above
+2. Do NOT reference the most recent topic or any specific thing said recently
+3. Do NOT write as if you're mid-conversation - you are STARTING FRESH
+4. Write as if you just picked up your phone and decided to text them out of the blue
+5. Your message should make sense even if the reader has NO context of previous chats`);
+
     // Normal proactive message handling - always start fresh
     const timeGapText = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since their last message.` : ' Some time has passed.';
     parts.push(`\n\n💬 PROACTIVE MESSAGE: You want to reach out to them first.${timeGapText}`);

@@ -367,21 +367,78 @@ class ProactiveMessageService {
   /**
    * Run the proactive message checker
    */
+  /**
+   * Build a candidate manually for debug mode, bypassing all filters
+   */
+  buildDebugCandidate(characterId) {
+    // Find user who owns this character
+    const character = db.prepare(`
+      SELECT c.*, conv.id as conversation_id, conv.created_at as conv_created_at
+      FROM characters c
+      LEFT JOIN conversations conv ON conv.character_id = c.id AND conv.user_id = c.user_id
+      WHERE c.id = ?
+    `).get(characterId);
+
+    if (!character || !character.conversation_id) {
+      console.log(`⚠️ Debug: Character ${characterId} not found or has no conversation`);
+      return null;
+    }
+
+    let characterData, schedule, personality;
+    try {
+      characterData = JSON.parse(character.card_data);
+      schedule = character.schedule_data ? JSON.parse(character.schedule_data) : null;
+      personality = character.personality_data ? JSON.parse(character.personality_data) : null;
+    } catch (error) {
+      console.error('Failed to parse character data:', error);
+      return null;
+    }
+
+    const lastUserMessage = db.prepare(`
+      SELECT * FROM messages WHERE conversation_id = ? AND role = 'user' ORDER BY created_at DESC LIMIT 1
+    `).get(character.conversation_id);
+
+    const now = new Date();
+    let gapHours, isFirstMessage;
+    if (lastUserMessage) {
+      gapHours = (now - new Date(lastUserMessage.created_at)) / (1000 * 60 * 60);
+      isFirstMessage = false;
+    } else {
+      gapHours = (now - new Date(character.conv_created_at)) / (1000 * 60 * 60);
+      isFirstMessage = true;
+    }
+
+    const characterName = characterData.data?.name || characterData.name || 'Character';
+    console.log(`🐛 Debug candidate: ${characterName} (gap: ${gapHours.toFixed(1)}h, firstMessage: ${isFirstMessage})`);
+
+    return {
+      userId: character.user_id,
+      characterId: character.id,
+      conversationId: character.conversation_id,
+      gapHours,
+      characterData,
+      personality,
+      schedule,
+      isFirstMessage,
+      triggerType: 'normal'
+    };
+  }
+
   async checkAndSend(io, debugCharacterId = null) {
     try {
-      console.log('🔍 Checking for proactive message candidates...');
+      let targetCandidates;
 
-      const candidates = findCandidates();
-      console.log(`📋 Found ${candidates.length} candidates`);
-
-      // Filter to specific character if debug mode
-      let targetCandidates = candidates;
       if (debugCharacterId) {
-        targetCandidates = candidates.filter(c => c.characterId === debugCharacterId);
-        if (targetCandidates.length === 0) {
-          console.log(`⚠️ Debug: Character ${debugCharacterId} not found in candidates`);
-          return;
-        }
+        // Debug mode: build candidate manually, bypassing all filters
+        console.log(`🐛 Debug: Building candidate for character ${debugCharacterId} (bypassing all filters)`);
+        const candidate = this.buildDebugCandidate(debugCharacterId);
+        if (!candidate) return;
+        targetCandidates = [candidate];
+      } else {
+        console.log('🔍 Checking for proactive message candidates...');
+        const candidates = findCandidates();
+        console.log(`📋 Found ${candidates.length} candidates`);
+        targetCandidates = candidates;
       }
 
       // Process candidates

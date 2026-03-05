@@ -45,6 +45,10 @@ const LLMSettingsForm = ({
               <>
                 <strong>Image Tag LLM:</strong> Used to generate Danbooru-style tags for character image generation. A thinking model is recommended for smart tag generation.
               </>
+            ) : type === 'proactive' ? (
+              <>
+                <strong>Proactive LLM:</strong> Used to generate proactive messages (characters texting first). If no model is set, falls back to the Chat LLM. Use a model that follows instructions well for fresh conversation starters.
+              </>
             ) : (
               <>
                 <strong>Metadata LLM:</strong> Used to generate character metadata (dating profiles, schedules, personality traits, descriptions). Used outside of chat conversations.
