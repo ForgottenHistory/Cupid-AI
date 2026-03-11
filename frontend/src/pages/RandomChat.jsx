@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ActivityChatSession from './ActivityChatSession';
+import IcebreakerSession from './IcebreakerSession';
 
 // Activity modes
 const MODE = {
   HUB: 'hub',
   RANDOM_CHAT: 'random',
   BLIND_DATE: 'blind',
+  ICEBREAKER: 'icebreaker',
 };
 
 const RandomChat = () => {
@@ -27,6 +29,10 @@ const RandomChat = () => {
 
   if (mode === MODE.BLIND_DATE) {
     return <ActivityChatSession user={user} mode="blind" onBack={handleBackToHub} />;
+  }
+
+  if (mode === MODE.ICEBREAKER) {
+    return <IcebreakerSession user={user} onBack={handleBackToHub} />;
   }
 
   // Render hub
@@ -145,23 +151,46 @@ const RandomChat = () => {
             </div>
           </div>
 
-          {/* Coming Soon Card */}
-          <div className="relative bg-gray-100 dark:bg-gray-800/50 rounded-2xl shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 opacity-60">
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-400 to-gray-500"></div>
+          {/* Icebreaker Card */}
+          <div
+            onClick={() => setMode(MODE.ICEBREAKER)}
+            className="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-purple-100 dark:border-gray-700"
+          >
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 to-blue-600"></div>
 
             <div className="p-6">
-              <div className="w-16 h-16 bg-gray-300 dark:bg-gray-700 rounded-2xl flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              {/* Icon */}
+              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
 
-              <h2 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-2">
-                More Coming Soon
+              {/* Title & Description */}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Icebreaker
               </h2>
-              <p className="text-gray-400 dark:text-gray-500 text-sm">
-                More activities are on the way!
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                A character asks you a question. Answer to start chatting, or skip to meet someone new!
               </p>
+
+              {/* Features */}
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 text-xs rounded-full">
+                  Quick match
+                </span>
+                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded-full">
+                  Q&A style
+                </span>
+              </div>
+            </div>
+
+            {/* Hover arrow */}
+            <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
             </div>
           </div>
         </div>

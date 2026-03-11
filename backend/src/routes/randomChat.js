@@ -4,6 +4,8 @@ import aiService from '../services/aiService.js';
 import db from '../db/database.js';
 import conversationService from '../services/conversationService.js';
 import messageService from '../services/messageService.js';
+import messageProcessor from '../services/messageProcessor.js';
+import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 
 const router = express.Router();
 
@@ -351,5 +353,180 @@ reason: brief explanation (1 sentence)`;
     return { decision: chatMessages.length >= 6 ? 'yes' : 'no', reason: null };
   }
 }
+
+/**
+ * POST /api/random-chat/icebreaker-question
+ * Generate an icebreaker question from a character
+ */
+router.post('/icebreaker-question', authenticateToken, async (req, res) => {
+  try {
+    const { characterId } = req.body;
+    const userId = req.user.id;
+
+    if (!characterId) {
+      return res.status(400).json({ error: 'Character ID is required' });
+    }
+
+    // Get character data
+    const character = db.prepare(`
+      SELECT id, name, card_data, image_url, schedule_data
+      FROM characters
+      WHERE id = ?
+    `).get(characterId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    let cardData = {};
+    try {
+      cardData = JSON.parse(character.card_data || '{}');
+    } catch (e) {
+      console.error('Failed to parse card_data:', e);
+    }
+
+    const characterName = cardData.data?.name || cardData.name || character.name || 'Character';
+    const description = cardData.data?.description || cardData.description || '';
+
+    // Get character's current activity from schedule
+    let activityContext = '';
+    if (character.schedule_data) {
+      try {
+        const schedule = JSON.parse(character.schedule_data);
+        const { status, activity } = getCurrentStatusFromSchedule(schedule);
+        if (activity) {
+          activityContext = `\nYou are currently ${status} (${activity}).`;
+        } else {
+          activityContext = `\nYou are currently ${status}.`;
+        }
+      } catch (e) {}
+    }
+
+    // Get user's display name
+    const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+    const userName = user?.display_name || 'User';
+
+    // Randomize question style
+    const questionStyles = [
+      'fun and lighthearted',
+      'flirty and playful',
+      'deep and thought-provoking',
+      'silly and random',
+      'witty and clever',
+      'nostalgic (about memories or childhood)',
+      'hypothetical (a "what if" or "would you rather" scenario)',
+      'creative and imaginative',
+      'bold and direct',
+      'sweet and genuine',
+    ];
+    const style = questionStyles[Math.floor(Math.random() * questionStyles.length)];
+
+    const prompt = `You are ${characterName}. You're on a dating app and want to ask someone an icebreaker question to get to know them. The question should reflect your personality.
+
+Character description: ${description}${activityContext}
+
+Write a single ${style} icebreaker question. Keep it under 2 sentences. Don't include any preamble - just the question itself.`;
+
+    const response = await aiService.createBasicCompletion(prompt, {
+      max_tokens: 150,
+      userId,
+      llmType: 'content',
+      messageType: 'icebreaker-question',
+      characterName,
+      userName
+    });
+
+    res.json({
+      question: response.content.trim(),
+      characterId,
+      characterName
+    });
+
+  } catch (error) {
+    console.error('Icebreaker question error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate icebreaker question' });
+  }
+});
+
+/**
+ * POST /api/random-chat/icebreaker-answer
+ * Submit answer to icebreaker and create a match
+ */
+router.post('/icebreaker-answer', authenticateToken, async (req, res) => {
+  try {
+    const { characterId, question, answer } = req.body;
+    const userId = req.user.id;
+
+    if (!characterId || !question || !answer) {
+      return res.status(400).json({ error: 'characterId, question, and answer are all required' });
+    }
+
+    // Get character data
+    const character = db.prepare(`
+      SELECT id, name, card_data
+      FROM characters
+      WHERE id = ?
+    `).get(characterId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    let cardData = {};
+    try {
+      cardData = JSON.parse(character.card_data || '{}');
+    } catch (e) {
+      console.error('Failed to parse card_data:', e);
+    }
+
+    const characterName = cardData.data?.name || cardData.name || character.name || 'Character';
+
+    // Like the character
+    db.prepare('UPDATE characters SET is_liked = 1 WHERE id = ? AND user_id = ?').run(characterId, userId);
+
+    // Check for existing permanent conversation
+    let conversationId;
+    const existing = db.prepare(`
+      SELECT id FROM conversations
+      WHERE user_id = ? AND character_id = ? AND activity_expires_at IS NULL
+    `).get(userId, characterId);
+
+    if (existing) {
+      conversationId = existing.id;
+    } else {
+      const result = db.prepare(`
+        INSERT INTO conversations (user_id, character_id, character_name)
+        VALUES (?, ?, ?)
+      `).run(userId, characterId, characterName);
+      conversationId = result.lastInsertRowid;
+    }
+
+    // Save system message
+    messageService.saveMessage(conversationId, 'system', '[ACTIVITY MATCH: You matched through icebreaker!]', null, 'system');
+
+    // Save the character's question as an assistant message
+    messageService.saveMessage(conversationId, 'assistant', question);
+
+    // Save the user's answer as a user message
+    messageService.saveMessage(conversationId, 'user', answer);
+
+    res.json({
+      success: true,
+      conversationId,
+      characterId
+    });
+
+    // Trigger AI response to the user's answer asynchronously
+    const io = req.app.get('io');
+    const characterData = cardData.data || cardData;
+    messageProcessor.processMessage(io, userId, characterId, conversationId, characterData).catch(error => {
+      console.error('Icebreaker AI response error:', error);
+    });
+
+  } catch (error) {
+    console.error('Icebreaker answer error:', error);
+    res.status(500).json({ error: error.message || 'Failed to process icebreaker answer' });
+  }
+});
 
 export default router;
