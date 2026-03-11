@@ -89,46 +89,70 @@ function TwoTruthsSession({ user, onBack }) {
 
   if (phase === 'guessing') {
     return (
-      <div className="h-full flex flex-col bg-gradient-to-b from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
-        {/* Back button */}
-        <div className="flex-shrink-0 px-6 pt-4">
-          <button onClick={onBack} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg transition">
+      <div className="h-full flex overflow-hidden">
+        {/* Left panel - Full-height character image */}
+        <div className="relative w-[45%] flex-shrink-0">
+          {getCharacterImageUrl() ? (
+            <>
+              <img
+                src={getCharacterImageUrl()}
+                alt={characterName}
+                className="absolute inset-0 w-full h-full object-cover object-center"
+              />
+              {/* Right-edge blur fade */}
+              <div className="absolute top-0 right-0 bottom-0 w-32 backdrop-blur-md" style={{
+                maskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)'
+              }}></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-gray-50/40 dark:to-gray-900/60"></div>
+              <div className="absolute bottom-0 left-0 right-0 h-40">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                <div className="absolute bottom-8 left-8 right-8">
+                  <h2 className="text-3xl font-bold text-white drop-shadow-lg">{characterName}</h2>
+                  <p className="text-base text-white/60 mt-1">says...</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <span className="text-9xl font-bold text-white/20">{characterName.charAt(0).toUpperCase()}</span>
+            </div>
+          )}
+          <button onClick={onBack} className="absolute top-4 left-4 p-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-lg backdrop-blur-sm transition z-10">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8">
-          <div className="max-w-lg w-full">
-            {/* Character header */}
-            <div className="flex items-center gap-4 mb-6">
-              {getCharacterImageUrl() ? (
-                <img src={getCharacterImageUrl()} alt={characterName} className="w-16 h-16 rounded-full object-cover ring-2 ring-emerald-400 shadow-md" />
-              ) : (
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center ring-2 ring-emerald-400 shadow-md">
-                  <span className="text-2xl font-bold text-white">{characterName.charAt(0).toUpperCase()}</span>
-                </div>
-              )}
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white text-lg">{characterName}</h3>
-                <p className="text-sm text-emerald-600 dark:text-emerald-400">Which one is the lie?</p>
+        {/* Right panel - Game content */}
+        <div className="flex-1 flex flex-col justify-center bg-gradient-to-b from-gray-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 px-12 lg:px-16 relative overflow-hidden">
+          <div className="absolute top-10 right-10 w-64 h-64 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-10 left-10 w-48 h-48 bg-teal-500/5 dark:bg-teal-500/10 rounded-full blur-3xl"></div>
+
+          <div className="max-w-xl w-full mx-auto relative z-10">
+            {/* Title */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-emerald-100 dark:bg-emerald-900/20 rounded-full mb-4">
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Spot the lie</span>
               </div>
+              <h2 className="text-5xl font-extrabold bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent mb-2">Two Truths & A Lie</h2>
+              <p className="text-lg text-gray-400 dark:text-gray-500">Which statement is {characterName} making up?</p>
             </div>
 
             {/* Statement cards */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               {statements.map((statement, index) => (
                 <button
                   key={index}
                   onClick={() => handleGuess(index)}
-                  className="w-full text-left p-4 bg-white dark:bg-gray-800 rounded-xl shadow-md border-2 border-transparent hover:border-emerald-400 dark:hover:border-emerald-500 transition-all hover:shadow-lg group"
+                  className="group w-full text-left p-6 bg-white/80 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 hover:border-emerald-400 dark:hover:border-emerald-500 transition-all duration-200 hover:shadow-[0_0_30px_rgba(16,185,129,0.15)] hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  <div className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center font-bold text-sm group-hover:bg-emerald-500 group-hover:text-white transition-colors">
-                      {index + 1}
-                    </span>
-                    <p className="text-gray-800 dark:text-gray-200 leading-relaxed pt-0.5">{statement}</p>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
+                      <span className="text-white font-bold text-lg">{index + 1}</span>
+                    </div>
+                    <p className="text-lg font-medium text-gray-800 dark:text-gray-200 leading-relaxed pt-1.5 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">{statement}</p>
                   </div>
                 </button>
               ))}
@@ -141,63 +165,90 @@ function TwoTruthsSession({ user, onBack }) {
 
   if (phase === 'result') {
     return (
-      <div className="h-full flex flex-col bg-gradient-to-b from-emerald-50 to-teal-50 dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
-        {/* Back button */}
-        <div className="flex-shrink-0 px-6 pt-4">
-          <button onClick={onBack} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg transition">
+      <div className="h-full flex overflow-hidden">
+        {/* Left panel - Full-height character image */}
+        <div className="relative w-[45%] flex-shrink-0">
+          {getCharacterImageUrl() ? (
+            <>
+              <img
+                src={getCharacterImageUrl()}
+                alt={characterName}
+                className="absolute inset-0 w-full h-full object-cover object-center"
+              />
+              {/* Right-edge blur fade */}
+              <div className="absolute top-0 right-0 bottom-0 w-32 backdrop-blur-md" style={{
+                maskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)'
+              }}></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-gray-50/40 dark:to-gray-900/60"></div>
+              <div className="absolute bottom-0 left-0 right-0 h-40">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                <div className="absolute bottom-8 left-8 right-8">
+                  <h2 className="text-3xl font-bold text-white drop-shadow-lg">{characterName}</h2>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <span className="text-9xl font-bold text-white/20">{characterName.charAt(0).toUpperCase()}</span>
+            </div>
+          )}
+          <button onClick={onBack} className="absolute top-4 left-4 p-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-lg backdrop-blur-sm transition z-10">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8">
-          <div className="max-w-lg w-full">
+        {/* Right panel - Results */}
+        <div className="flex-1 flex flex-col justify-center bg-gradient-to-b from-gray-50 to-emerald-50/50 dark:from-gray-900 dark:to-gray-800 px-12 lg:px-16 relative overflow-hidden">
+          <div className="absolute top-10 right-10 w-64 h-64 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-10 left-10 w-48 h-48 bg-teal-500/5 dark:bg-teal-500/10 rounded-full blur-3xl"></div>
+
+          <div className="max-w-xl w-full mx-auto relative z-10">
             {/* Result header */}
-            <div className="text-center mb-6">
-              {getCharacterImageUrl() ? (
-                <img src={getCharacterImageUrl()} alt={characterName} className="w-20 h-20 rounded-full object-cover ring-4 ring-emerald-400 shadow-lg mx-auto mb-4" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center ring-4 ring-emerald-400 shadow-lg mx-auto mb-4">
-                  <span className="text-3xl font-bold text-white">{characterName.charAt(0).toUpperCase()}</span>
-                </div>
-              )}
-              <h2 className={`text-2xl font-bold mb-1 ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+            <div className="text-center mb-8">
+              <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 ${isCorrect ? 'bg-emerald-100 dark:bg-emerald-900/20' : 'bg-red-100 dark:bg-red-900/20'}`}>
+                <span className={`text-xs font-bold uppercase tracking-widest ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                  {isCorrect ? 'Correct!' : 'Wrong guess'}
+                </span>
+              </div>
+              <h2 className={`text-5xl font-extrabold bg-clip-text text-transparent mb-2 ${isCorrect ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-red-500 to-orange-500'}`}>
                 {isCorrect ? 'You got it!' : 'Not quite!'}
               </h2>
-              <p className="text-gray-500 dark:text-gray-400 text-sm">
+              <p className="text-lg text-gray-400 dark:text-gray-500">
                 {isCorrect ? 'You spotted the lie!' : `The lie was statement ${lieIndex + 1}`}
               </p>
             </div>
 
             {/* Revealed statement cards */}
-            <div className="space-y-3 mb-6">
+            <div className="space-y-4 mb-8">
               {statements.map((statement, index) => {
                 const isLie = index === lieIndex;
                 const wasSelected = index === selectedIndex;
                 return (
                   <div
                     key={index}
-                    className={`p-4 rounded-xl border-2 transition-all ${
+                    className={`p-5 rounded-2xl border backdrop-blur-sm transition-all ${
                       isLie
-                        ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'
-                        : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700'
+                        ? 'bg-red-50/80 dark:bg-red-900/20 border-red-300/50 dark:border-red-700/50'
+                        : 'bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-300/50 dark:border-emerald-700/50'
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <span className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm text-white ${
-                        isLie ? 'bg-red-500' : 'bg-emerald-500'
+                    <div className="flex items-start gap-4">
+                      <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-lg ${
+                        isLie ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/20' : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20'
                       }`}>
                         {isLie ? '\u2717' : '\u2713'}
-                      </span>
+                      </div>
                       <div className="flex-1">
-                        <p className="text-gray-800 dark:text-gray-200 leading-relaxed">{statement}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs font-medium ${isLie ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                            {isLie ? 'LIE' : 'TRUTH'}
+                        <p className="text-base font-medium text-gray-800 dark:text-gray-200 leading-relaxed">{statement}</p>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className={`text-xs font-bold uppercase tracking-wider ${isLie ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {isLie ? 'Lie' : 'Truth'}
                           </span>
                           {wasSelected && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500">&larr; your guess</span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500 italic">&larr; your guess</span>
                           )}
                         </div>
                       </div>
@@ -209,9 +260,9 @@ function TwoTruthsSession({ user, onBack }) {
 
             {/* Explanation */}
             {explanation && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 mb-6">
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  <span className="font-medium text-gray-800 dark:text-gray-200">{characterName}:</span> "{explanation}"
+              <div className="bg-white/80 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-5 border border-gray-200/50 dark:border-gray-700/50 mb-8">
+                <p className="text-base text-gray-600 dark:text-gray-400">
+                  <span className="font-bold text-gray-800 dark:text-gray-200">{characterName}:</span> &ldquo;{explanation}&rdquo;
                 </p>
               </div>
             )}
@@ -219,7 +270,7 @@ function TwoTruthsSession({ user, onBack }) {
             {/* Continue button */}
             <button
               onClick={handleContinueToChat}
-              className="w-full px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold rounded-full hover:opacity-90 transition shadow-lg hover:shadow-xl"
+              className="w-full px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-lg rounded-2xl hover:opacity-90 transition shadow-lg hover:shadow-xl hover:shadow-emerald-500/20"
             >
               Continue to Chat &rarr;
             </button>

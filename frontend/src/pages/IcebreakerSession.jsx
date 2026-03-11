@@ -137,53 +137,76 @@ function IcebreakerSession({ user, onBack }) {
 
   // QUESTION phase
   return (
-    <div className="h-full flex flex-col bg-gradient-to-b from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
-      {/* Back button */}
-      <div className="flex-shrink-0 px-6 pt-4">
-        <button onClick={onBack} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 rounded-lg transition">
+    <div className="h-full flex overflow-hidden">
+      {/* Left panel - Full-height character image */}
+      <div className="relative w-[45%] flex-shrink-0">
+        {getCharacterImageUrl() ? (
+          <>
+            <img
+              src={getCharacterImageUrl()}
+              alt={characterName}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
+            {/* Right-edge blur fade */}
+            <div className="absolute top-0 right-0 bottom-0 w-32 backdrop-blur-md" style={{
+              maskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)',
+              WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)'
+            }}></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-gray-50/40 dark:to-gray-900/60"></div>
+            <div className="absolute bottom-0 left-0 right-0 h-40">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+              <div className="absolute bottom-8 left-8 right-8">
+                <h2 className="text-3xl font-bold text-white drop-shadow-lg">{characterName}</h2>
+                <p className="text-base text-white/60 mt-1">asks you...</p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+            <span className="text-9xl font-bold text-white/20">{characterName.charAt(0).toUpperCase()}</span>
+          </div>
+        )}
+        <button onClick={onBack} className="absolute top-4 left-4 p-2 text-white/80 hover:text-white bg-black/20 hover:bg-black/40 rounded-lg backdrop-blur-sm transition z-10">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
       </div>
 
-      {/* Main content - centered */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8">
-        <div className="max-w-lg w-full">
-          {/* Character card */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden border border-blue-100 dark:border-gray-700 mb-6">
-            {/* Character image + name header */}
-            <div className="flex items-center gap-4 p-5 border-b border-gray-100 dark:border-gray-700">
-              {getCharacterImageUrl() ? (
-                <img src={getCharacterImageUrl()} alt={characterName} className="w-14 h-14 rounded-full object-cover ring-2 ring-blue-400 shadow-md" />
-              ) : (
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center ring-2 ring-blue-400 shadow-md">
-                  <span className="text-xl font-bold text-white">{characterName.charAt(0).toUpperCase()}</span>
-                </div>
-              )}
-              <div>
-                <h3 className="font-bold text-gray-900 dark:text-white text-lg">{characterName}</h3>
-                <p className="text-sm text-blue-500 dark:text-blue-400">asks you...</p>
-              </div>
-            </div>
+      {/* Right panel - Question content */}
+      <div className="flex-1 flex flex-col justify-center bg-gradient-to-b from-gray-50 to-cyan-50/50 dark:from-gray-900 dark:to-gray-800 px-12 lg:px-16 relative overflow-hidden">
+        <div className="absolute top-10 right-10 w-64 h-64 bg-cyan-500/5 dark:bg-cyan-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-10 left-10 w-48 h-48 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl"></div>
 
-            {/* Question bubble */}
-            <div className="p-5">
-              <div className="bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-blue-900/30 dark:to-cyan-900/20 rounded-2xl p-5 border border-blue-100/50 dark:border-blue-800/30">
-                <p className="text-gray-800 dark:text-gray-200 text-lg leading-relaxed">
-                  {question}
-                </p>
+        <div className="max-w-xl w-full mx-auto relative z-10">
+          {/* Title */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-cyan-100 dark:bg-cyan-900/20 rounded-full mb-4">
+              <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-widest">Icebreaker</span>
+            </div>
+            <h2 className="text-5xl font-extrabold bg-gradient-to-r from-cyan-500 to-blue-500 bg-clip-text text-transparent mb-2">Break the Ice</h2>
+            <p className="text-lg text-gray-400 dark:text-gray-500">{characterName} wants to know...</p>
+          </div>
+
+          {/* Question card */}
+          <div className="p-8 bg-white/80 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-[0_0_30px_rgba(6,182,212,0.08)] mb-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
+              <p className="text-xl font-medium text-gray-800 dark:text-gray-200 leading-relaxed pt-1.5">{question}</p>
             </div>
           </div>
 
           {/* Answer input */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden border border-blue-100 dark:border-gray-700 mb-4">
+          <div className="bg-white/80 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden mb-5">
             <textarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
               placeholder="Type your answer..."
-              className="w-full p-4 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:outline-none"
+              className="w-full p-5 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:outline-none text-lg"
               rows={3}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -196,24 +219,24 @@ function IcebreakerSession({ user, onBack }) {
 
           {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
+            <div className="mb-5 p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
               {error}
             </div>
           )}
 
           {/* Action buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-4">
             <button
               onClick={handleSkip}
               disabled={skipping}
-              className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition disabled:opacity-50"
+              className="flex-1 px-6 py-4 bg-gray-200/80 dark:bg-gray-700/60 backdrop-blur-sm text-gray-700 dark:text-gray-300 font-bold text-lg rounded-2xl hover:bg-gray-300 dark:hover:bg-gray-600 transition disabled:opacity-50"
             >
               {skipping ? 'Skipping...' : 'Skip'}
             </button>
             <button
               onClick={handleAnswer}
               disabled={!answer.trim()}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-full hover:opacity-90 transition shadow-lg disabled:opacity-50"
+              className="flex-1 px-6 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg rounded-2xl hover:opacity-90 transition shadow-lg hover:shadow-xl hover:shadow-cyan-500/20 disabled:opacity-50"
             >
               Answer
             </button>

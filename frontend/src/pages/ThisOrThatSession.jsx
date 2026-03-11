@@ -104,8 +104,12 @@ function ThisOrThatSession({ user, onBack }) {
                 alt={characterName}
                 className="absolute inset-0 w-full h-full object-cover object-center"
               />
-              {/* Gradient overlay on right edge for blend */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-gray-900/80"></div>
+              {/* Right-edge blur fade */}
+              <div className="absolute top-0 right-0 bottom-0 w-32 backdrop-blur-md" style={{
+                maskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)',
+                WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 100%)'
+              }}></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-gray-50/40 dark:to-gray-900/60"></div>
               {/* Bottom gradient for name */}
               <div className="absolute bottom-0 left-0 right-0 h-40">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
