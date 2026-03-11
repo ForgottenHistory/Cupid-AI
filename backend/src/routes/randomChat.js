@@ -553,4 +553,108 @@ explanation: [brief explanation of why it's a lie]`;
   }
 });
 
+/**
+ * POST /api/random-chat/this-or-that
+ * Generate "This or That" preference pairs from a character
+ */
+router.post('/this-or-that', authenticateToken, async (req, res) => {
+  try {
+    const { characterId } = req.body;
+    const userId = req.user.id;
+
+    if (!characterId) {
+      return res.status(400).json({ error: 'Character ID is required' });
+    }
+
+    // Get character data
+    const character = db.prepare(`
+      SELECT id, name, card_data, image_url, schedule_data
+      FROM characters
+      WHERE id = ?
+    `).get(characterId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    let cardData = {};
+    try {
+      cardData = JSON.parse(character.card_data || '{}');
+    } catch (e) {
+      console.error('Failed to parse card_data:', e);
+    }
+
+    const characterName = cardData.data?.name || cardData.name || character.name || 'Character';
+    const description = cardData.data?.description || cardData.description || '';
+
+    // Get character's current activity from schedule
+    let activityContext = '';
+    if (character.schedule_data) {
+      try {
+        const schedule = JSON.parse(character.schedule_data);
+        const { status, activity } = getCurrentStatusFromSchedule(schedule);
+        if (activity) {
+          activityContext = `\nYou are currently ${status} (${activity}).`;
+        } else {
+          activityContext = `\nYou are currently ${status}.`;
+        }
+      } catch (e) {}
+    }
+
+    // Get user's display name
+    const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+    const userName = user?.display_name || 'User';
+
+    const prompt = `You are ${characterName}. You're playing "This or That" on a dating app - asking quick preference questions to get to know someone.
+
+Character description: ${description}${activityContext}
+
+Generate exactly 7 "this or that" pairs. Each pair should have two options. Mix fun, flirty, and personality-revealing questions. Make some reflect your own interests/personality.
+
+Respond in this exact format (one pair per line):
+1: [option A] | [option B]
+2: [option A] | [option B]
+3: [option A] | [option B]
+4: [option A] | [option B]
+5: [option A] | [option B]
+6: [option A] | [option B]
+7: [option A] | [option B]
+
+Examples: "Beach vacation | Mountain retreat", "Cats | Dogs", "Early bird | Night owl"
+Don't number the options themselves, just the pairs. Keep each option short (1-4 words).`;
+
+    const response = await aiService.createBasicCompletion(prompt, {
+      max_tokens: 400,
+      userId,
+      llmType: 'content',
+      messageType: 'this-or-that',
+      characterName,
+      userName
+    });
+
+    const content = response.content.trim();
+    const pairs = [];
+    for (let i = 1; i <= 7; i++) {
+      const match = content.match(new RegExp(`${i}:\\s*(.+?)\\s*\\|\\s*(.+?)\\s*(?:\\n|$)`, 'i'));
+      if (match) {
+        pairs.push({ optionA: match[1].trim(), optionB: match[2].trim() });
+      }
+    }
+
+    if (pairs.length < 3) {
+      return res.status(500).json({ error: 'Failed to generate enough question pairs' });
+    }
+
+    res.json({
+      pairs,
+      characterId,
+      characterName
+    });
+
+  } catch (error) {
+    console.error('This or that error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate this or that pairs' });
+  }
+});
+
 export default router;

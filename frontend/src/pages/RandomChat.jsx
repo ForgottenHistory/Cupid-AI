@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import ActivityChatSession from './ActivityChatSession';
 import IcebreakerSession from './IcebreakerSession';
 import TwoTruthsSession from './TwoTruthsSession';
+import ThisOrThatSession from './ThisOrThatSession';
 
 // Activity modes
 const MODE = {
@@ -12,6 +13,7 @@ const MODE = {
   BLIND_DATE: 'blind',
   ICEBREAKER: 'icebreaker',
   TWO_TRUTHS: 'two-truths',
+  THIS_OR_THAT: 'this-or-that',
 };
 
 const RandomChat = () => {
@@ -39,6 +41,10 @@ const RandomChat = () => {
 
   if (mode === MODE.TWO_TRUTHS) {
     return <TwoTruthsSession user={user} onBack={handleBackToHub} />;
+  }
+
+  if (mode === MODE.THIS_OR_THAT) {
+    return <ThisOrThatSession user={user} onBack={handleBackToHub} />;
   }
 
   // Render hub
@@ -238,6 +244,49 @@ const RandomChat = () => {
             {/* Hover arrow */}
             <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
+          </div>
+
+          {/* This or That Card */}
+          <div
+            onClick={() => setMode(MODE.THIS_OR_THAT)}
+            className="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-purple-100 dark:border-gray-700"
+          >
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-amber-600"></div>
+
+            <div className="p-6">
+              {/* Icon */}
+              <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-amber-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+              </div>
+
+              {/* Title & Description */}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                This or That
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                Quick-fire preference questions! Pick your favorites, then chat about your choices.
+              </p>
+
+              {/* Features */}
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-xs rounded-full">
+                  7 rounds
+                </span>
+                <span className="px-2 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-xs rounded-full">
+                  Timed chat
+                </span>
+              </div>
+            </div>
+
+            {/* Hover arrow */}
+            <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </div>

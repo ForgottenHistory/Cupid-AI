@@ -62,6 +62,9 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
     } else if (activityMode === 'icebreaker') {
       const iceContext = activityContext || 'You asked them an icebreaker question and they answered.';
       prompt = `You're on a dating app and just did an icebreaker! ${iceContext} Now continue the conversation naturally based on their answer. React to what they said, be engaged and curious. Keep it short (1-2 sentences). This is a timed chat so keep the energy going!`;
+    } else if (activityMode === 'this-or-that') {
+      const totContext = activityContext || 'You just played This or That with them.';
+      prompt = `You just played "This or That" on a dating app! ${totContext} Send a fun first message reacting to their picks. Point out something you have in common or playfully challenge a choice you disagree with. Keep it short (1-2 sentences). Be natural and flirty!`;
     } else if (activityMode === 'random') {
       prompt = `You're starting a random chat with a stranger! You don't know them yet. Send a friendly, casual first message to break the ice. Be natural and show your personality. Keep it short (1-2 sentences). This is a timed chat so make a good first impression!`;
     } else {
