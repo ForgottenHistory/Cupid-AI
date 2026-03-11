@@ -276,9 +276,9 @@ You're in a random chat feature. You don't know this person yet and they don't k
 
       console.log(`💭 Total message count: ${totalMessageCount} (next will be ${totalMessageCount + 1}, thought: ${(totalMessageCount + 1) % 10 === 0})`);
 
-      // Get user bio for decision and content generation
+      // Get user bio for decision and content generation (exclude in blind date mode)
       const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
-      const userBio = user?.bio || null;
+      const userBio = activityMode === 'blind' ? null : (user?.bio || null);
 
       // Check if character mood should be updated (TIME GAP, every 10 messages, pending from background mood change, or no mood set)
       const hasPendingMoodUpdate = engagementState?.pending_character_mood_update === 1;

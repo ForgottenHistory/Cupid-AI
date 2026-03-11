@@ -4,7 +4,6 @@ import aiService from '../services/aiService.js';
 import db from '../db/database.js';
 import conversationService from '../services/conversationService.js';
 import messageService from '../services/messageService.js';
-import messageProcessor from '../services/messageProcessor.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 
 const router = express.Router();
@@ -449,21 +448,21 @@ Write a single ${style} icebreaker question. Keep it under 2 sentences. Don't in
 });
 
 /**
- * POST /api/random-chat/icebreaker-answer
- * Submit answer to icebreaker and create a match
+ * POST /api/random-chat/two-truths
+ * Generate "Two Truths and a Lie" statements from a character
  */
-router.post('/icebreaker-answer', authenticateToken, async (req, res) => {
+router.post('/two-truths', authenticateToken, async (req, res) => {
   try {
-    const { characterId, question, answer } = req.body;
+    const { characterId } = req.body;
     const userId = req.user.id;
 
-    if (!characterId || !question || !answer) {
-      return res.status(400).json({ error: 'characterId, question, and answer are all required' });
+    if (!characterId) {
+      return res.status(400).json({ error: 'Character ID is required' });
     }
 
     // Get character data
     const character = db.prepare(`
-      SELECT id, name, card_data
+      SELECT id, name, card_data, image_url, schedule_data
       FROM characters
       WHERE id = ?
     `).get(characterId);
@@ -480,52 +479,77 @@ router.post('/icebreaker-answer', authenticateToken, async (req, res) => {
     }
 
     const characterName = cardData.data?.name || cardData.name || character.name || 'Character';
+    const description = cardData.data?.description || cardData.description || '';
 
-    // Like the character
-    db.prepare('UPDATE characters SET is_liked = 1 WHERE id = ? AND user_id = ?').run(characterId, userId);
-
-    // Check for existing permanent conversation
-    let conversationId;
-    const existing = db.prepare(`
-      SELECT id FROM conversations
-      WHERE user_id = ? AND character_id = ? AND activity_expires_at IS NULL
-    `).get(userId, characterId);
-
-    if (existing) {
-      conversationId = existing.id;
-    } else {
-      const result = db.prepare(`
-        INSERT INTO conversations (user_id, character_id, character_name)
-        VALUES (?, ?, ?)
-      `).run(userId, characterId, characterName);
-      conversationId = result.lastInsertRowid;
+    // Get character's current activity from schedule
+    let activityContext = '';
+    if (character.schedule_data) {
+      try {
+        const schedule = JSON.parse(character.schedule_data);
+        const { status, activity } = getCurrentStatusFromSchedule(schedule);
+        if (activity) {
+          activityContext = `\nYou are currently ${status} (${activity}).`;
+        } else {
+          activityContext = `\nYou are currently ${status}.`;
+        }
+      } catch (e) {}
     }
 
-    // Save system message
-    messageService.saveMessage(conversationId, 'system', '[ACTIVITY MATCH: You matched through icebreaker!]', null, 'system');
+    // Get user's display name
+    const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+    const userName = user?.display_name || 'User';
 
-    // Save the character's question as an assistant message
-    messageService.saveMessage(conversationId, 'assistant', question);
+    const prompt = `You are ${characterName}. You're playing "Two Truths and a Lie" on a dating app. Create 3 statements about yourself - 2 must be TRUE based on your description, 1 must be a convincing LIE.
 
-    // Save the user's answer as a user message
-    messageService.saveMessage(conversationId, 'user', answer);
+Character description: ${description}${activityContext}
 
-    res.json({
-      success: true,
-      conversationId,
-      characterId
+Rules:
+- Write statements in first person ("I...")
+- Make the lie subtle and plausible - it should sound like it COULD be true
+- Base truths on your actual description, personality, and background
+- Shuffle the order - don't always put the lie in the same position
+
+Respond in this exact format:
+statement_1: [first statement]
+statement_2: [second statement]
+statement_3: [third statement]
+lie: [0, 1, or 2 - which statement number is the lie, 0-indexed]
+explanation: [brief explanation of why it's a lie]`;
+
+    const response = await aiService.createBasicCompletion(prompt, {
+      max_tokens: 400,
+      userId,
+      llmType: 'content',
+      messageType: 'two-truths',
+      characterName,
+      userName
     });
 
-    // Trigger AI response to the user's answer asynchronously
-    const io = req.app.get('io');
-    const characterData = cardData.data || cardData;
-    messageProcessor.processMessage(io, userId, characterId, conversationId, characterData).catch(error => {
-      console.error('Icebreaker AI response error:', error);
+    const content = response.content.trim();
+    const s1Match = content.match(/statement_1:\s*(.+)/i);
+    const s2Match = content.match(/statement_2:\s*(.+)/i);
+    const s3Match = content.match(/statement_3:\s*(.+)/i);
+    const lieMatch = content.match(/lie:\s*(\d)/i);
+    const explanationMatch = content.match(/explanation:\s*(.+)/i);
+
+    if (!s1Match || !s2Match || !s3Match) {
+      return res.status(500).json({ error: 'Failed to generate statements' });
+    }
+
+    const lieIndex = lieMatch ? parseInt(lieMatch[1]) : 2;
+    const explanation = explanationMatch ? explanationMatch[1].trim() : '';
+
+    res.json({
+      statements: [s1Match[1].trim(), s2Match[1].trim(), s3Match[1].trim()],
+      lieIndex,
+      explanation,
+      characterId,
+      characterName
     });
 
   } catch (error) {
-    console.error('Icebreaker answer error:', error);
-    res.status(500).json({ error: error.message || 'Failed to process icebreaker answer' });
+    console.error('Two truths error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate two truths and a lie' });
   }
 });
 

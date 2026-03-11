@@ -55,8 +55,10 @@ class AIService {
 
     // Chat-specific stripping (not for metadata like schedules, dating profiles, etc.)
     if (isChat) {
-      // Strip asterisks used for RP actions or emphasis (e.g. *leans back*, *work*)
-      // Only remove the asterisks, keep the text inside
+      // Remove entire lines that are ONLY an RP action (e.g. "*chuckles darkly*", "*leans back and sighs*")
+      content = content.replace(/^\s*\*[^*]+\*\s*$/gm, '').trim();
+
+      // Strip remaining inline asterisks but keep the text (e.g. "I *really* like that" → "I really like that")
       content = content.replace(/\*([^*]+)\*/g, '$1').trim();
 
       // Strip lines that are just "Name:" or "Name: " with nothing after (empty prefix)

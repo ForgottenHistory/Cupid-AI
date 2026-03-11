@@ -24,13 +24,14 @@ import { useActivitySession, PHASE } from '../hooks/useActivitySession';
  * Activity Chat Session - uses real chat infrastructure with activity overlay
  * This is the new unified component for Random Chat and Blind Date
  */
-const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
+const ActivityChatSession = ({ user, mode = 'random', onBack, initialCharacter, activityContext }) => {
   const inputRef = useRef(null);
   const proactiveTimeoutRef = useRef(null);
   const immediateTimeoutRef = useRef(null);
 
   // Activity session state (timer, phases, decisions)
-  const activity = useActivitySession(user, mode);
+  const sessionOptions = initialCharacter ? { initialCharacter } : {};
+  const activity = useActivitySession(user, mode, sessionOptions);
 
   const {
     phase,
@@ -181,6 +182,7 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
         const response = await chatService.generateFirstMessage(character.id, characterData, {
           conversationId,
           activityMode: mode,
+          activityContext,
         });
 
         if (response?.messages) {
@@ -209,6 +211,15 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
     // No cleanup - we want the timeout to fire even if effect re-runs
     // The ref guard prevents duplicate setup, and sendFirstMessage checks for existing messages
   }, [phase, conversationId, character, mode, setMessages, markMessageAsNew, setError]);
+
+  // Auto-start when an initialCharacter is provided (e.g. from Two Truths game)
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (initialCharacter && phase === PHASE.IDLE && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      startSession();
+    }
+  }, [initialCharacter, phase, startSession]);
 
   // Swipe state (simplified for activities)
   const [messageSwipes] = useState({});
@@ -688,7 +699,7 @@ const ActivityChatSession = ({ user, mode = 'random', onBack }) => {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 dark:text-gray-500">
-                {mode === 'blind' ? 'Blind Date' : 'Random Chat'}
+                {mode === 'blind' ? 'Blind Date' : mode === 'two-truths' ? 'Two Truths & A Lie' : mode === 'icebreaker' ? 'Icebreaker' : 'Random Chat'}
               </span>
               <button
                 onClick={endSession}

@@ -56,6 +56,7 @@ class ChatService {
       characterData,
       conversationId: options.conversationId,
       activityMode: options.activityMode,
+      activityContext: options.activityContext,
       isSuperLike: options.isSuperLike,
     });
     return response.data;

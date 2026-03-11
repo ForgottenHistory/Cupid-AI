@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ActivityChatSession from './ActivityChatSession';
 import IcebreakerSession from './IcebreakerSession';
+import TwoTruthsSession from './TwoTruthsSession';
 
 // Activity modes
 const MODE = {
@@ -10,6 +11,7 @@ const MODE = {
   RANDOM_CHAT: 'random',
   BLIND_DATE: 'blind',
   ICEBREAKER: 'icebreaker',
+  TWO_TRUTHS: 'two-truths',
 };
 
 const RandomChat = () => {
@@ -33,6 +35,10 @@ const RandomChat = () => {
 
   if (mode === MODE.ICEBREAKER) {
     return <IcebreakerSession user={user} onBack={handleBackToHub} />;
+  }
+
+  if (mode === MODE.TWO_TRUTHS) {
+    return <TwoTruthsSession user={user} onBack={handleBackToHub} />;
   }
 
   // Render hub
@@ -172,16 +178,16 @@ const RandomChat = () => {
                 Icebreaker
               </h2>
               <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-                A character asks you a question. Answer to start chatting, or skip to meet someone new!
+                A character asks you a question. Answer to start a timed chat, or skip to meet someone new!
               </p>
 
               {/* Features */}
               <div className="flex flex-wrap gap-2">
                 <span className="px-2 py-1 bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 text-xs rounded-full">
-                  Quick match
+                  Q&A opener
                 </span>
                 <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs rounded-full">
-                  Q&A style
+                  Timed chat
                 </span>
               </div>
             </div>
@@ -189,6 +195,49 @@ const RandomChat = () => {
             {/* Hover arrow */}
             <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Two Truths & A Lie Card */}
+          <div
+            onClick={() => setMode(MODE.TWO_TRUTHS)}
+            className="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-purple-100 dark:border-gray-700"
+          >
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
+
+            <div className="p-6">
+              {/* Icon */}
+              <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+
+              {/* Title & Description */}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Two Truths & A Lie
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                A character tells you three things. Two are true, one is a lie. Spot the lie, then chat!
+              </p>
+
+              {/* Features */}
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs rounded-full">
+                  Guessing game
+                </span>
+                <span className="px-2 py-1 bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 text-xs rounded-full">
+                  Timed chat
+                </span>
+              </div>
+            </div>
+
+            {/* Hover arrow */}
+            <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </div>

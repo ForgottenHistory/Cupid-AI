@@ -25,7 +25,7 @@ const router = express.Router();
 router.post('/conversations/:characterId/first-message', authenticateToken, async (req, res) => {
   try {
     const { characterId } = req.params;
-    const { characterData, isSuperLike, conversationId: existingConversationId, activityMode } = req.body;
+    const { characterData, isSuperLike, conversationId: existingConversationId, activityMode, activityContext } = req.body;
     const userId = req.user.id;
 
     if (!characterData) {
@@ -56,6 +56,12 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
     let prompt;
     if (activityMode === 'blind') {
       prompt = `You're starting a blind date chat! The other person can only see your first initial - your identity is hidden. Send them an intriguing first message that makes them curious about you. Be mysterious but friendly. Keep it short (1-2 sentences). Don't reveal your name.`;
+    } else if (activityMode === 'two-truths') {
+      const gameContext = activityContext || 'You just played Two Truths and a Lie with them.';
+      prompt = `You just played "Two Truths and a Lie" on a dating app! ${gameContext} Now start a fun conversation. Reference the game naturally - tease them if they got it wrong, or be impressed if they got it right. Keep it short (1-2 sentences). Be playful!`;
+    } else if (activityMode === 'icebreaker') {
+      const iceContext = activityContext || 'You asked them an icebreaker question and they answered.';
+      prompt = `You're on a dating app and just did an icebreaker! ${iceContext} Now continue the conversation naturally based on their answer. React to what they said, be engaged and curious. Keep it short (1-2 sentences). This is a timed chat so keep the energy going!`;
     } else if (activityMode === 'random') {
       prompt = `You're starting a random chat with a stranger! You don't know them yet. Send a friendly, casual first message to break the ice. Be natural and show your personality. Keep it short (1-2 sentences). This is a timed chat so make a good first impression!`;
     } else {
@@ -74,7 +80,7 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
       characterData: characterData,
       userId: userId,
       currentStatus: currentStatusInfo,
-      userBio: userBio,
+      userBio: activityMode === 'blind' ? null : userBio,
       schedule: characterData.schedule,
       isSuperLike: isSuperLike || false,
     });

@@ -1,12 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useCallback, useMemo } from 'react';
 import characterService from '../services/characterService';
 import api from '../services/api';
 import { getImageUrl } from '../services/api';
+import ActivityChatSession from './ActivityChatSession';
 
 function IcebreakerSession({ user, onBack }) {
-  const navigate = useNavigate();
-  const [phase, setPhase] = useState('idle'); // 'idle' | 'loading' | 'question' | 'submitting'
+  const [phase, setPhase] = useState('idle'); // 'idle' | 'loading' | 'question' | 'chatting'
   const [character, setCharacter] = useState(null);
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
@@ -63,24 +62,28 @@ function IcebreakerSession({ user, onBack }) {
     }
   }, [loadQuestion]);
 
-  const handleAnswer = useCallback(async () => {
+  const handleAnswer = useCallback(() => {
     if (!answer.trim()) return;
-    setPhase('submitting');
-    try {
-      await api.post('/random-chat/icebreaker-answer', {
-        characterId: character.id,
-        question,
-        answer
-      });
-      await characterService.likeCharacter(character.id);
-      window.dispatchEvent(new Event('characterUpdated'));
-      navigate(`/chat/${character.id}`);
-    } catch (err) {
-      console.error('Failed to submit icebreaker answer:', err);
-      setError(err.response?.data?.error || 'Failed to submit answer. Please try again.');
-      setPhase('question');
-    }
-  }, [answer, character, question, navigate]);
+    setPhase('chatting');
+  }, [answer]);
+
+  const activityContext = useMemo(() => {
+    if (!question || !answer) return '';
+    return `You asked them an icebreaker question: "${question}" and they answered: "${answer}". Continue the conversation naturally from their answer. Be engaging and reference what they said.`;
+  }, [question, answer]);
+
+  // CHATTING phase - hand off to ActivityChatSession
+  if (phase === 'chatting') {
+    return (
+      <ActivityChatSession
+        user={user}
+        mode="icebreaker"
+        onBack={onBack}
+        initialCharacter={character}
+        activityContext={activityContext}
+      />
+    );
+  }
 
   // IDLE phase
   if (phase === 'idle') {
@@ -100,7 +103,7 @@ function IcebreakerSession({ user, onBack }) {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Icebreaker</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            A character will ask you a question. Answer to start a conversation, or skip to meet someone new!
+            A character asks you a question. Answer to start a timed chat, or skip to meet someone new!
           </p>
 
           {error && (
@@ -132,9 +135,7 @@ function IcebreakerSession({ user, onBack }) {
     );
   }
 
-  // QUESTION and SUBMITTING phases
-  const isSubmitting = phase === 'submitting';
-
+  // QUESTION phase
   return (
     <div className="h-full flex flex-col bg-gradient-to-b from-cyan-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 overflow-y-auto">
       {/* Back button */}
@@ -184,7 +185,6 @@ function IcebreakerSession({ user, onBack }) {
               placeholder="Type your answer..."
               className="w-full p-4 bg-transparent text-gray-900 dark:text-white placeholder-gray-400 resize-none focus:outline-none"
               rows={3}
-              disabled={isSubmitting}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -205,17 +205,17 @@ function IcebreakerSession({ user, onBack }) {
           <div className="flex gap-3">
             <button
               onClick={handleSkip}
-              disabled={skipping || isSubmitting}
+              disabled={skipping}
               className="flex-1 px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition disabled:opacity-50"
             >
               {skipping ? 'Skipping...' : 'Skip'}
             </button>
             <button
               onClick={handleAnswer}
-              disabled={!answer.trim() || isSubmitting}
+              disabled={!answer.trim()}
               className="flex-1 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-full hover:opacity-90 transition shadow-lg disabled:opacity-50"
             >
-              {isSubmitting ? 'Matching...' : 'Answer'}
+              Answer
             </button>
           </div>
         </div>

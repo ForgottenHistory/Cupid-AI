@@ -23,7 +23,7 @@ export const PHASE = {
  * New activity session hook that uses real conversations
  * Creates a temporary conversation that gets deleted on no-match or confirmed on match
  */
-export const useActivitySession = (user, mode = 'random') => {
+export const useActivitySession = (user, mode = 'random', options = {}) => {
   const navigate = useNavigate();
 
   // Phase state
@@ -148,8 +148,8 @@ export const useActivitySession = (user, mode = 'random') => {
       const userFirst = settings?.activitiesUserFirstChance ?? 50;
       setUserFirstChance(userFirst);
 
-      // Get random online character (respecting settings)
-      const selectedCharacter = await characterService.getRandomOnlineCharacter(user.id, includeAway, includeBusy);
+      // Use pre-selected character if provided, otherwise get random
+      const selectedCharacter = options.initialCharacter || await characterService.getRandomOnlineCharacter(user.id, includeAway, includeBusy);
 
       if (!selectedCharacter) {
         setError('No characters available. Make sure you have unmatched characters with schedules that are currently online.');
@@ -180,7 +180,7 @@ export const useActivitySession = (user, mode = 'random') => {
       setError(err.response?.data?.error || 'Failed to start session');
       setPhase(PHASE.IDLE);
     }
-  }, [user, mode]);
+  }, [user, mode, options.initialCharacter]);
 
   /**
    * Handle user's match decision
