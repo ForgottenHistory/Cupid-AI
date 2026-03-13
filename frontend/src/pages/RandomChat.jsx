@@ -5,6 +5,7 @@ import ActivityChatSession from './ActivityChatSession';
 import IcebreakerSession from './IcebreakerSession';
 import TwoTruthsSession from './TwoTruthsSession';
 import ThisOrThatSession from './ThisOrThatSession';
+import WouldYouRatherSession from './WouldYouRatherSession';
 
 // Activity modes
 const MODE = {
@@ -14,6 +15,7 @@ const MODE = {
   ICEBREAKER: 'icebreaker',
   TWO_TRUTHS: 'two-truths',
   THIS_OR_THAT: 'this-or-that',
+  WOULD_YOU_RATHER: 'would-you-rather',
 };
 
 const RandomChat = () => {
@@ -45,6 +47,10 @@ const RandomChat = () => {
 
   if (mode === MODE.THIS_OR_THAT) {
     return <ThisOrThatSession user={user} onBack={handleBackToHub} />;
+  }
+
+  if (mode === MODE.WOULD_YOU_RATHER) {
+    return <WouldYouRatherSession user={user} onBack={handleBackToHub} />;
   }
 
   // Render hub
@@ -287,6 +293,49 @@ const RandomChat = () => {
             {/* Hover arrow */}
             <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <svg className="w-6 h-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Would You Rather Card */}
+          <div
+            onClick={() => setMode(MODE.WOULD_YOU_RATHER)}
+            className="group relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden border border-purple-100 dark:border-gray-700"
+          >
+            {/* Gradient accent */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-purple-600"></div>
+
+            <div className="p-6">
+              {/* Icon */}
+              <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+
+              {/* Title & Description */}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Would You Rather
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
+                Fun dilemmas that reveal your personality! Pick between two scenarios, then chat.
+              </p>
+
+              {/* Features */}
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-1 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-xs rounded-full">
+                  5 rounds
+                </span>
+                <span className="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 text-xs rounded-full">
+                  Timed chat
+                </span>
+              </div>
+            </div>
+
+            {/* Hover arrow */}
+            <div className="absolute right-4 bottom-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <svg className="w-6 h-6 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
             </div>

@@ -699,7 +699,7 @@ const ActivityChatSession = ({ user, mode = 'random', onBack, initialCharacter, 
             </div>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-400 dark:text-gray-500">
-                {mode === 'blind' ? 'Blind Date' : mode === 'two-truths' ? 'Two Truths & A Lie' : mode === 'icebreaker' ? 'Icebreaker' : mode === 'this-or-that' ? 'This or That' : 'Random Chat'}
+                {mode === 'blind' ? 'Blind Date' : mode === 'two-truths' ? 'Two Truths & A Lie' : mode === 'icebreaker' ? 'Icebreaker' : mode === 'this-or-that' ? 'This or That' : mode === 'would-you-rather' ? 'Would You Rather' : 'Random Chat'}
               </span>
               <button
                 onClick={endSession}

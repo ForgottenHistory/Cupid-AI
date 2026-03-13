@@ -47,6 +47,11 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
       );
     }
 
+    // Store game context on the conversation for ongoing prompt injection
+    if (activityContext && conversation) {
+      db.prepare('UPDATE conversations SET activity_game_context = ? WHERE id = ?').run(activityContext, conversation.id);
+    }
+
     // Get character's current status and user bio
     const currentStatusInfo = getCurrentStatusFromSchedule(characterData.schedule);
     const user = db.prepare('SELECT bio FROM users WHERE id = ?').get(userId);
@@ -65,6 +70,9 @@ router.post('/conversations/:characterId/first-message', authenticateToken, asyn
     } else if (activityMode === 'this-or-that') {
       const totContext = activityContext || 'You just played This or That with them.';
       prompt = `You just played "This or That" on a dating app! ${totContext} Send a fun first message reacting to their picks. Point out something you have in common or playfully challenge a choice you disagree with. Keep it short (1-2 sentences). Be natural and flirty!`;
+    } else if (activityMode === 'would-you-rather') {
+      const wyrContext = activityContext || 'You just played Would You Rather with them.';
+      prompt = `You just played "Would You Rather" on a dating app! ${wyrContext} Send a fun first message reacting to their choices. Pick the most interesting or surprising choice they made and ask why, or share what you would have picked. Keep it short (1-2 sentences). Be curious and playful!`;
     } else if (activityMode === 'random') {
       prompt = `You're starting a random chat with a stranger! You don't know them yet. Send a friendly, casual first message to break the ice. Be natural and show your personality. Keep it short (1-2 sentences). This is a timed chat so make a good first impression!`;
     } else {

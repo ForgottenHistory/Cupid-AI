@@ -420,7 +420,7 @@ router.post('/icebreaker-question', authenticateToken, async (req, res) => {
     ];
     const style = questionStyles[Math.floor(Math.random() * questionStyles.length)];
 
-    const prompt = `You are ${characterName}. You're on a dating app and want to ask someone an icebreaker question to get to know them. The question should reflect your personality.
+    const prompt = `You are ${characterName}. You're on a dating app and want to ask a guy an icebreaker question to get to know him. The question should reflect your personality.
 
 Character description: ${description}${activityContext}
 
@@ -499,7 +499,7 @@ router.post('/two-truths', authenticateToken, async (req, res) => {
     const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
     const userName = user?.display_name || 'User';
 
-    const prompt = `You are ${characterName}. You're playing "Two Truths and a Lie" on a dating app. Create 3 statements about yourself - 2 must be TRUE based on your description, 1 must be a convincing LIE.
+    const prompt = `You are ${characterName}. You're playing "Two Truths and a Lie" on a dating app with a guy. Create 3 statements about yourself - 2 must be TRUE based on your description, 1 must be a convincing LIE.
 
 Character description: ${description}${activityContext}
 
@@ -605,7 +605,7 @@ router.post('/this-or-that', authenticateToken, async (req, res) => {
     const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
     const userName = user?.display_name || 'User';
 
-    const prompt = `You are ${characterName}. You're playing "This or That" on a dating app - asking quick preference questions to get to know someone.
+    const prompt = `You are ${characterName}. You're playing "This or That" on a dating app with a guy - asking quick preference questions to get to know him.
 
 Character description: ${description}${activityContext}
 
@@ -654,6 +654,114 @@ Don't number the options themselves, just the pairs. Keep each option short (1-4
   } catch (error) {
     console.error('This or that error:', error);
     res.status(500).json({ error: error.message || 'Failed to generate this or that pairs' });
+  }
+});
+
+/**
+ * POST /api/random-chat/would-you-rather
+ * Generate "Would You Rather" scenarios from a character
+ */
+router.post('/would-you-rather', authenticateToken, async (req, res) => {
+  try {
+    const { characterId } = req.body;
+    const userId = req.user.id;
+
+    if (!characterId) {
+      return res.status(400).json({ error: 'Character ID is required' });
+    }
+
+    // Get character data
+    const character = db.prepare(`
+      SELECT id, name, card_data, image_url, schedule_data
+      FROM characters
+      WHERE id = ?
+    `).get(characterId);
+
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    let cardData = {};
+    try {
+      cardData = JSON.parse(character.card_data || '{}');
+    } catch (e) {
+      console.error('Failed to parse card_data:', e);
+    }
+
+    const characterName = cardData.data?.name || cardData.name || character.name || 'Character';
+    const description = cardData.data?.description || cardData.description || '';
+
+    // Get character's current activity from schedule
+    let activityContext = '';
+    if (character.schedule_data) {
+      try {
+        const schedule = JSON.parse(character.schedule_data);
+        const { status, activity } = getCurrentStatusFromSchedule(schedule);
+        if (activity) {
+          activityContext = `\nYou are currently ${status} (${activity}).`;
+        } else {
+          activityContext = `\nYou are currently ${status}.`;
+        }
+      } catch (e) {}
+    }
+
+    // Get user's display name
+    const user = db.prepare('SELECT display_name FROM users WHERE id = ?').get(userId);
+    const userName = user?.display_name || 'User';
+
+    const prompt = `You are ${characterName}. You're playing "Would You Rather" on a dating app with a guy - asking fun dilemma questions to get to know him better.
+
+Character description: ${description}${activityContext}
+
+Generate exactly 5 "Would you rather" scenarios. Each should have two options that are both interesting or challenging to choose between. Mix fun, flirty, deep, and silly scenarios. Make some reflect your own personality and interests.
+
+Rules:
+- Each option should be a complete scenario (not just 1-2 words)
+- Make them engaging and conversation-worthy
+- Vary the tone: some funny, some thought-provoking, some flirty
+- Options should be roughly equally appealing/challenging
+
+Respond in this exact format (one scenario per line):
+1: [option A] | [option B]
+2: [option A] | [option B]
+3: [option A] | [option B]
+4: [option A] | [option B]
+5: [option A] | [option B]
+
+Examples: "Always say what's on your mind | Always know what others are thinking", "Live in a fantasy world | Have superpowers in the real world"
+Keep each option concise but descriptive (3-10 words).`;
+
+    const response = await aiService.createBasicCompletion(prompt, {
+      max_tokens: 500,
+      userId,
+      llmType: 'content',
+      messageType: 'would-you-rather',
+      characterName,
+      userName
+    });
+
+    const content = response.content.trim();
+    const scenarios = [];
+    for (let i = 1; i <= 5; i++) {
+      const match = content.match(new RegExp(`${i}:\\s*(.+?)\\s*\\|\\s*(.+?)\\s*(?:\\n|$)`, 'i'));
+      if (match) {
+        scenarios.push({ optionA: match[1].trim(), optionB: match[2].trim() });
+      }
+    }
+
+    if (scenarios.length < 3) {
+      return res.status(500).json({ error: 'Failed to generate enough scenarios' });
+    }
+
+    res.json({
+      scenarios,
+      characterId,
+      characterName
+    });
+
+  } catch (error) {
+    console.error('Would you rather error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate would you rather scenarios' });
   }
 });
 

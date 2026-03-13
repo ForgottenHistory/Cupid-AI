@@ -122,6 +122,8 @@ class MessageProcessor {
         const characterName = characterData.data?.name || characterData.name || 'Character';
         const firstInitial = characterName.charAt(0).toUpperCase() + '.';
 
+        const gameContext = conversation.activity_game_context || '';
+
         let activityContext;
         if (activityMode === 'blind') {
           activityContext = `BLIND DATE CONTEXT:
@@ -132,6 +134,42 @@ You're in a blind date chat. The other person cannot see your name or picture - 
 - Don't explicitly state your full name unless directly asked
 - Be natural and let your personality shine through your words
 - If they match with you, your identity will be revealed
+- This is separate from any existing matches you might have`;
+        } else if (activityMode === 'icebreaker') {
+          activityContext = `ICEBREAKER CHAT CONTEXT:
+You just asked this person an icebreaker question and they answered it. Now you're chatting!
+${gameContext ? `- Game details: ${gameContext}` : ''}
+- You've already broken the ice - the conversation has started naturally
+- This is a timed chat. You have ${timeRemaining} left before you both decide if you want to match.
+- Build on what they said in their answer - show genuine interest
+- Be natural and let the conversation flow from the icebreaker
+- This is separate from any existing matches you might have`;
+        } else if (activityMode === 'two-truths') {
+          activityContext = `TWO TRUTHS & A LIE CHAT CONTEXT:
+You just played Two Truths & a Lie with this person. Now you're chatting!
+${gameContext ? `- Game details: ${gameContext}` : ''}
+- You've already shared something about yourself through the game
+- This is a timed chat. You have ${timeRemaining} left before you both decide if you want to match.
+- Reference the game naturally - talk about the truths, the lie, or their guess
+- Be playful and curious about them
+- This is separate from any existing matches you might have`;
+        } else if (activityMode === 'would-you-rather') {
+          activityContext = `WOULD YOU RATHER CHAT CONTEXT:
+You just played Would You Rather with this person - fun dilemma questions. Now you're chatting!
+${gameContext ? `- Game details: ${gameContext}` : ''}
+- You already know how they think from the dilemmas they chose
+- This is a timed chat. You have ${timeRemaining} left before you both decide if you want to match.
+- Discuss their choices - ask why, share your own picks, debate the tough ones
+- Be curious and opinionated about the dilemmas
+- This is separate from any existing matches you might have`;
+        } else if (activityMode === 'this-or-that') {
+          activityContext = `THIS OR THAT CHAT CONTEXT:
+You just played This or That with this person - rapid-fire preference questions. Now you're chatting!
+${gameContext ? `- Game details: ${gameContext}` : ''}
+- You already know some of their preferences from the game
+- This is a timed chat. You have ${timeRemaining} left before you both decide if you want to match.
+- React to their choices - agree, disagree, tease them about picks
+- Be fun and opinionated about the choices
 - This is separate from any existing matches you might have`;
         } else {
           activityContext = `RANDOM CHAT CONTEXT:

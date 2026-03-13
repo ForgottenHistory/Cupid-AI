@@ -1217,6 +1217,15 @@ function runMigrations() {
       console.log('✅ Proactive LLM settings columns added');
     }
 
+    // Migration: Add activity_game_context to conversations for persisting game results
+    const convColumnsForGameContext = db.pragma('table_info(conversations)').map(col => col.name);
+    if (!convColumnsForGameContext.includes('activity_game_context')) {
+      db.exec(`
+        ALTER TABLE conversations ADD COLUMN activity_game_context TEXT;
+      `);
+      console.log('✅ Activity game context column added to conversations');
+    }
+
   } catch (error) {
     console.error('Migration error:', error);
   }
