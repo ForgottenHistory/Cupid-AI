@@ -5,6 +5,70 @@ All notable changes to Cupid AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-03-13
+
+### Added
+
+#### Activities System
+- **Icebreaker Activity**: Character asks a personality-driven question with 10 randomized styles, answer to start a timed chat
+- **Two Truths & A Lie Activity**: Character generates 3 statements (2 truths, 1 lie), guess the lie then chat about it
+- **This or That Activity**: 7 rounds of rapid-fire preference pairs, then timed chat discussing choices
+- **Would You Rather Activity**: 5 rounds of fun dilemma scenarios, then timed chat about decisions
+- **Activity Game Context Persistence**: Game results (answers, choices, guesses) now stored on conversations and injected into every chat prompt, so the AI remembers what happened during the game
+- **Activity-Specific Chat Prompts**: Each activity mode (icebreaker, two-truths, this-or-that, would-you-rather) gets a unique chat context instead of generic "random chat"
+- **Activities Hub**: Redesigned with cards for all activity types (Random Chat, Blind Date, Icebreaker, Two Truths, This or That, Would You Rather)
+- **Activities Settings Page**: Configure character selection options (include away/busy characters)
+- **Character First Message Chance**: Configurable probability for who messages first in activities
+- **Blind Date Privacy**: User bio excluded from AI prompts during blind date conversations
+
+#### Activities UI
+- **Immersive Split-Screen Layout**: All activities use full-height character portrait (45% left panel) with gradual blur fade into game content
+- **Glassmorphic Design**: Backdrop blur cards, gradient titles, decorative background orbs, glowing hover effects
+- **Color-Themed Activities**: Cyan/blue (Icebreaker), Emerald/teal (Two Truths), Orange/amber (This or That), Violet/purple (Would You Rather)
+
+#### Random Chat & Matching
+- **Random Chat Feature**: Timed chat with random unmatched characters, option to match after timer
+- **Blind Date Mode**: Hidden identity chat where only first initial is shown
+- **Proactive First Message**: Characters can send the first message in random chats
+- **Double Text Chance**: Configurable probability for characters to send follow-up messages
+
+#### Character Attributes
+- **Configurable Attribute System**: Replaced Big Five personality with fully customizable character attributes
+- **Attribute-Driven Behavior**: Character attributes included in schedule generation and chat prompts
+
+#### LLM Configuration
+- **Proactive LLM Config**: Independent LLM settings for proactive message generation
+- **Random Model Pool**: Configure a pool of random models for any LLM type
+- **Debug Proactive Trigger**: Manual trigger for testing proactive messages
+
+#### Chat Improvements
+- **Image Gallery**: View all images in a conversation with navigation
+- **Early Reactions**: Characters can react to messages earlier in the conversation
+- **Typing Indicator Alignment**: Improved positioning of typing indicators
+
+### Changed
+- Icebreaker converted from instant-match to timed chat event
+- Activities phase transitions now require manual button clicks (with auto-transition at timer=0)
+- Activities use real chat infrastructure instead of simplified overlay
+- RP action stripping improved: standalone `*action*` lines fully removed before inline asterisks are stripped
+- Blind date always reveals identity at end
+
+### Fixed
+- Avatar rotation and gallery not updating when messages with images are deleted
+- Asterisk words being incorrectly removed (e.g., "I *really* like that" losing the word)
+- Stale model selector in LLM settings after switching providers
+- Activities match not appearing in sidebar until page refresh
+- Activities background switching issues
+- Daily auto-match enable not working
+- Smiley/emoji stripping in messages
+- Image rotation not showing images from older paginated messages
+- Message pagination being reset during conversation
+- Autoscroll reliability improvements
+- Double text when response already has multiple messages
+- Several performance optimizations
+
+---
+
 ## [1.3.0] - 2025-01-07
 
 ### Added
