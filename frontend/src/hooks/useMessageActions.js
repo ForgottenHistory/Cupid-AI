@@ -24,6 +24,7 @@ export const useMessageActions = ({
   setSelectedImage,
   imageDescription,
   setImageDescription,
+  setAllImageUrls,
 }) => {
   const [sending, setSending] = useState(false);
   const [input, setInput] = useState('');
@@ -332,6 +333,21 @@ export const useMessageActions = ({
       const messagesToKeep = messages.slice(0, messageIndex);
       setMessages(messagesToKeep);
       setError('');
+
+      // Update image URLs to remove images from deleted messages
+      if (setAllImageUrls) {
+        const deletedImageUrls = new Set(
+          messages.slice(messageIndex)
+            .filter(m => m.message_type === 'image' && m.image_url)
+            .map(m => m.image_url)
+        );
+        if (deletedImageUrls.size > 0) {
+          setAllImageUrls(prev => prev.filter(img => {
+            const url = img.url || img;
+            return !deletedImageUrls.has(url);
+          }));
+        }
+      }
 
       window.dispatchEvent(new Event('characterUpdated'));
     } catch (err) {

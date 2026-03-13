@@ -130,6 +130,7 @@ const Chat = () => {
     setSelectedImage,
     imageDescription,
     setImageDescription,
+    setAllImageUrls,
   });
 
   // WebSocket real-time messaging
