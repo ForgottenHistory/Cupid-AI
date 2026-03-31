@@ -90,7 +90,7 @@ class ChatCompletionBuilder {
 
     // For proactive messages, append instructions
     if (isProactive && proactiveType) {
-      const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage, userId);
+      const proactiveInstructions = promptBuilderService.buildProactiveInstructions(proactiveType, gapHours, isFirstMessage, userId, currentStatus);
       finalMessages.push({ role: 'system', content: proactiveInstructions });
     }
 

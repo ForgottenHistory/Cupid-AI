@@ -328,6 +328,7 @@ class ProactiveMessageService {
 
       // Update conversation
       conversationService.incrementUnreadCount(conversationId);
+      conversationService.refreshLastMessage(conversationId);
 
       // Update rate limits
       if (triggerType === 'left_on_read') {

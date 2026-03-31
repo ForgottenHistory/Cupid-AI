@@ -400,7 +400,7 @@ class PromptBuilderService {
   /**
    * Build proactive message instructions (appended AFTER message history)
    */
-  buildProactiveInstructions(proactiveType, gapHours, isFirstMessage = false, userId = null) {
+  buildProactiveInstructions(proactiveType, gapHours, isFirstMessage = false, userId = null, currentStatus = null) {
     const parts = [];
     const prompts = loadPrompts(userId);
 
@@ -419,11 +419,25 @@ class PromptBuilderService {
 
     parts.push(`⏰ RIGHT NOW it is: ${dayOfWeek}, ${month} ${day}, ${year} at ${displayHours}:${minutes} ${ampm}`);
 
+    // Build current activity text for inclusion at the bottom of all proactive prompts
+    let currentActivityText = '';
+    if (currentStatus) {
+      currentActivityText = `\n\n📍 YOUR CURRENT ACTIVITY: You are currently ${currentStatus.status}`;
+      if (currentStatus.activity) {
+        currentActivityText += ` - ${currentStatus.activity}`;
+      }
+      if (currentStatus.start && currentStatus.end) {
+        currentActivityText += ` (${currentStatus.start}-${currentStatus.end})`;
+      }
+      currentActivityText += `. Your message should reflect what you're doing right now.`;
+    }
+
     // Special handling for first messages (icebreakers)
     if (isFirstMessage) {
       const timeSinceMatch = gapHours ? ` It's been ${gapHours.toFixed(1)} hours since you matched.` : ' You matched recently.';
       parts.push(`\n\n💬 FIRST MESSAGE: You're reaching out for the first time!${timeSinceMatch}`);
       parts.push(`\n\n${prompts.proactiveFirstMessagePrompt}`);
+      if (currentActivityText) parts.push(currentActivityText);
 
       return parts.join('');
     }
@@ -432,6 +446,7 @@ class PromptBuilderService {
     if (proactiveType === 'left_on_read') {
       parts.push(`\n\n👀 LEFT ON READ: They read your message but haven't responded yet. It's been a few minutes.`);
       parts.push(`\n\n${prompts.leftOnReadPrompt}`);
+      if (currentActivityText) parts.push(currentActivityText);
       return parts.join('');
     }
 
@@ -470,6 +485,9 @@ CRITICAL RULES FOR THIS MESSAGE:
         parts.push(`\nIt's been over a day - you can reference "yesterday" or the time gap if it feels natural.`);
       }
     }
+
+    // Add current activity at the bottom for maximum importance
+    if (currentActivityText) parts.push(currentActivityText);
 
     return parts.join('');
   }

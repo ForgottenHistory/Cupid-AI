@@ -203,6 +203,8 @@ export const useChatWebSocket = ({
         if (!data.moreMessagesComing) {
           setSending(false);
           inputRef.current?.focus();
+          // Refresh sidebar so conversation list re-sorts with latest message
+          window.dispatchEvent(new Event('characterUpdated'));
         }
       }
 

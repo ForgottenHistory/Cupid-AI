@@ -329,6 +329,15 @@ You're in a random chat feature. You don't know this person yet and they don't k
         console.log(`🎭 Character mood update will be requested: ${moodTrigger}`);
       }
 
+      // Reset mood and state on time gap so the decision engine generates fresh values
+      if (timeGapInserted) {
+        db.prepare(`UPDATE conversations SET character_mood = NULL, character_state = NULL WHERE id = ?`).run(conversationId);
+        console.log(`🔄 Reset character mood and state due to TIME GAP`);
+        // Clear stale values so the decision engine doesn't receive them as context
+        conversation.character_mood = null;
+        conversation.character_state = null;
+      }
+
       const decision = await decisionEngineService.makeDecision({
         messages: aiMessages,
         characterData: characterData,
@@ -788,8 +797,9 @@ You're in a random chat feature. You don't know this person yet and they don't k
         // This catches gaps between assistant messages (e.g., when character replies hours later)
         timeGapService.checkAndInsertTimeGap(conversationId);
 
-        // Update conversation timestamp and increment unread count
+        // Update conversation timestamp, unread count, and last message
         conversationService.incrementUnreadCount(conversationId);
+        conversationService.refreshLastMessage(conversationId);
 
         // === DOUBLE TEXT CHANCE (roll before emitting to inform frontend) ===
         // Skip double text if the response already has multiple messages (from newlines)
@@ -907,6 +917,7 @@ You're in a random chat feature. You don't know this person yet and they don't k
                 );
 
                 conversationService.incrementUnreadCount(conversationId);
+                conversationService.refreshLastMessage(conversationId);
 
                 const isLastFollowUp = i === followUpResult.contentParts.length - 1;
 
