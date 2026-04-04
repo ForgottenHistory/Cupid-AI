@@ -203,17 +203,16 @@ export const useChatWebSocket = ({
         if (!data.moreMessagesComing) {
           setSending(false);
           inputRef.current?.focus();
-          // Refresh sidebar so conversation list re-sorts with latest message
-          window.dispatchEvent(new Event('characterUpdated'));
         }
       }
 
       // Mark messages as read since user is actively viewing this chat
-      chatService.markAsRead(currentCharacterIdRef.current).catch(err => {
+      // Then refresh sidebar so conversation re-sorts with latest message and zero unread
+      chatService.markAsRead(currentCharacterIdRef.current).then(() => {
+        window.dispatchEvent(new Event('characterUpdated'));
+      }).catch(err => {
         console.error('Failed to mark messages as read:', err);
       });
-      // Update sidebar unread count in-place (no full reload needed)
-      window.dispatchEvent(new CustomEvent('conversationRead', { detail: { characterId: currentCharacterIdRef.current } }));
     };
 
     const handleCharacterTyping = (data) => {
