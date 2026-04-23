@@ -130,7 +130,7 @@ class AIService {
   /**
    * Send a chat completion request to AI provider
    */
-  async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null, characterMood = null, characterState = null }) {
+  async createChatCompletion({ messages, characterData, characterId = null, model = null, userId = null, userName = null, maxTokens = null, currentStatus = null, userBio = null, schedule = null, isDeparting = false, isProactive = false, proactiveType = null, decision = null, gapHours = null, isFirstMessage = false, matchedDate = null, characterMood = null, characterGoal = null, characterState = null }) {
     try {
       const systemPrompt = promptBuilderService.buildSystemPrompt(characterData, characterId, currentStatus, userBio, schedule, isDeparting, isProactive, proactiveType, decision, gapHours, matchedDate, userName, userId);
       const userSettings = isProactive ? llmSettingsService.getProactiveSettings(userId) : llmSettingsService.getUserSettings(userId);
@@ -159,6 +159,7 @@ class AIService {
         schedule,
         currentStatus,
         characterMood,
+        characterGoal,
         characterState,
         userId,
         isProactive,

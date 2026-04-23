@@ -36,6 +36,7 @@ export const useChatWebSocket = ({
   const [currentThought, setCurrentThought] = useState(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [characterMood, setCharacterMood] = useState(null);
+  const [characterGoal, setCharacterGoal] = useState(null);
   const [characterState, setCharacterState] = useState(null);
   const { setMoodEffect, clearMoodEffect, closeMoodModal } = useMood();
 
@@ -381,6 +382,12 @@ export const useChatWebSocket = ({
       }
     };
 
+    const handleCharacterGoalUpdate = (data) => {
+      if (data.characterId !== currentCharacterIdRef.current) return;
+      console.log('🎯 Character goal update received:', data.goal);
+      setCharacterGoal(data.goal);
+    };
+
     const handleCharacterStateUpdate = (data) => {
       // Only update UI if this is the current character
       if (data.characterId !== currentCharacterIdRef.current) return;
@@ -426,6 +433,7 @@ export const useChatWebSocket = ({
     socketService.on('compacting_end', handleCompactingEnd);
     socketService.on('messages_combined', handleMessagesCombined);
     socketService.on('character_mood_update', handleCharacterMoodUpdate);
+    socketService.on('character_goal_update', handleCharacterGoalUpdate);
     socketService.on('character_state_update', handleCharacterStateUpdate);
     socketService.on('early_reaction', handleEarlyReaction);
 
@@ -443,6 +451,7 @@ export const useChatWebSocket = ({
       socketService.off('compacting_end', handleCompactingEnd);
       socketService.off('messages_combined', handleMessagesCombined);
       socketService.off('character_mood_update', handleCharacterMoodUpdate);
+      socketService.off('character_goal_update', handleCharacterGoalUpdate);
       socketService.off('character_state_update', handleCharacterStateUpdate);
       socketService.off('early_reaction', handleEarlyReaction);
     };
@@ -457,6 +466,8 @@ export const useChatWebSocket = ({
     isCompacting,
     characterMood,
     setCharacterMood,
+    characterGoal,
+    setCharacterGoal,
     characterState,
     setCharacterState,
   };

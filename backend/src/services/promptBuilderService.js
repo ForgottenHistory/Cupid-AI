@@ -259,7 +259,7 @@ class PromptBuilderService {
   /**
    * Build current status message (separate from main prompt for better positioning)
    */
-  buildCurrentStatus(currentStatus, characterMood = null, characterState = null, userId = null) {
+  buildCurrentStatus(currentStatus, characterMood = null, characterState = null, userId = null, characterGoal = null) {
     if (!currentStatus) return null;
 
     const parts = [];
@@ -288,6 +288,11 @@ class PromptBuilderService {
     // Add character mood if available
     if (characterMood) {
       parts.push(`\nCurrent Mood: ${characterMood} - Let this influence your tone and responses.`);
+    }
+
+    // Add character goal if available
+    if (characterGoal) {
+      parts.push(`\nCurrent Goal: ${characterGoal} - Let this quietly guide what you steer the conversation toward, without stating it outright.`);
     }
 
     // Add character state if available - subtle influence on behavior

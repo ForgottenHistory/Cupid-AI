@@ -20,6 +20,7 @@ class ChatCompletionBuilder {
       schedule,
       currentStatus,
       characterMood,
+      characterGoal,
       characterState,
       userId,
       isProactive,
@@ -76,7 +77,7 @@ class ChatCompletionBuilder {
     finalMessages.push({ role: 'system', content: timeReminder });
 
     // Append current status and schedule activities
-    const contextMessage = this.buildContextMessage(currentStatus, characterMood, characterState, userId, schedule);
+    const contextMessage = this.buildContextMessage(currentStatus, characterMood, characterState, userId, schedule, characterGoal);
     if (contextMessage) {
       finalMessages.push({ role: 'system', content: contextMessage });
     }
@@ -98,6 +99,11 @@ class ChatCompletionBuilder {
     const postInstructions = promptBuilderService.getPostInstructions(characterId);
     if (postInstructions) {
       finalMessages.push({ role: 'system', content: postInstructions });
+    }
+
+    // Add image context instruction if sending an image (must be added regardless of name primer)
+    if (decision?.shouldSendImage && decision?.imageTags && !useNamePrimer) {
+      finalMessages.push({ role: 'system', content: `[IMAGE: ${decision.imageTags}]\nYou just sent this image. Write a short caption to go with it.` });
     }
 
     // Add character name prompt to prime the response (if enabled)
@@ -131,11 +137,11 @@ class ChatCompletionBuilder {
   /**
    * Build context message with status and schedule
    */
-  buildContextMessage(currentStatus, characterMood, characterState, userId, schedule) {
+  buildContextMessage(currentStatus, characterMood, characterState, userId, schedule, characterGoal = null) {
     const contextParts = [];
 
     if (currentStatus) {
-      const currentStatusMessage = promptBuilderService.buildCurrentStatus(currentStatus, characterMood, characterState, userId);
+      const currentStatusMessage = promptBuilderService.buildCurrentStatus(currentStatus, characterMood, characterState, userId, characterGoal);
       if (currentStatusMessage) {
         contextParts.push(currentStatusMessage);
       }

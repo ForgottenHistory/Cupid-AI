@@ -26,7 +26,7 @@ class DecisionEngineService {
   /**
    * Decision Engine: Analyze conversation and decide on actions
    */
-  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodMessageCount = 0, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false, currentCharacterState = null, currentCharacterMood = null }) {
+  async makeDecision({ messages, characterData, characterId = null, userMessage, userId, isEngaged = false, hasVoice = false, hasImage = false, lastMoodMessageCount = 0, assistantMessageCount = 0, currentStatus = null, schedule = null, userBio = null, shouldGenerateCharacterMood = false, currentCharacterState = null, currentCharacterMood = null, currentCharacterGoal = null }) {
     try {
       const aiService = await this.getAIService();
 
@@ -51,8 +51,9 @@ class DecisionEngineService {
         console.log(`💭 Decision Engine: Thoughts disabled by user setting`);
       }
 
-      // Character state uses same trigger as characterMood
+      // Character state and goal use same trigger as characterMood
       const shouldGenerateCharacterState = shouldGenerateCharacterMood;
+      const shouldGenerateCharacterGoal = shouldGenerateCharacterMood;
 
       // Count recent images (last 5 messages from assistant)
       const recentAssistantMessages = messages.filter(m => m.role === 'assistant').slice(-5);
@@ -65,7 +66,7 @@ class DecisionEngineService {
 
       // Build status context using the same method as chat prompt (which works)
       let statusContext = '';
-      const baseStatusContext = promptBuilderService.buildCurrentStatus(currentStatus, currentCharacterMood, currentCharacterState, userId);
+      const baseStatusContext = promptBuilderService.buildCurrentStatus(currentStatus, currentCharacterMood, currentCharacterState, userId, currentCharacterGoal);
       if (baseStatusContext) {
         statusContext = '\n\n--- CHARACTER CONTEXT ---\n' + baseStatusContext;
       }
@@ -83,11 +84,13 @@ class DecisionEngineService {
         hasImage,
         shouldGenerateThought,
         shouldGenerateCharacterMood,
+        shouldGenerateCharacterGoal,
         shouldGenerateCharacterState,
         canChangeMood,
         userId,
         currentCharacterState,
-        currentCharacterMood
+        currentCharacterMood,
+        currentCharacterGoal
       });
 
       // Get character-specific post instructions

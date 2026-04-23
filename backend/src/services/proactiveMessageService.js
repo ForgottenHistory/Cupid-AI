@@ -95,11 +95,11 @@ class ProactiveMessageService {
    * Handle mood and state generation for proactive messages
    */
   async generateMoodAndState(updatedMessages, characterData, characterId, conversationId, userId, gapHours, currentStatusInfo, schedule, userBio, hasImage, characterName, io) {
-    // Reset mood and state
+    // Reset mood, goal, and state
     db.prepare(`
-      UPDATE conversations SET character_mood = NULL, character_state = NULL WHERE id = ?
+      UPDATE conversations SET character_mood = NULL, character_goal = NULL, character_state = NULL WHERE id = ?
     `).run(conversationId);
-    console.log(`🔄 Reset character mood and state for proactive message`);
+    console.log(`🔄 Reset character mood, goal, and state for proactive message`);
 
     // Call decision engine to generate fresh mood/state
     const proactiveDecisionResult = await decisionEngineService.makeDecision({
@@ -115,10 +115,12 @@ class ProactiveMessageService {
       userBio,
       shouldGenerateCharacterMood: true,
       currentCharacterState: null,
-      currentCharacterMood: null
+      currentCharacterMood: null,
+      currentCharacterGoal: null
     });
 
     let newCharacterMood = null;
+    let newCharacterGoal = null;
     let newCharacterState = null;
 
     // Handle mood
@@ -131,6 +133,20 @@ class ProactiveMessageService {
         characterId,
         conversationId,
         mood: newCharacterMood,
+        characterName
+      });
+    }
+
+    // Handle goal
+    if (proactiveDecisionResult.characterGoal) {
+      newCharacterGoal = proactiveDecisionResult.characterGoal;
+      db.prepare(`UPDATE conversations SET character_goal = ? WHERE id = ?`).run(newCharacterGoal, conversationId);
+      console.log(`🎯 Proactive message: Character goal set to "${newCharacterGoal}"`);
+
+      io.to(`user:${userId}`).emit('character_goal_update', {
+        characterId,
+        conversationId,
+        goal: newCharacterGoal,
         characterName
       });
     }
@@ -151,6 +167,7 @@ class ProactiveMessageService {
 
     return {
       newCharacterMood,
+      newCharacterGoal,
       newCharacterState,
       shouldSendImage: proactiveDecisionResult.shouldSendImage
     };
@@ -259,7 +276,7 @@ class ProactiveMessageService {
       const imageMessagesEnabled = process.env.IMAGE_MESSAGES_ENABLED === 'true';
 
       // Generate mood and state
-      const { newCharacterMood, newCharacterState, shouldSendImage: decisionWantsImage } = await this.generateMoodAndState(
+      const { newCharacterMood, newCharacterGoal, newCharacterState, shouldSendImage: decisionWantsImage } = await this.generateMoodAndState(
         updatedMessages, characterData, characterId, conversationId, userId, gapHours,
         currentStatusInfo, schedule, userBio, hasImage, characterName, io
       );
@@ -303,6 +320,7 @@ class ProactiveMessageService {
             isFirstMessage,
             matchedDate,
             characterMood: newCharacterMood,
+            characterGoal: newCharacterGoal,
             characterState: newCharacterState
           }),
           conversationId,

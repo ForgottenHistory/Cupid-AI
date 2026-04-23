@@ -14,6 +14,7 @@ class ConversationService {
         c.character_name,
         c.unread_count,
         c.character_mood,
+        c.character_goal,
         c.created_at,
         c.updated_at,
         c.last_message,

@@ -134,7 +134,7 @@ const Chat = () => {
   });
 
   // WebSocket real-time messaging
-  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData, currentThought, isCompacting, characterMood, setCharacterMood, characterState, setCharacterState } = useChatWebSocket({
+  const { showTypingIndicator, setShowTypingIndicator, unmatchData, setUnmatchData, currentThought, isCompacting, characterMood, setCharacterMood, characterGoal, setCharacterGoal, characterState, setCharacterState } = useChatWebSocket({
     characterId,
     user,
     isMountedRef,
@@ -175,6 +175,15 @@ const Chat = () => {
       setCharacterState(null);
     }
   }, [conversation?.character_state, setCharacterState]);
+
+  // Initialize character goal from conversation data
+  useEffect(() => {
+    if (conversation?.character_goal) {
+      setCharacterGoal(conversation.character_goal);
+    } else {
+      setCharacterGoal(null);
+    }
+  }, [conversation?.character_goal, setCharacterGoal]);
 
   // Debug: Log when thought changes
   useEffect(() => {
@@ -385,6 +394,7 @@ const Chat = () => {
             character={character}
             characterStatus={characterStatus}
             characterMood={characterMood}
+            characterGoal={characterGoal}
             characterState={characterState}
             messages={messages}
             totalMessages={totalMessages}
@@ -393,6 +403,7 @@ const Chat = () => {
             onUnmatch={handleUnmatch}
             conversationId={conversation?.id}
             onMoodUpdate={setCharacterMood}
+            onGoalUpdate={setCharacterGoal}
             onStateUpdate={setCharacterState}
             onCharacterUpdate={async () => {
               const updatedChar = await characterService.getCharacter(characterId);

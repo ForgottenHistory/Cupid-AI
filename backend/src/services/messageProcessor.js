@@ -329,12 +329,13 @@ You're in a random chat feature. You don't know this person yet and they don't k
         console.log(`🎭 Character mood update will be requested: ${moodTrigger}`);
       }
 
-      // Reset mood and state on time gap so the decision engine generates fresh values
+      // Reset mood, goal, and state on time gap so the decision engine generates fresh values
       if (timeGapInserted) {
-        db.prepare(`UPDATE conversations SET character_mood = NULL, character_state = NULL WHERE id = ?`).run(conversationId);
-        console.log(`🔄 Reset character mood and state due to TIME GAP`);
+        db.prepare(`UPDATE conversations SET character_mood = NULL, character_goal = NULL, character_state = NULL WHERE id = ?`).run(conversationId);
+        console.log(`🔄 Reset character mood, goal, and state due to TIME GAP`);
         // Clear stale values so the decision engine doesn't receive them as context
         conversation.character_mood = null;
+        conversation.character_goal = null;
         conversation.character_state = null;
       }
 
@@ -354,7 +355,8 @@ You're in a random chat feature. You don't know this person yet and they don't k
         userBio: userBio,
         shouldGenerateCharacterMood: shouldUpdateCharacterMood,
         currentCharacterState: conversation?.character_state || null,
-        currentCharacterMood: conversation?.character_mood || null
+        currentCharacterMood: conversation?.character_mood || null,
+        currentCharacterGoal: conversation?.character_goal || null
       });
 
       console.log('🎯 Decision made:', decision);
@@ -452,6 +454,27 @@ You're in a random chat feature. You don't know this person yet and they don't k
           mood: decision.characterMood,
           characterName: characterData.name || 'Character'
         });
+      }
+
+      // === CHARACTER GOAL UPDATE ===
+      // Handle character goal from decision (same triggers as mood)
+      if (shouldUpdateCharacterMood) {
+        const currentGoal = conversation?.character_goal || null;
+        const newGoal = decision.characterGoal || null;
+
+        if (newGoal !== currentGoal) {
+          db.prepare(`
+            UPDATE conversations SET character_goal = ? WHERE id = ?
+          `).run(newGoal, conversationId);
+          console.log(`🎯 Character goal updated: "${newGoal}"`);
+
+          io.to(`user:${userId}`).emit('character_goal_update', {
+            characterId,
+            conversationId,
+            goal: newGoal,
+            characterName: characterData.name || 'Character'
+          });
+        }
       }
 
       // === CHARACTER STATE UPDATE ===
@@ -654,8 +677,9 @@ You're in a random chat feature. You don't know this person yet and they don't k
         const currentMood = decision.characterMood || conversation?.character_mood || null;
         // Only use decision.characterState if it was actually set (not null/undefined), otherwise keep existing
         const currentCharacterState = decision.characterState || conversation?.character_state || null;
+        const currentGoal = decision.characterGoal || conversation?.character_goal || null;
 
-        console.log(`🎭 Chat prompt context: mood="${currentMood}", state="${currentCharacterState}", conversation.character_mood="${conversation?.character_mood}", conversation.character_state="${conversation?.character_state}"`);
+        console.log(`🎭 Chat prompt context: mood="${currentMood}", goal="${currentGoal}", state="${currentCharacterState}", conversation.character_mood="${conversation?.character_mood}", conversation.character_goal="${conversation?.character_goal}", conversation.character_state="${conversation?.character_state}"`);
 
         const characterName = characterData.data?.name || characterData.name || 'Character';
 
@@ -673,6 +697,7 @@ You're in a random chat feature. You don't know this person yet and they don't k
             decision: decision,
             matchedDate: matchedDate,
             characterMood: currentMood,
+            characterGoal: currentGoal,
             characterState: currentCharacterState
           }),
           conversationId,
@@ -884,6 +909,7 @@ You're in a random chat feature. You don't know this person yet and they don't k
                 decision: { ...decision, shouldSendImage: false, shouldSendVoice: false }, // Text-only follow-up
                 matchedDate: matchedDate,
                 characterMood: updatedConversation?.character_mood || null,
+                characterGoal: updatedConversation?.character_goal || null,
                 characterState: updatedConversation?.character_state || null
               }),
               conversationId,

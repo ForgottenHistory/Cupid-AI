@@ -4,29 +4,41 @@ import { useState, useEffect } from 'react';
 /**
  * Modal component to view and edit character's current mood
  */
-const CharacterMoodModal = ({ isOpen, onClose, characterId, characterName, currentMood, onSave }) => {
+const CharacterMoodModal = ({ isOpen, onClose, characterId, characterName, currentMood, currentGoal, onSave, onSaveGoal }) => {
   const [mood, setMood] = useState(currentMood || '');
+  const [goal, setGoal] = useState(currentGoal || '');
   const [saving, setSaving] = useState(false);
 
-  // Sync with prop when modal opens or currentMood changes
+  // Sync with props when modal opens or values change
   useEffect(() => {
     if (isOpen) {
       setMood(currentMood || '');
+      setGoal(currentGoal || '');
     }
-  }, [isOpen, currentMood]);
+  }, [isOpen, currentMood, currentGoal]);
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
     if (!mood.trim()) return;
 
+    const trimmedMood = mood.trim();
+    const trimmedGoal = goal.trim();
+    const moodChanged = trimmedMood !== (currentMood || '');
+    const goalChanged = trimmedGoal !== (currentGoal || '');
+
     setSaving(true);
     try {
-      await onSave(mood.trim());
+      if (moodChanged) {
+        await onSave(trimmedMood);
+      }
+      if (goalChanged && onSaveGoal) {
+        await onSaveGoal(trimmedGoal);
+      }
       onClose();
     } catch (error) {
-      console.error('Failed to save mood:', error);
-      alert('Failed to save mood. Please try again.');
+      console.error('Failed to save mood/goal:', error);
+      alert('Failed to save. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -62,10 +74,10 @@ const CharacterMoodModal = ({ isOpen, onClose, characterId, characterName, curre
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-                {characterName}'s Mood
+                {characterName}'s Mood & Goal
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                How are they feeling right now?
+                How are they feeling and what do they want?
               </p>
             </div>
           </div>
@@ -125,6 +137,50 @@ const CharacterMoodModal = ({ isOpen, onClose, characterId, characterName, curre
                 ))}
               </div>
             </div>
+
+            {/* Goal input */}
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 mt-2">
+                Current Goal
+              </label>
+              <input
+                type="text"
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="e.g., get him to send a shirtless pic"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all"
+                maxLength={120}
+              />
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                What they privately WANT from this conversation (leave empty for no specific goal)
+              </p>
+            </div>
+
+            {/* Example goals */}
+            <div>
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                Examples:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  'get him to send a pic',
+                  'find out about his ex',
+                  'convince him to call tonight',
+                  'make him admit he was jealous',
+                  'steer toward Friday plans',
+                  'pull a voice message out of him'
+                ].map((example) => (
+                  <button
+                    key={example}
+                    onClick={() => setGoal(example)}
+                    className="px-3 py-1 text-xs bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded-full hover:bg-pink-200 dark:hover:bg-pink-800/40 transition-colors"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -142,7 +198,7 @@ const CharacterMoodModal = ({ isOpen, onClose, characterId, characterName, curre
               disabled={saving || !mood.trim()}
               className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? 'Saving...' : 'Save Mood'}
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>

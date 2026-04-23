@@ -13,7 +13,7 @@ import chatService from '../../services/chatService';
 /**
  * Chat header component with banner, character info, and menu
  */
-const ChatHeader = ({ character, characterStatus, characterMood, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onStateUpdate, onCharacterUpdate, disableSchedule = false }) => {
+const ChatHeader = ({ character, characterStatus, characterMood, characterGoal, characterState, messages, totalMessages, hasMoreMessages, onBack, onUnmatch, conversationId, onMoodUpdate, onGoalUpdate, onStateUpdate, onCharacterUpdate, disableSchedule = false }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [showLibraryCard, setShowLibraryCard] = useState(false);
   const [modalCharacter, setModalCharacter] = useState(null); // Local copy for the modal
@@ -205,6 +205,19 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
       }
     } catch (error) {
       console.error('Failed to update mood:', error);
+      throw error;
+    }
+  };
+
+  // Update character goal
+  const handleSaveGoal = async (newGoal) => {
+    try {
+      await api.put(`/chat/conversations/${character.id}/goal`, { goal: newGoal });
+      if (onGoalUpdate) {
+        onGoalUpdate(newGoal && newGoal.trim().length > 0 ? newGoal.trim() : null);
+      }
+    } catch (error) {
+      console.error('Failed to update goal:', error);
       throw error;
     }
   };
@@ -413,7 +426,9 @@ const ChatHeader = ({ character, characterStatus, characterMood, characterState,
         characterId={character.id}
         characterName={character.name}
         currentMood={characterMood}
+        currentGoal={characterGoal}
         onSave={handleSaveMood}
+        onSaveGoal={handleSaveGoal}
       />
 
       <CharacterStateModal

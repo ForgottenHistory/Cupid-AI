@@ -35,6 +35,11 @@ export function parseDecisionResponse(content) {
         if (value) {
           decision.characterMood = value.replace(/^["']|["']$/g, '');
         }
+      } else if (line.startsWith('Character Goal:')) {
+        const value = line.substring('Character Goal:'.length).trim();
+        if (value && value.toLowerCase() !== 'none') {
+          decision.characterGoal = value.replace(/^["']|["']$/g, '');
+        }
       } else if (line.startsWith('Character State:')) {
         const value = line.substring('Character State:'.length).trim().toLowerCase();
         if (value && value !== 'none') {
@@ -91,6 +96,7 @@ export function getDefaultDecision() {
     shouldSendImage: false,
     mood: 'none',
     characterMood: null,
+    characterGoal: null,
     characterState: null,
     thought: null,
     reason: 'Default decision (fallback)'

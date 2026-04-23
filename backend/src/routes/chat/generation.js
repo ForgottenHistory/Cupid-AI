@@ -225,7 +225,7 @@ router.post('/messages/:messageId/regenerate', authenticateToken, async (req, re
       }));
 
       // Get conversation for mood and state
-      const conversation = db.prepare('SELECT character_mood, character_state FROM conversations WHERE id = ?').get(message.conversation_id);
+      const conversation = db.prepare('SELECT character_mood, character_goal, character_state FROM conversations WHERE id = ?').get(message.conversation_id);
 
       // Generate context-aware tags using user's Image Tag LLM settings
       const generatedContextTags = await imageTagGenerationService.generateTags({
@@ -409,7 +409,8 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
       schedule: characterData.schedule,
       userBio: userBio,
       currentCharacterState: conversation?.character_state || null,
-      currentCharacterMood: conversation?.character_mood || null
+      currentCharacterMood: conversation?.character_mood || null,
+      currentCharacterGoal: conversation?.character_goal || null
     });
 
     console.log('🎯 Decision made (regenerate):', decision);
@@ -519,6 +520,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
     // Get mood and state from conversation for context
     const currentMood = conversation?.character_mood || null;
     const currentState = conversation?.character_state || null;
+    const currentGoal = conversation?.character_goal || null;
     const characterName = characterData.data?.name || characterData.name || 'Character';
 
     // Use shared response processor with retry logic
@@ -535,6 +537,7 @@ router.post('/conversations/:characterId/regenerate', authenticateToken, async (
         isProactive: isProactive,
         proactiveType: proactiveType,
         characterMood: currentMood,
+        characterGoal: currentGoal,
         characterState: currentState
       }),
       conversationId: conversation.id,

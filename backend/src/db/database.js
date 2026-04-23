@@ -774,6 +774,12 @@ function runMigrations() {
       console.log('✅ character_state column added to conversations table');
     }
 
+    // Migration: Add character_goal column to conversations table for dynamic goal/want tracking
+    if (!convColumnNames.includes('character_goal')) {
+      db.exec(`ALTER TABLE conversations ADD COLUMN character_goal TEXT;`);
+      console.log('✅ character_goal column added to conversations table');
+    }
+
     // Migration: Add profile_thumbnail column to users table
     if (!userColumnNamesRefresh.includes('profile_thumbnail')) {
       db.exec(`ALTER TABLE users ADD COLUMN profile_thumbnail TEXT;`);

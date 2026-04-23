@@ -321,6 +321,46 @@ router.put('/:characterId/mood', authenticateToken, (req, res) => {
 });
 
 /**
+ * PUT /api/chat/conversations/:characterId/goal
+ * Update character goal for the conversation
+ */
+router.put('/:characterId/goal', authenticateToken, (req, res) => {
+  try {
+    const { characterId } = req.params;
+    const { goal } = req.body;
+    const userId = req.user.id;
+
+    if (typeof goal !== 'string') {
+      return res.status(400).json({ error: 'Goal must be a string' });
+    }
+
+    const conversation = conversationService.getConversation(userId, characterId);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    const trimmed = goal.trim();
+    const newGoal = trimmed.length > 0 ? trimmed : null;
+
+    db.prepare(`UPDATE conversations SET character_goal = ? WHERE id = ?`).run(newGoal, conversation.id);
+
+    console.log(`🎯 Character goal manually updated: ${newGoal}`);
+
+    const io = req.app.get('io');
+    io.to(`user:${userId}`).emit('character_goal_update', {
+      characterId,
+      conversationId: conversation.id,
+      goal: newGoal
+    });
+
+    res.json({ success: true, goal: newGoal });
+  } catch (error) {
+    console.error('Update goal error:', error);
+    res.status(500).json({ error: error.message || 'Failed to update goal' });
+  }
+});
+
+/**
  * PUT /api/chat/conversations/:characterId/state
  * Update character state for the conversation
  */

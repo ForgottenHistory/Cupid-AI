@@ -57,6 +57,7 @@ export function buildDecisionPromptTemplate(prompts, options) {
     hasImage,
     shouldGenerateThought,
     shouldGenerateCharacterMood,
+    shouldGenerateCharacterGoal,
     shouldGenerateCharacterState,
     canChangeMood,
     userId
@@ -69,6 +70,7 @@ export function buildDecisionPromptTemplate(prompts, options) {
   template = template.replace('{hasImage}', hasImage ? '' : '##REMOVE_IMAGE##');
   template = template.replace('{shouldGenerateThought}', shouldGenerateThought ? '' : '##REMOVE_THOUGHT##');
   template = template.replace('{shouldGenerateCharacterMood}', shouldGenerateCharacterMood ? '' : '##REMOVE_CHARACTER_MOOD##');
+  template = template.replace('{shouldGenerateCharacterGoal}', shouldGenerateCharacterGoal ? '' : '##REMOVE_CHARACTER_GOAL##');
   template = template.replace('{shouldGenerateCharacterState}', shouldGenerateCharacterState ? '' : '##REMOVE_CHARACTER_STATE##');
 
   // Handle guideline sections
@@ -76,6 +78,7 @@ export function buildDecisionPromptTemplate(prompts, options) {
   template = replaceGuidelineSection(template, 'imageGuidelines', hasImage);
   template = replaceGuidelineSection(template, 'thoughtGuidelines', shouldGenerateThought);
   template = replaceGuidelineSection(template, 'characterMoodGuidelines', shouldGenerateCharacterMood);
+  template = replaceGuidelineSection(template, 'characterGoalGuidelines', shouldGenerateCharacterGoal);
   template = replaceGuidelineSection(template, 'characterStateGuidelines', shouldGenerateCharacterState);
 
   // Mood cooldown message
@@ -104,6 +107,7 @@ export function buildDecisionPromptTemplate(prompts, options) {
   template = template.replace(/##REMOVE_IMAGE##[^\n]*\n?/g, '');
   template = template.replace(/##REMOVE_THOUGHT##[^\n]*\n?/g, '');
   template = template.replace(/##REMOVE_CHARACTER_MOOD##[^\n]*\n?/g, '');
+  template = template.replace(/##REMOVE_CHARACTER_GOAL##[^\n]*\n?/g, '');
   template = template.replace(/##REMOVE_CHARACTER_STATE##[^\n]*\n?/g, '');
 
   return template;
@@ -146,7 +150,7 @@ export function buildPersonalityContext(characterData) {
 /**
  * Build status context string (placed at bottom for recency bias)
  */
-export function buildStatusContext(currentStatus, characterName, currentCharacterState = null, currentCharacterMood = null, schedule = null, recentImageCount = 0) {
+export function buildStatusContext(currentStatus, characterName, currentCharacterState = null, currentCharacterMood = null, schedule = null, recentImageCount = 0, currentCharacterGoal = null) {
   const parts = [];
 
   // Current activity context
@@ -176,6 +180,11 @@ export function buildStatusContext(currentStatus, characterName, currentCharacte
   // Current mood
   if (currentCharacterMood) {
     parts.push(`💭 CURRENT MOOD: "${currentCharacterMood}"`);
+  }
+
+  // Current goal
+  if (currentCharacterGoal) {
+    parts.push(`🎯 CURRENT GOAL: "${currentCharacterGoal}"`);
   }
 
   if (parts.length === 0) {
