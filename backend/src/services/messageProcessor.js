@@ -386,9 +386,24 @@ You're in a random chat feature. You don't know this person yet and they don't k
 
       // Insert background effect system message if mood is set (not 'none')
       // Skip for activity conversations - they don't support background switching
-      if (decision.mood && decision.mood !== 'none' && !isActivityConversation) {
+      // Skip if the most recent background is already the same mood (avoids duplicate system message/modal)
+      const newMoodUpper = decision.mood ? decision.mood.toUpperCase() : null;
+      let isDuplicateMood = false;
+      if (newMoodUpper) {
+        const lastBgRow = db.prepare(`
+          SELECT content FROM messages
+          WHERE conversation_id = ? AND role = 'system' AND content LIKE '%switched background to%'
+          ORDER BY id DESC LIMIT 1
+        `).get(conversationId);
+        const lastMoodMatch = lastBgRow?.content?.match(/switched background to (\w+)\]/);
+        if (lastMoodMatch && lastMoodMatch[1] === newMoodUpper) {
+          isDuplicateMood = true;
+          console.log(`🎨 Background mood change skipped (already ${newMoodUpper})`);
+        }
+      }
+      if (decision.mood && decision.mood !== 'none' && !isActivityConversation && !isDuplicateMood) {
         const characterName = characterData.name || 'Character';
-        const systemMessage = `[${characterName} switched background to ${decision.mood.toUpperCase()}]`;
+        const systemMessage = `[${characterName} switched background to ${newMoodUpper}]`;
 
         // Save background effect system message to conversation history
         const savedMoodMessage = messageService.saveMessage(
