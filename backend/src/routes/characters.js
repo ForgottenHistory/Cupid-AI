@@ -439,11 +439,13 @@ router.put('/:characterId', authenticateToken, (req, res) => {
             setClauses.push('liked_at = ?');
             values.push(Date.now());
           }
-          // Clear post_instructions when unliking (unmatch)
+          // Clear post_instructions and memories when unliking (unmatch)
           if (!value) {
             setClauses.push('post_instructions = ?');
             values.push(null);
-            console.log(`🧹 Clearing post_instructions on unmatch`);
+            setClauses.push('memory_data = ?');
+            values.push('[]');
+            console.log(`🧹 Clearing post_instructions and memories on unmatch`);
           }
         } else {
           values.push(value);
@@ -777,10 +779,10 @@ router.delete('/:characterId/memories', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    // Clear all memories
-    memoryService.saveCharacterMemories(characterId, [], userId);
+    // Clear all memories (bypasses safeguard that prevents shrinking memory list)
+    memoryService.clearCharacterMemories(characterId);
 
-    console.log(`🗑️  Cleared all memories for character ${characterId}`);
+
     res.json({ success: true, memories: [] });
   } catch (error) {
     console.error('Failed to clear memories:', error);

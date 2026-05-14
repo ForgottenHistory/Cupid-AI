@@ -89,6 +89,15 @@ class MemoryService {
   }
 
   /**
+   * Clear all memories for a character (bypasses safeguard in saveCharacterMemories)
+   * @param {string} characterId - Character ID
+   */
+  clearCharacterMemories(characterId) {
+    db.prepare('UPDATE characters SET memory_data = ? WHERE id = ?').run('[]', characterId);
+    console.log(`🗑️  Cleared all memories for character ${characterId}`);
+  }
+
+  /**
    * Apply memory degradation to existing memories
    * @param {Array<{importance: number, text: string}>} existingMemories - Current memories
    * @param {number} degradationPoints - Points to degrade each memory (0 = disabled)
