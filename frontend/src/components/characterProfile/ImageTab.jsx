@@ -145,6 +145,10 @@ const ImageTab = ({ character, onUpdate }) => {
       await characterService.updateCharacterData(character.id, updates);
       console.log('✅ Character portrait updated in backend');
 
+      // Invalidate thumbnail cache and notify sidebar to refresh
+      characterService.invalidateThumbnailCache();
+      window.dispatchEvent(new Event('characterUpdated'));
+
       // Set preview
       setImagePreview(base64Image);
 
@@ -203,6 +207,10 @@ const ImageTab = ({ character, onUpdate }) => {
 
           await characterService.updateCharacterData(character.id, updates);
           console.log('✅ Character image updated in backend');
+
+          // Invalidate thumbnail cache and notify sidebar to refresh
+          characterService.invalidateThumbnailCache();
+          window.dispatchEvent(new Event('characterUpdated'));
 
           // Set preview after successful save
           setImagePreview(base64Image);

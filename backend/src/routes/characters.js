@@ -6,6 +6,7 @@ import * as characterInteraction from '../controllers/characterInteractionContro
 import memoryService from '../services/memoryService.js';
 import db from '../db/database.js';
 import { calculateCurrentStatus } from '../utils/characterHelpers.js';
+import { generateThumbnail } from '../utils/imageHelpers.js';
 
 const router = express.Router();
 
@@ -382,7 +383,7 @@ router.post('/', authenticateToken, (req, res) => {
 });
 
 // PUT /api/characters/:characterId - Update character (general)
-router.put('/:characterId', authenticateToken, (req, res) => {
+router.put('/:characterId', authenticateToken, async (req, res) => {
   try {
     const { characterId } = req.params;
     const userId = req.user.id;
@@ -461,6 +462,16 @@ router.put('/:characterId', authenticateToken, (req, res) => {
 
     if (setClauses.length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    // Regenerate thumbnail when image_url changes (unless caller provided one explicitly)
+    const imageUrlChanged = updates.imageUrl !== undefined || updates.image_url !== undefined;
+    const thumbnailProvided = updates.thumbnailUrl !== undefined || updates.thumbnail_url !== undefined;
+    if (imageUrlChanged && !thumbnailProvided) {
+      const newImageUrl = updates.imageUrl ?? updates.image_url;
+      const newThumbnail = await generateThumbnail(newImageUrl);
+      setClauses.push('thumbnail_url = ?');
+      values.push(newThumbnail);
     }
 
     values.push(characterId, userId);

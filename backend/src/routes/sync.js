@@ -1,39 +1,7 @@
 import express from 'express';
-import sharp from 'sharp';
 import { authenticateToken } from '../middleware/auth.js';
 import db from '../db/database.js';
-
-/**
- * Generate a thumbnail from a base64 image data URL
- * @param {string} imageUrl - Base64 data URL (data:image/png;base64,...)
- * @returns {Promise<string|null>} - Thumbnail as base64 data URL or null if failed
- */
-async function generateThumbnail(imageUrl) {
-  if (!imageUrl || !imageUrl.startsWith('data:')) {
-    return null;
-  }
-
-  try {
-    // Extract base64 data from data URL
-    const base64Match = imageUrl.match(/^data:image\/\w+;base64,(.+)$/);
-    if (!base64Match) {
-      return null;
-    }
-
-    const imageBuffer = Buffer.from(base64Match[1], 'base64');
-
-    // Generate 128x170 thumbnail (same as AI-Chat-Template)
-    const thumbnailBuffer = await sharp(imageBuffer)
-      .resize(128, 170, { fit: 'cover' })
-      .png({ quality: 80 })
-      .toBuffer();
-
-    return `data:image/png;base64,${thumbnailBuffer.toString('base64')}`;
-  } catch (error) {
-    console.warn('Failed to generate thumbnail:', error.message);
-    return null;
-  }
-}
+import { generateThumbnail } from '../utils/imageHelpers.js';
 
 const router = express.Router();
 
