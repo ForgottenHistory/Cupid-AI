@@ -195,13 +195,32 @@ const Chat = () => {
   }, [currentThought]);
 
   // Swipe handler - navigate to different variant
+  // When an image message switches variants, keep the carousel (allImageUrls) in sync
+  // by replacing the message's old image URL with the new one.
+  const syncImageCarousel = (oldMessage, newMessage) => {
+    if (newMessage.message_type !== 'image') return;
+    const oldUrl = oldMessage?.image_url;
+    const newUrl = newMessage.image_url;
+    if (!newUrl || oldUrl === newUrl) return;
+
+    setAllImageUrls(prev => prev.map(img => {
+      const url = img.url || img;
+      if (url === oldUrl) {
+        return { url: newUrl, prompt: newMessage.image_prompt };
+      }
+      return img;
+    }));
+  };
+
   const handleSwipe = async (messageId, swipeIndex) => {
     try {
       const response = await chatService.swipeMessage(messageId, swipeIndex);
       if (response.success && response.message) {
+        const oldMessage = messages.find(msg => msg.id === messageId);
         setMessages(prev => prev.map(msg =>
           msg.id === messageId ? { ...msg, ...response.message } : msg
         ));
+        syncImageCarousel(oldMessage, response.message);
       }
     } catch (error) {
       console.error('Failed to swipe message:', error);
@@ -217,9 +236,11 @@ const Chat = () => {
     try {
       const response = await chatService.regenerateMessage(messageId, character);
       if (response.success && response.message) {
+        const oldMessage = messages.find(msg => msg.id === messageId);
         setMessages(prev => prev.map(msg =>
           msg.id === messageId ? { ...msg, ...response.message } : msg
         ));
+        syncImageCarousel(oldMessage, response.message);
       }
     } catch (error) {
       console.error('Failed to regenerate message:', error);

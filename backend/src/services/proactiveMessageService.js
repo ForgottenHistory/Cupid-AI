@@ -123,47 +123,50 @@ class ProactiveMessageService {
     let newCharacterGoal = null;
     let newCharacterState = null;
 
-    // Handle mood
-    if (proactiveDecisionResult.characterMood) {
-      newCharacterMood = proactiveDecisionResult.characterMood;
+    // Handle mood (always emit — DB was just reset to NULL, frontend needs to clear stale value if LLM returned none)
+    newCharacterMood = proactiveDecisionResult.characterMood || null;
+    if (newCharacterMood) {
       db.prepare(`UPDATE conversations SET character_mood = ? WHERE id = ?`).run(newCharacterMood, conversationId);
       console.log(`🎭 Proactive message: Character mood set to "${newCharacterMood}"`);
-
-      io.to(`user:${userId}`).emit('character_mood_update', {
-        characterId,
-        conversationId,
-        mood: newCharacterMood,
-        characterName
-      });
+    } else {
+      console.log(`🎭 Proactive message: Character mood cleared (LLM returned none)`);
     }
+    io.to(`user:${userId}`).emit('character_mood_update', {
+      characterId,
+      conversationId,
+      mood: newCharacterMood,
+      characterName
+    });
 
-    // Handle goal
-    if (proactiveDecisionResult.characterGoal) {
-      newCharacterGoal = proactiveDecisionResult.characterGoal;
+    // Handle goal (always emit)
+    newCharacterGoal = proactiveDecisionResult.characterGoal || null;
+    if (newCharacterGoal) {
       db.prepare(`UPDATE conversations SET character_goal = ? WHERE id = ?`).run(newCharacterGoal, conversationId);
       console.log(`🎯 Proactive message: Character goal set to "${newCharacterGoal}"`);
-
-      io.to(`user:${userId}`).emit('character_goal_update', {
-        characterId,
-        conversationId,
-        goal: newCharacterGoal,
-        characterName
-      });
+    } else {
+      console.log(`🎯 Proactive message: Character goal cleared (LLM returned none)`);
     }
+    io.to(`user:${userId}`).emit('character_goal_update', {
+      characterId,
+      conversationId,
+      goal: newCharacterGoal,
+      characterName
+    });
 
-    // Handle state
-    if (proactiveDecisionResult.characterState) {
-      newCharacterState = proactiveDecisionResult.characterState;
+    // Handle state (always emit)
+    newCharacterState = proactiveDecisionResult.characterState || null;
+    if (newCharacterState) {
       db.prepare(`UPDATE conversations SET character_state = ? WHERE id = ?`).run(newCharacterState, conversationId);
       console.log(`🎭 Proactive message: Character state set to "${newCharacterState}"`);
-
-      io.to(`user:${userId}`).emit('character_state_update', {
-        characterId,
-        conversationId,
-        state: newCharacterState,
-        characterName
-      });
+    } else {
+      console.log(`🎭 Proactive message: Character state cleared (LLM returned none)`);
     }
+    io.to(`user:${userId}`).emit('character_state_update', {
+      characterId,
+      conversationId,
+      state: newCharacterState,
+      characterName
+    });
 
     return {
       newCharacterMood,
