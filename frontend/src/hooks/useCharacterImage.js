@@ -52,8 +52,9 @@ export const useCharacterImage = (characterId, character, allImageUrls) => {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // All received images from character (take last 10 for rotation display)
+  // All received images from character (exclude carousel-hidden, take last 10 for rotation display)
   const receivedImages = (allImageUrls || [])
+    .filter(img => !img.excludedFromCarousel)
     .slice(-10)
     .map(img => getImageUrl(img.url || img));
 
@@ -106,6 +107,13 @@ export const useCharacterImage = (characterId, character, allImageUrls) => {
       setCurrentImageIndex(Math.floor(Math.random() * receivedImages.length));
     }
   }, [autoScrollEnabled, receivedImages.length]);
+
+  // Clamp index when the carousel shrinks (e.g. images hidden from the gallery)
+  useEffect(() => {
+    if (currentImageIndex > receivedImages.length - 1) {
+      setCurrentImageIndex(Math.max(0, receivedImages.length - 1));
+    }
+  }, [receivedImages.length, currentImageIndex]);
 
   // Auto-enable auto-scroll when images are available (only once per character)
   useEffect(() => {

@@ -539,7 +539,7 @@ class MessageService {
    */
   getAllImageUrls(conversationId) {
     const rows = db.prepare(`
-      SELECT image_url, image_prompt FROM messages
+      SELECT id, image_url, image_prompt, excluded_from_carousel FROM messages
       WHERE conversation_id = ?
         AND role = 'assistant'
         AND message_type = 'image'
@@ -548,9 +548,34 @@ class MessageService {
     `).all(conversationId);
 
     return rows.map(row => ({
+      messageId: row.id,
       url: row.image_url,
-      prompt: row.image_prompt
+      prompt: row.image_prompt,
+      excludedFromCarousel: !!row.excluded_from_carousel
     }));
+  }
+
+  /**
+   * Toggle whether an image message is excluded from the chat carousel
+   */
+  setImageCarouselExclusion(messageId, userId, excluded) {
+    const message = this.getMessageWithUser(messageId);
+
+    if (!message) {
+      throw new Error('Message not found');
+    }
+
+    if (message.user_id !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    db.prepare(`
+      UPDATE messages
+      SET excluded_from_carousel = ?
+      WHERE id = ?
+    `).run(excluded ? 1 : 0, messageId);
+
+    return message.conversation_id;
   }
 
   /**

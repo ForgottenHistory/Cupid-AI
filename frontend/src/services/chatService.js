@@ -146,6 +146,16 @@ class ChatService {
   }
 
   /**
+   * Toggle whether an image message is excluded from the chat carousel
+   */
+  async setCarouselExclusion(messageId, excluded) {
+    const response = await api.post(`/chat/messages/${messageId}/carousel-exclusion`, {
+      excluded,
+    });
+    return response.data;
+  }
+
+  /**
    * Get swipe info for a message
    */
   async getSwipeInfo(messageId) {

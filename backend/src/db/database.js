@@ -440,6 +440,12 @@ function runMigrations() {
       console.log('✅ swipes columns added to messages table');
     }
 
+    // Migration: Add excluded_from_carousel column to messages table (hide image from chat carousel)
+    if (!messagesColumnNames.includes('excluded_from_carousel')) {
+      db.exec(`ALTER TABLE messages ADD COLUMN excluded_from_carousel INTEGER DEFAULT 0;`);
+      console.log('✅ excluded_from_carousel column added to messages table');
+    }
+
     // Migration: Add Stable Diffusion settings columns to users table
     if (!userColumnNames.includes('sd_steps')) {
       db.exec(`

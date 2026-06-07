@@ -206,7 +206,7 @@ const Chat = () => {
     setAllImageUrls(prev => prev.map(img => {
       const url = img.url || img;
       if (url === oldUrl) {
-        return { url: newUrl, prompt: newMessage.image_prompt };
+        return { ...img, url: newUrl, prompt: newMessage.image_prompt };
       }
       return img;
     }));
@@ -225,6 +225,24 @@ const Chat = () => {
     } catch (error) {
       console.error('Failed to swipe message:', error);
       setError('Failed to switch response variant');
+    }
+  };
+
+  // Toggle whether a gallery image is shown in the chat carousel
+  const handleToggleCarouselExclusion = async (messageId, excluded) => {
+    // Optimistic update
+    setAllImageUrls(prev => prev.map(img =>
+      img.messageId === messageId ? { ...img, excludedFromCarousel: excluded } : img
+    ));
+    try {
+      await chatService.setCarouselExclusion(messageId, excluded);
+    } catch (error) {
+      console.error('Failed to update carousel exclusion:', error);
+      setError('Failed to update carousel visibility');
+      // Revert on failure
+      setAllImageUrls(prev => prev.map(img =>
+        img.messageId === messageId ? { ...img, excludedFromCarousel: !excluded } : img
+      ));
     }
   };
 
@@ -461,6 +479,7 @@ const Chat = () => {
             character={character}
             allImageUrls={allImageUrls}
             onSelectImage={setGalleryModalImage}
+            onToggleCarouselExclusion={handleToggleCarouselExclusion}
           />
 
           {/* Message List */}

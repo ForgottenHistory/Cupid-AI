@@ -197,7 +197,7 @@ export const useChatWebSocket = ({
 
         // If this is an image message, add its data to allImageUrls
         if (lastMessage.message_type === 'image' && lastMessage.image_url && setAllImageUrls) {
-          setAllImageUrls(prev => [...prev, { url: lastMessage.image_url, prompt: lastMessage.image_prompt }]);
+          setAllImageUrls(prev => [...prev, { messageId: lastMessage.id, url: lastMessage.image_url, prompt: lastMessage.image_prompt, excludedFromCarousel: false }]);
         }
 
         // Only unlock UI when no more messages are coming

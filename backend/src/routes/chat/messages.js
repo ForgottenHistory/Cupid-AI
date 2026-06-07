@@ -63,6 +63,31 @@ router.post('/:messageId/swipe', authenticateToken, (req, res) => {
 });
 
 /**
+ * POST /api/chat/messages/:messageId/carousel-exclusion
+ * Toggle whether an image message is excluded from the chat carousel
+ */
+router.post('/:messageId/carousel-exclusion', authenticateToken, (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { excluded } = req.body;
+    const userId = req.user.id;
+
+    if (typeof excluded !== 'boolean') {
+      return res.status(400).json({ error: 'excluded is required and must be a boolean' });
+    }
+
+    messageService.setImageCarouselExclusion(parseInt(messageId), userId, excluded);
+    res.json({ success: true, excluded });
+  } catch (error) {
+    console.error('Set carousel exclusion error:', error);
+    let status = 500;
+    if (error.message === 'Message not found') status = 404;
+    if (error.message === 'Unauthorized') status = 403;
+    res.status(status).json({ error: error.message || 'Failed to update carousel exclusion' });
+  }
+});
+
+/**
  * GET /api/chat/messages/:messageId/swipes
  * Get swipe info for a message
  */
