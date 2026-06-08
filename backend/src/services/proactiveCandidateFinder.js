@@ -75,7 +75,12 @@ function checkGlobalCooldown(user) {
  */
 function checkAndResetConsecutiveCount(character, lastMessage, user) {
   const consecutiveCount = character.consecutive_proactive_count || 0;
-  const shouldReset = lastMessage && consecutiveCount > 0 && (
+  // Reset when there's no outstanding chain of unanswered proactives:
+  // - empty conversation (no messages at all)
+  // - user replied
+  // - a non-proactive assistant message was sent
+  const shouldReset = consecutiveCount > 0 && (
+    !lastMessage ||
     lastMessage.role === 'user' ||
     (lastMessage.role === 'assistant' && !lastMessage.is_proactive)
   );
@@ -90,7 +95,7 @@ function checkAndResetConsecutiveCount(character, lastMessage, user) {
     character.current_proactive_cooldown = 60;
 
     const characterName = getCharacterName(character);
-    const resetReason = lastMessage.role === 'user' ? 'user replied' : 'normal response sent';
+    const resetReason = !lastMessage ? 'empty conversation' : (lastMessage.role === 'user' ? 'user replied' : 'normal response sent');
     console.log(`🔄 ${characterName}: Reset consecutive count (was ${consecutiveCount}) - reason: ${resetReason}`);
   }
 }
