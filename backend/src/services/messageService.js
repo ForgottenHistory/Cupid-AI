@@ -594,13 +594,20 @@ class MessageService {
       throw new Error('Unauthorized');
     }
 
-    // Delete this message and all messages with higher IDs in the same conversation
-    // Using ID instead of created_at because split messages have identical timestamps
+    // Delete this message and everything displayed at or after it.
+    // Messages render in (created_at ASC, id ASC) order, so deletion must match
+    // that ordering — NOT id alone. A TIME GAP marker is inserted with a
+    // created_at just before the message it precedes but a higher id, so an
+    // id-only delete would leave the earlier user message orphaned.
+    // id is still the tiebreaker for split messages sharing a timestamp.
     db.prepare(`
       DELETE FROM messages
       WHERE conversation_id = ?
-        AND id >= ?
-    `).run(message.conversation_id, messageId);
+        AND (
+          created_at > ?
+          OR (created_at = ? AND id >= ?)
+        )
+    `).run(message.conversation_id, message.created_at, message.created_at, messageId);
 
     return message.conversation_id;
   }
