@@ -1,8 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const OverviewTab = ({ data, loading, onCleanup, onEdit, onRevert }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedDescription, setEditedDescription] = useState(data.description || '');
+  const textareaRef = useRef(null);
+
+  // Auto-grow the textarea to fit its content so it matches the description length
+  const autoResize = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  // Resize when entering edit mode or when the text changes externally
+  useEffect(() => {
+    if (isEditing) autoResize();
+  }, [isEditing, editedDescription]);
 
   // Calculate approximate token count (1 token ≈ 4 characters)
   const calculateTokens = (text) => {
@@ -40,6 +54,25 @@ const OverviewTab = ({ data, loading, onCleanup, onEdit, onRevert }) => {
             <span className="text-xs text-gray-500 dark:text-gray-400">~{calculateTokens(isEditing ? editedDescription : data.description).toLocaleString()} tokens</span>
           </div>
           <div className="flex gap-2">
+            {isEditing && (
+              <>
+                <button
+                  onClick={handleSave}
+                  className="px-3 py-1 text-sm bg-green-500 dark:bg-green-600 hover:bg-green-600 dark:hover:bg-green-700 text-white rounded-lg transition flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Save
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="px-3 py-1 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-lg transition"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
             {!isEditing && (
               <>
                 <button
@@ -93,9 +126,10 @@ const OverviewTab = ({ data, loading, onCleanup, onEdit, onRevert }) => {
         {isEditing ? (
           <div className="space-y-3">
             <textarea
+              ref={textareaRef}
               value={editedDescription}
-              onChange={(e) => setEditedDescription(e.target.value)}
-              className="w-full h-64 px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-gray-100 resize-none"
+              onChange={(e) => { setEditedDescription(e.target.value); autoResize(); }}
+              className="w-full min-h-[16rem] px-4 py-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-gray-100 resize-y overflow-hidden"
               placeholder="Enter character description..."
             />
             <div className="flex gap-2">
