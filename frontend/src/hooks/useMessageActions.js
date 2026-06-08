@@ -334,18 +334,17 @@ export const useMessageActions = ({
       setMessages(messagesToKeep);
       setError('');
 
-      // Update image URLs to remove images from deleted messages
+      // Update image URLs to remove images from deleted messages.
+      // Match by message ID (the stable carousel key) rather than URL, which
+      // can diverge from the message's current variant after swipes/regeneration.
       if (setAllImageUrls) {
-        const deletedImageUrls = new Set(
+        const deletedMessageIds = new Set(
           messages.slice(messageIndex)
-            .filter(m => m.message_type === 'image' && m.image_url)
-            .map(m => m.image_url)
+            .filter(m => m.message_type === 'image')
+            .map(m => Number(extractActualMessageId(m.id)))
         );
-        if (deletedImageUrls.size > 0) {
-          setAllImageUrls(prev => prev.filter(img => {
-            const url = img.url || img;
-            return !deletedImageUrls.has(url);
-          }));
+        if (deletedMessageIds.size > 0) {
+          setAllImageUrls(prev => prev.filter(img => !deletedMessageIds.has(img.messageId)));
         }
       }
 
