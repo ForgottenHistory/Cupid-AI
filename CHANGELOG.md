@@ -5,6 +5,33 @@ All notable changes to Cupid AI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-06-08
+
+### Added
+- **Character Goal Tracking**: Decision LLM now generates a short-form private goal (what the character wants from the conversation) on the same triggers as mood, injected into the chat prompt and editable via the Mood & Goal modal
+- **Hide Images from Carousel**: Toggle individual images out of the chat image carousel with an eye button in the gallery
+- **Reset Swipes Debug Command**: `window.resetSwipes()` console helper clears today's swipe count for testing
+
+### Changed
+- **Dark Mode Only**: Removed the light mode toggle; the app is now always dark
+- **Removed Left-on-Read Follow-ups**: Retired the unused left-on-read proactive feature
+- **Longer Login**: JWT tokens now effectively never expire, so no more periodic re-login
+- **Description Editor**: Auto-growing textarea that fits the content, with Save/Cancel buttons at the top of the Overview tab
+- **Freer Swipe Cards**: Discover cards lift and rotate outside the frame while dragging instead of being clipped to a square
+
+### Fixed
+- Character mood and goal not resetting on 30+ minute time gaps
+- Chat sidebar not re-sorting or refreshing when new messages arrive
+- Duplicate background mood system messages when the mood was unchanged
+- Memory not being wiped on user-initiated unmatch or by the clear-all button
+- Sidebar avatar not updating after a portrait change
+- Chat image carousel not syncing when swiping image messages
+- Proactive consecutive count getting stuck (empty conversations and trailing system/time-gap messages) and falsely flagging characters as capped
+- Stale Library search results when typing during an in-flight load
+- Deleting a TIME GAP marker leaving an orphaned message on reload
+
+---
+
 ## [1.4.0] - 2026-03-13
 
 ### Added
