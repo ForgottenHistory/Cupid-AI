@@ -2,23 +2,6 @@ import db from '../db/database.js';
 import messageService from './messageService.js';
 
 /**
- * Update rate limits after sending a left-on-read message
- */
-export function updateLeftOnReadRateLimits(userId, characterId, characterName) {
-  const now = new Date().toISOString();
-
-  db.prepare('UPDATE users SET left_on_read_messages_today = left_on_read_messages_today + 1 WHERE id = ?').run(userId);
-  db.prepare('UPDATE characters SET last_left_on_read_at = ? WHERE id = ? AND user_id = ?').run(now, characterId, userId);
-
-  // Get updated count and cooldown for logging
-  const userCount = db.prepare('SELECT left_on_read_messages_today, daily_left_on_read_limit, left_on_read_character_cooldown FROM users WHERE id = ?').get(userId);
-  const cooldownMinutes = userCount.left_on_read_character_cooldown || 120;
-  const cooldownDisplay = cooldownMinutes >= 60 ? `${(cooldownMinutes / 60).toFixed(1)} hours` : `${cooldownMinutes} min`;
-  console.log(`⏱️  Rate limits updated: ${characterName} left-on-read cooldown (${cooldownDisplay}) started`);
-  console.log(`📊 Daily left-on-read count: ${userCount.left_on_read_messages_today}/${userCount.daily_left_on_read_limit}`);
-}
-
-/**
  * Update rate limits after sending a normal proactive message
  * Returns { shouldUnmatch, newConsecutiveCount }
  */

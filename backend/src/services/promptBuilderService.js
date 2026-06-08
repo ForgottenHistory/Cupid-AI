@@ -447,14 +447,6 @@ class PromptBuilderService {
       return parts.join('');
     }
 
-    // Special handling for left-on-read
-    if (proactiveType === 'left_on_read') {
-      parts.push(`\n\n👀 LEFT ON READ: They read your message but haven't responded yet. It's been a few minutes.`);
-      parts.push(`\n\n${prompts.leftOnReadPrompt}`);
-      if (currentActivityText) parts.push(currentActivityText);
-      return parts.join('');
-    }
-
     // Strong separator to break LLM's recency bias on conversation history above
     parts.push(`\n\n════════════════════════════════════════
 NEW MESSAGE TASK - READ CAREFULLY

@@ -63,7 +63,7 @@ function checkGlobalCooldown(user) {
     const minutesSinceGlobal = (now - lastGlobalTime) / (1000 * 60);
 
     if (minutesSinceGlobal < 30) {
-      console.log(`⏱️  User ${user.id} on global cooldown (${(30 - minutesSinceGlobal).toFixed(1)} min remaining) - checking left-on-read only`);
+      console.log(`⏱️  User ${user.id} on global cooldown (${(30 - minutesSinceGlobal).toFixed(1)} min remaining)`);
       return true;
     }
   }
@@ -176,84 +176,7 @@ function passesStatusProbability(statusInfo, user) {
 }
 
 /**
- * Check for left-on-read scenario
- */
-function checkLeftOnRead(character, lastMessage, user, today, characterData, personality, schedule) {
-  if (!lastMessage || lastMessage.role !== 'assistant' || lastMessage.is_proactive) {
-    return null;
-  }
-
-  const conversationDetails = db.prepare(`
-    SELECT last_opened_at FROM conversations WHERE id = ?
-  `).get(character.conversation_id);
-
-  if (!conversationDetails?.last_opened_at) {
-    return null;
-  }
-
-  const lastOpened = new Date(conversationDetails.last_opened_at);
-  const lastMessageTime = new Date(lastMessage.created_at);
-  const now = new Date();
-
-  // User must have opened chat AFTER last message was sent
-  if (lastOpened <= lastMessageTime) {
-    return null;
-  }
-
-  const minutesSinceRead = (now - lastOpened) / (1000 * 60);
-  const triggerMin = user.left_on_read_trigger_min || 5;
-  const triggerMax = user.left_on_read_trigger_max || 15;
-
-  if (minutesSinceRead < triggerMin || minutesSinceRead > triggerMax) {
-    return null;
-  }
-
-  // Check left-on-read daily limit
-  const leftOnReadLimit = user.daily_left_on_read_limit || 10;
-
-  // Reset left-on-read counter if new day
-  if (user.last_left_on_read_date !== today) {
-    db.prepare('UPDATE users SET left_on_read_messages_today = 0, last_left_on_read_date = ? WHERE id = ?').run(today, user.id);
-    user.left_on_read_messages_today = 0;
-  }
-
-  if (user.left_on_read_messages_today >= leftOnReadLimit) {
-    return null;
-  }
-
-  // Check per-character left-on-read cooldown
-  const characterCooldown = user.left_on_read_character_cooldown || 120;
-  if (character.last_left_on_read_at) {
-    const lastLeftOnReadTime = new Date(character.last_left_on_read_at);
-    const minutesSinceLastLeftOnRead = (now - lastLeftOnReadTime) / (1000 * 60);
-    if (minutesSinceLastLeftOnRead < characterCooldown) {
-      return null;
-    }
-  }
-
-  const characterName = characterData.data?.name || characterData.name || 'Character';
-  console.log(`👀 Left-on-read candidate: ${characterName} (read ${minutesSinceRead.toFixed(1)} min ago)`);
-
-  return {
-    userId: user.id,
-    characterId: character.id,
-    conversationId: character.conversation_id,
-    gapHours: 0,
-    characterData: characterData,
-    personality: personality,
-    schedule: schedule,
-    isFirstMessage: false,
-    triggerType: 'left_on_read',
-    minutesSinceRead: minutesSinceRead,
-    userSettings: {
-      dailyLeftOnReadLimit: leftOnReadLimit,
-      leftOnReadMessagesToday: user.left_on_read_messages_today
-    }
-  };
-}
-
-/**
- * Find candidates for proactive messages (both normal and left-on-read)
+ * Find candidates for proactive messages
  */
 export function findCandidates() {
   const candidates = [];
@@ -262,9 +185,7 @@ export function findCandidates() {
     SELECT id, last_global_proactive_at, proactive_message_hours, daily_proactive_limit,
            proactive_online_chance, proactive_away_chance, proactive_busy_chance,
            proactive_messages_today, last_proactive_date, proactive_check_interval_min,
-           proactive_check_interval_max, last_proactive_check_at, left_on_read_messages_today,
-           last_left_on_read_date, daily_left_on_read_limit, left_on_read_trigger_min,
-           left_on_read_trigger_max, left_on_read_character_cooldown, max_consecutive_proactive,
+           proactive_check_interval_max, last_proactive_check_at, max_consecutive_proactive,
            proactive_cooldown_multiplier, auto_unmatch_after_proactive
     FROM users
   `).all();
@@ -304,8 +225,9 @@ export function findCandidates() {
       const conversation = db.prepare(`SELECT created_at FROM conversations WHERE id = ?`).get(character.conversation_id);
       if (!conversation) continue;
 
+      // Last genuine conversational message (ignore system rows: time_gap, summary, unmatch separators)
       const lastMessage = db.prepare(`
-        SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 1
+        SELECT * FROM messages WHERE conversation_id = ? AND role != 'system' ORDER BY created_at DESC LIMIT 1
       `).get(character.conversation_id);
 
       const lastUserMessage = db.prepare(`
@@ -357,13 +279,6 @@ export function findCandidates() {
         } catch (error) {
           console.error('Failed to parse personality data:', error);
         }
-      }
-
-      // Check for left-on-read scenario
-      const leftOnReadCandidate = checkLeftOnRead(character, lastMessage, user, today, characterData, personality, schedule);
-      if (leftOnReadCandidate) {
-        candidates.push(leftOnReadCandidate);
-        continue;
       }
 
       // Skip normal proactive if on global cooldown

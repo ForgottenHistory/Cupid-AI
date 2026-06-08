@@ -8,7 +8,7 @@ import responseProcessorService from './responseProcessorService.js';
 import { getCurrentStatusFromSchedule } from '../utils/chatHelpers.js';
 import { findCandidates, calculateSendProbability } from './proactiveCandidateFinder.js';
 import { generateProactiveImage } from './proactiveImageGenerator.js';
-import { updateLeftOnReadRateLimits, updateProactiveRateLimits, handleProactiveUnmatch } from './proactiveRateLimiter.js';
+import { updateProactiveRateLimits, handleProactiveUnmatch } from './proactiveRateLimiter.js';
 
 class ProactiveMessageService {
 
@@ -17,33 +17,9 @@ class ProactiveMessageService {
    * Returns { shouldProceed, decision } or { shouldProceed: false }
    */
   async makeInitialDecision(candidate, messages, debugMode) {
-    const { characterData, personality, gapHours, isFirstMessage, triggerType, minutesSinceRead, userId, characterId, schedule } = candidate;
+    const { characterData, personality, gapHours, isFirstMessage, triggerType, userId, characterId, schedule } = candidate;
     const characterName = characterData.data?.name || characterData.name || 'Character';
     let decision = null;
-
-    if (triggerType === 'left_on_read') {
-      if (debugMode) {
-        console.log(`🐛 Debug mode: Bypassing decision engine for left-on-read from ${characterName}`);
-        return { shouldProceed: true, decision: { shouldSend: true, messageType: 'left_on_read', reason: 'Debug mode' } };
-      }
-
-      console.log(`👀 Left-on-read check: ${characterName} (read ${minutesSinceRead.toFixed(1)} min ago)`);
-
-      decision = await aiService.makeLeftOnReadDecision({
-        messages,
-        characterData,
-        personality,
-        minutesSinceRead,
-        userId
-      });
-
-      console.log(`🎯 Left-on-read decision: ${decision.shouldSend ? 'SEND' : 'DON\'T SEND'} - ${decision.reason}`);
-
-      if (!decision.shouldSend) {
-        return { shouldProceed: false };
-      }
-      return { shouldProceed: true, decision };
-    }
 
     // NORMAL PROACTIVE: Use probability calculation (pure random, no personality weights)
     const probability = calculateSendProbability(gapHours);
@@ -239,7 +215,7 @@ class ProactiveMessageService {
     let insertedTimeGapId = null;
 
     try {
-      const { userId, characterId, conversationId, gapHours, characterData, schedule, isFirstMessage, triggerType, userSettings } = candidate;
+      const { userId, characterId, conversationId, gapHours, characterData, schedule, isFirstMessage, userSettings } = candidate;
       const characterName = characterData.data?.name || characterData.name || 'Character';
 
       // Get conversation data
@@ -352,15 +328,11 @@ class ProactiveMessageService {
       conversationService.refreshLastMessage(conversationId);
 
       // Update rate limits
-      if (triggerType === 'left_on_read') {
-        updateLeftOnReadRateLimits(userId, characterId, characterName);
-      } else {
-        const { shouldUnmatch, maxConsecutive } = updateProactiveRateLimits(userId, characterId, characterName, userSettings);
+      const { shouldUnmatch, maxConsecutive } = updateProactiveRateLimits(userId, characterId, characterName, userSettings);
 
-        if (shouldUnmatch) {
-          handleProactiveUnmatch(userId, characterId, characterName, conversationId, maxConsecutive, io);
-          return true;
-        }
+      if (shouldUnmatch) {
+        handleProactiveUnmatch(userId, characterId, characterName, conversationId, maxConsecutive, io);
+        return true;
       }
 
       // Emit messages to frontend
@@ -469,10 +441,8 @@ class ProactiveMessageService {
         const didSend = await this.processCandidate(candidate, io, !!debugCharacterId);
         if (didSend) {
           sent++;
-          if (candidate.triggerType === 'normal') {
-            console.log(`✅ Sent 1 proactive message - stopping to respect check interval`);
-            break;
-          }
+          console.log(`✅ Sent 1 proactive message - stopping to respect check interval`);
+          break;
         }
       }
 

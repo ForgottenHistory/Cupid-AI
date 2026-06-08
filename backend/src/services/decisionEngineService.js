@@ -166,10 +166,6 @@ class DecisionEngineService {
   async makeProactiveDecision(options) {
     return proactiveDecisionService.makeProactiveDecision(options);
   }
-
-  async makeLeftOnReadDecision(options) {
-    return proactiveDecisionService.makeLeftOnReadDecision(options);
-  }
 }
 
 export default new DecisionEngineService();
