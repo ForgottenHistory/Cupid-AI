@@ -253,8 +253,8 @@ const Home = () => {
       <div className="w-full max-w-md">
         <CardCounter remaining={currentCards.length} total={totalCount} swipesUsed={swipeStats.used} swipeLimit={swipeStats.limit} />
 
-        {/* Card Stack */}
-        <div className="relative w-full aspect-[3/4] mb-8 overflow-hidden">
+        {/* Card Stack — no overflow clipping so the top card can be dragged/rotated freely outside the frame */}
+        <div className="relative w-full aspect-[3/4] mb-8">
           {loading ? (
             <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-800 rounded-2xl shadow-2xl">
               <div className="text-center p-8">
