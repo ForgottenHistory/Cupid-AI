@@ -4,7 +4,8 @@ import db from '../db/database.js';
 
 const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this-in-production';
-const JWT_EXPIRES_IN = '7d';
+// Local app: login is mostly for immersion, so tokens effectively never expire
+const JWT_EXPIRES_IN = '3650d';
 
 class AuthService {
   /**
