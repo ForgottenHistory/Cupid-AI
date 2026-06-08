@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import UploadZone from '../components/UploadZone';
@@ -24,6 +24,8 @@ const Library = () => {
   const [sortOrder, setSortOrder] = useState('newest'); // 'newest', 'oldest', 'random'
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const ITEMS_PER_PAGE = viewMode === 'compact' ? 50 : 24;
+  // Tracks the latest load request so out-of-order responses don't overwrite newer results
+  const loadRequestId = useRef(0);
 
   // Load thumbnails on mount
   useEffect(() => {
@@ -62,6 +64,7 @@ const Library = () => {
   const loadCharacters = async () => {
     if (!user?.id) return;
 
+    const requestId = ++loadRequestId.current;
     setLoading(true);
     try {
       // Map frontend filter to backend filter
@@ -79,6 +82,8 @@ const Library = () => {
           backendFilter,
           debouncedSearch || null
         );
+        // Ignore stale responses (a newer search/filter has since fired)
+        if (requestId !== loadRequestId.current) return;
         // Shuffle and paginate client-side
         const shuffled = [...allChars].sort(() => Math.random() - 0.5);
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -93,13 +98,18 @@ const Library = () => {
           debouncedSearch || null,
           { offset, limit: ITEMS_PER_PAGE, sort: sortOrder }
         );
+        // Ignore stale responses (a newer search/filter has since fired)
+        if (requestId !== loadRequestId.current) return;
         setCharacters(pageChars);
         setTotalCount(total);
       }
     } catch (error) {
       console.error('Failed to load characters:', error);
     } finally {
-      setLoading(false);
+      // Only the latest request controls the loading state
+      if (requestId === loadRequestId.current) {
+        setLoading(false);
+      }
     }
   };
 
