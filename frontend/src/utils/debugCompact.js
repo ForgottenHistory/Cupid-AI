@@ -489,8 +489,32 @@ export async function triggerProactive(characterId) {
   }
 }
 
+/**
+ * Debug function to reset today's swipe count to 0
+ * Call from browser console: window.resetSwipes()
+ */
+export async function resetSwipes() {
+  try {
+    console.log('🔄 Resetting today\'s swipes...');
+
+    const response = await api.post('/debug/reset-swipes');
+
+    if (response.data.success) {
+      console.log(`✅ Swipes reset! Now ${response.data.used}/${response.data.limit}. Reload the swipe page to see it.`);
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('❌ Reset swipes failed:', error);
+    if (error.response?.data?.error) {
+      console.error('   Error:', error.response.data.error);
+    }
+  }
+}
+
 // Expose to window for console access
 if (typeof window !== 'undefined') {
+  window.resetSwipes = resetSwipes;
   window.testCompact = testCompact;
   window.showBlockStructure = showBlockStructure;
   window.showConversationId = showConversationId;

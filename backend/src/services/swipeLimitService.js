@@ -69,6 +69,18 @@ class SwipeLimitService {
   }
 
   /**
+   * Reset today's swipe count to 0 (debug/testing)
+   */
+  resetSwipes(userId) {
+    const today = new Date().toISOString().split('T')[0];
+    db.prepare(`
+      UPDATE users
+      SET swipes_today = 0, last_swipe_date = ?
+      WHERE id = ?
+    `).run(today, userId);
+  }
+
+  /**
    * Get swipe stats (used and limit) for today
    */
   getSwipeStats(userId) {

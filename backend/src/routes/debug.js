@@ -4,6 +4,7 @@ import sdService from '../services/sdService.js';
 import messageService from '../services/messageService.js';
 import compactService from '../services/compactService.js';
 import memoryService from '../services/memoryService.js';
+import swipeLimitService from '../services/swipeLimitService.js';
 import db from '../db/database.js';
 import { loadPrompts } from './prompts.js';
 
@@ -32,6 +33,25 @@ router.delete('/clear-posts', authenticateToken, (req, res) => {
     });
   } catch (error) {
     console.error('Debug clear posts error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * Debug endpoint to reset today's swipe count
+ */
+router.post('/reset-swipes', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    swipeLimitService.resetSwipes(userId);
+    const stats = swipeLimitService.getSwipeStats(userId);
+
+    console.log(`🗑️  Debug: Reset swipes for user ${userId} (now ${stats.used}/${stats.limit})`);
+
+    res.json({ success: true, ...stats });
+  } catch (error) {
+    console.error('Debug reset swipes error:', error);
     res.status(500).json({ error: error.message });
   }
 });
